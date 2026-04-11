@@ -6,27 +6,28 @@ A public-facing web platform that consolidates scattered university announcement
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
+| Layer              | Technology                           |
+| ------------------ | ------------------------------------ |
 | Frontend + Backend | Next.js 15 (App Router) + TypeScript |
-| Styling | Tailwind CSS + shadcn/ui |
-| Database | Supabase (PostgreSQL + RLS) |
-| Auth | Supabase Auth |
-| Storage | Supabase Storage |
-| Hosting | Vercel |
+| Styling            | Tailwind CSS + shadcn/ui             |
+| Database           | Supabase (PostgreSQL + RLS)          |
+| Auth               | Supabase Auth                        |
+| Storage            | Supabase Storage                     |
+| Hosting            | Vercel                               |
 
 ## Roles
 
-| Role | Description |
-|------|-------------|
-| Super Admin | Platform owner — full control |
-| Admin | SA Director / Student Council President |
-| Publisher | Approved clubs and departments |
-| Public | Students and visitors (no account needed) |
+| Role        | Description                               |
+| ----------- | ----------------------------------------- |
+| Super Admin | Platform owner — full control             |
+| Admin       | SA Director / Student Council President   |
+| Publisher   | Approved clubs and departments            |
+| Public      | Students and visitors (no account needed) |
 
 ## Getting Started
 
 ### Prerequisites
+
 - Node.js 18+ (via nvm recommended)
 - A Supabase project
 - A Vercel account
@@ -72,7 +73,7 @@ supabase/
 
 ## Development Progress
 
-Tracked in Google Drive → Bulletin → _Tracker → PROGRESS sheet.
+Tracked in Google Drive → Bulletin → \_Tracker → PROGRESS sheet.
 
 ---
 
