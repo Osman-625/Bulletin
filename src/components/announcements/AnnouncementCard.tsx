@@ -17,7 +17,7 @@ export default function AnnouncementCard({ announcement }: { announcement: Annou
   return (
     <Link
       href={`/announcements/${id}`}
-      className="group flex flex-col bg-white cursor-pointer outline-none focus:ring-2 focus:ring-[#1B4332] focus:ring-inset border-l-[3px] border-l-transparent hover:border-l-[#1B4332] transition-all duration-200"
+      className="group flex flex-col bg-white cursor-pointer outline-none focus:ring-2 focus:ring-[#EC2028] focus:ring-inset border-l-[3px] border-l-transparent hover:border-l-[#EC2028] transition-all duration-200"
       style={{ contain: 'layout' }}
     >
       {/* Banner */}
@@ -49,7 +49,7 @@ export default function AnnouncementCard({ announcement }: { announcement: Annou
         )}
 
         {/* Title */}
-        <h2 className="font-display text-[20px] font-semibold leading-[1.2] text-[#09090B] group-hover:text-[#1B4332] transition-colors duration-200">
+        <h2 className="font-display text-[20px] font-semibold leading-[1.2] text-[#09090B] group-hover:text-[#EC2028] transition-colors duration-200">
           {title}
         </h2>
 
@@ -71,7 +71,7 @@ export default function AnnouncementCard({ announcement }: { announcement: Annou
         </div>
 
         {registration_link && (
-          <span className="font-sans text-[10px] font-medium tracking-[0.12em] uppercase text-[#1B4332]">
+          <span className="font-sans text-[10px] font-medium tracking-[0.12em] uppercase text-[#EC2028]">
             Register Here →
           </span>
         )}
