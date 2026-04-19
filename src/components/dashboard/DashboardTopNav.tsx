@@ -15,7 +15,7 @@ export function DashboardTopNav({ userName }: DashboardTopNavProps) {
       className={cn(
         'fixed top-0 left-64 right-0 z-30 h-16',
         'flex items-center justify-between px-6',
-        'bg-white/80 dark:bg-slate-950/75 backdrop-blur-xl border-b border-[var(--color-border)]',
+        'bg-white/80 dark:bg-slate-950/75 backdrop-blur-xl dark:backdrop-blur-2xl border-b border-[var(--color-border)]',
         'transition-colors duration-200'
       )}
     >

@@ -22,11 +22,11 @@ export function DashboardSidebar({ displayName, role }: DashboardSidebarProps) {
   const pathname = usePathname()
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 w-64 flex flex-col bg-white/80 dark:bg-slate-950/75 backdrop-blur-xl border-r border-[var(--color-border)] transition-colors duration-200">
+    <aside className="fixed inset-y-0 left-0 z-40 w-64 flex flex-col bg-white/80 dark:bg-slate-950/75 backdrop-blur-xl dark:backdrop-blur-2xl border-r border-[var(--color-border)] transition-colors duration-200">
       {/* Wordmark */}
       <div className="px-6 py-6 border-b border-[var(--color-border)]">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent)] font-mono">
-          Bulletin
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent)] font-sans">
+          BULLETIN
         </p>
         <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5 leading-tight">
           INTI International University
@@ -36,7 +36,11 @@ export function DashboardSidebar({ displayName, role }: DashboardSidebarProps) {
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1">
         {navItems.map(({ href, label, icon: Icon, exact }) => {
-          const isActive = exact ? pathname === href : pathname.startsWith(href) && !(exact && pathname !== href)
+          const isActive = href === '/dashboard'
+            ? pathname === href
+            : href === '/dashboard/announcements/new'
+            ? pathname.startsWith(href)
+            : pathname === href
           return (
             <Link
               key={href}
