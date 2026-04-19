@@ -1,4 +1,6 @@
 import { login } from './actions'
+import { GlassCard } from '@/components/dashboard/GlassCard'
+import { SubmitButton } from '@/components/dashboard/SubmitButton'
 
 export const metadata = { title: 'Sign In' }
 
@@ -8,39 +10,36 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>
 }) {
   const { error } = await searchParams
+  const hasError = error === 'invalid_credentials'
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-
+    <div className="flex min-h-screen items-center justify-center px-4">
+      <GlassCard hover={false} className="animate-fade-up w-full max-w-[440px] p-10">
         {/* Wordmark */}
-        <div className="text-center mb-8">
-          <div className="font-display text-[30px] font-bold uppercase tracking-[0.2em] text-[#09090B] leading-none">
-            Bulletin
-          </div>
-          <div className="mt-1.5 font-sans text-[9px] font-medium tracking-[0.3em] uppercase text-[#71717A]">
-            INTI International University
-          </div>
-        </div>
+        <p className="text-[10px] font-bold font-sans uppercase tracking-widest text-[var(--color-accent)]">
+          BULLETIN
+        </p>
+        <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
+          INTI International University
+        </p>
 
-        {/* Masthead rule */}
-        <div className="h-[3px] bg-[#09090B] mb-0.5" />
-        <div className="h-px bg-[#E4E4E7] mb-8" />
+        {/* Divider */}
+        <div className="border-t border-[var(--color-border)] my-6" />
 
-        {/* Error */}
-        {error && (
-          <p className="mb-4 font-sans text-sm text-red-600 text-center" role="alert">
-            Invalid email or password.
-          </p>
-        )}
+        {/* Heading */}
+        <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">Sign in</h1>
+        <p className="text-sm text-[var(--color-text-secondary)] mt-1 mb-6">
+          Publisher access for INTI organizations
+        </p>
 
-        <form action={login} className="space-y-5">
-          <div className="space-y-1.5">
+        <form action={login}>
+          {/* Email */}
+          <div>
             <label
               htmlFor="email"
-              className="block font-sans text-[10px] font-medium tracking-[0.18em] uppercase text-[#71717A]"
+              className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1.5"
             >
-              Email
+              Email address
             </label>
             <input
               id="email"
@@ -48,14 +47,15 @@ export default async function LoginPage({
               type="email"
               required
               autoComplete="email"
-              className="w-full border border-[#E4E4E7] bg-white px-4 py-2.5 font-sans text-sm text-[#09090B] outline-none focus:border-[#1B4332] focus:ring-2 focus:ring-[#1B4332]/20 transition-colors placeholder:text-[#D4D4D8]"
+              className="w-full px-4 py-3 rounded-xl text-sm bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/40 focus:border-[var(--color-accent)]/60 transition-all duration-200"
             />
           </div>
 
-          <div className="space-y-1.5">
+          {/* Password */}
+          <div className="mt-4">
             <label
               htmlFor="password"
-              className="block font-sans text-[10px] font-medium tracking-[0.18em] uppercase text-[#71717A]"
+              className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1.5"
             >
               Password
             </label>
@@ -65,18 +65,23 @@ export default async function LoginPage({
               type="password"
               required
               autoComplete="current-password"
-              className="w-full border border-[#E4E4E7] bg-white px-4 py-2.5 font-sans text-sm text-[#09090B] outline-none focus:border-[#1B4332] focus:ring-2 focus:ring-[#1B4332]/20 transition-colors placeholder:text-[#D4D4D8]"
+              className="w-full px-4 py-3 rounded-xl text-sm bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/40 focus:border-[var(--color-accent)]/60 transition-all duration-200"
             />
           </div>
 
-          <button
-            type="submit"
-            className="w-full bg-[#1B4332] text-white font-sans text-[11px] font-medium tracking-[0.18em] uppercase py-3 hover:bg-[#14532D] transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1B4332] focus:ring-offset-2 mt-2"
-          >
-            Sign In
-          </button>
+          {/* Error */}
+          {hasError && (
+            <p className="mt-3 text-sm text-[var(--color-destructive)]" role="alert">
+              Invalid email or password. Please try again.
+            </p>
+          )}
+
+          {/* Submit */}
+          <div className="mt-6">
+            <SubmitButton />
+          </div>
         </form>
-      </div>
+      </GlassCard>
     </div>
   )
 }
