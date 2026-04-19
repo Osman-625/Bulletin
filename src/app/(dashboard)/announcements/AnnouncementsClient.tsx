@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { Search, FileText, CheckCircle2, Archive, PenLine } from 'lucide-react'
-import { GlassCard } from '@/components/dashboard/GlassCard'
 import { AnnouncementRow } from '@/components/dashboard/AnnouncementRow'
 import type { AnnouncementRowData } from '@/components/dashboard/AnnouncementRow'
 import { cn } from '@/lib/utils'
@@ -180,26 +179,20 @@ export function AnnouncementsClient({ announcements }: AnnouncementsClientProps)
           </p>
           <div className="flex items-center gap-1.5">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <GlassCard
+              <button
                 key={p}
-                hover={p !== clampedPage}
+                onClick={() => setPage(p)}
                 className={cn(
-                  'rounded-xl overflow-hidden',
-                  p === clampedPage && 'bg-[var(--color-accent)] border-[var(--color-accent)]'
+                  'w-9 h-9 flex items-center justify-center text-sm font-medium',
+                  'rounded-xl border transition-all duration-300',
+                  'bg-[var(--color-glass-bg)] backdrop-blur-[16px]',
+                  p === clampedPage
+                    ? 'bg-[var(--color-accent)] border-[var(--color-accent)] text-white'
+                    : 'border-[var(--color-glass-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:-translate-y-0.5 hover:border-[var(--color-accent)]/40'
                 )}
               >
-                <button
-                  onClick={() => setPage(p)}
-                  className={cn(
-                    'w-9 h-9 flex items-center justify-center text-sm font-medium transition-colors',
-                    p === clampedPage
-                      ? 'text-white'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
-                  )}
-                >
-                  {p}
-                </button>
-              </GlassCard>
+                {p}
+              </button>
             ))}
           </div>
         </div>

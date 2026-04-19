@@ -5,18 +5,11 @@ import { createClient } from '@/lib/supabase/server'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { AnnouncementsClient } from './AnnouncementsClient'
 import type { AnnouncementRowData } from '@/components/dashboard/AnnouncementRow'
+import type { DbAnnouncement } from '@/lib/types'
 
 export const metadata = { title: 'Announcements — Bulletin' }
 
-type RawRow = {
-  id: string
-  title: string
-  status: string
-  banner_url: string | null
-  published_at: string | null
-  expires_at: string | null
-  archived_at: string | null
-  updated_at: string
+type QueryRow = Pick<DbAnnouncement, 'id' | 'title' | 'status' | 'banner_url' | 'published_at' | 'expires_at' | 'archived_at' | 'updated_at'> & {
   categories: { id: string; name: string; color: string | null } | null
   organizations: { id: string; name: string } | null
   author: { display_name: string } | null
@@ -47,7 +40,7 @@ export default async function AnnouncementsPage() {
   let announcements: AnnouncementRowData[] = []
   let totalPublished = 0
   let pendingDrafts = 0
-  let scheduled = 0
+  let expiringSoon = 0
   let archived = 0
 
   const { data: rows } = await supabase
@@ -69,7 +62,7 @@ export default async function AnnouncementsPage() {
     .order('updated_at', { ascending: false })
 
   if (rows) {
-    const rawRows = rows as unknown as RawRow[]
+    const rawRows = rows as unknown as QueryRow[]
     announcements = rawRows.map((r) => ({
       id: r.id,
       title: r.title,
@@ -84,14 +77,14 @@ export default async function AnnouncementsPage() {
 
     totalPublished = rawRows.filter((r) => r.status === 'published').length
     pendingDrafts = rawRows.filter((r) => r.status === 'draft').length
-    scheduled = rawRows.filter((r) => r.expires_at !== null && r.status === 'published').length
+    expiringSoon = rawRows.filter((r) => r.expires_at !== null && r.status === 'published').length
     archived = rawRows.filter((r) => r.status === 'archived').length
   }
 
   const stats = [
     { label: 'Total Published', value: totalPublished },
     { label: 'Pending Drafts', value: pendingDrafts },
-    { label: 'Scheduled', value: scheduled },
+    { label: 'Expiring Soon', value: expiringSoon },
     { label: 'Archived', value: archived },
   ]
 

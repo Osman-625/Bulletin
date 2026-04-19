@@ -90,7 +90,10 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
         {/* Middle — title + meta */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <StatusBadge status={announcement.status === 'expired' ? 'archived' : announcement.status as 'draft' | 'published' | 'archived'} />
+            {(() => {
+              const displayStatus = (announcement.status === 'expired' ? 'archived' : announcement.status) satisfies 'draft' | 'published' | 'archived'
+              return <StatusBadge status={displayStatus} />
+            })()}
             <span className="text-lg font-semibold text-[var(--color-text-primary)] truncate leading-tight">
               {announcement.title}
             </span>
