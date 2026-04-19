@@ -16,7 +16,7 @@ export default async function LoginPage({
     <div className="flex min-h-screen items-center justify-center px-4">
       <GlassCard hover={false} className="animate-fade-up w-full max-w-[440px] p-10">
         {/* Wordmark */}
-        <p className="text-[10px] font-bold font-sans uppercase tracking-widest text-[var(--color-accent)]">
+        <p className="text-[10px] font-sans uppercase tracking-widest text-[var(--color-accent)]">
           BULLETIN
         </p>
         <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
@@ -47,6 +47,7 @@ export default async function LoginPage({
               type="email"
               required
               autoComplete="email"
+              placeholder="you@example.com"
               className="w-full px-4 py-3 rounded-xl text-sm bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/40 focus:border-[var(--color-accent)]/60 transition-all duration-200"
             />
           </div>
@@ -65,6 +66,7 @@ export default async function LoginPage({
               type="password"
               required
               autoComplete="current-password"
+              placeholder="••••••••"
               className="w-full px-4 py-3 rounded-xl text-sm bg-[var(--color-surface-elevated)] border border-[var(--color-border)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/40 focus:border-[var(--color-accent)]/60 transition-all duration-200"
             />
           </div>
