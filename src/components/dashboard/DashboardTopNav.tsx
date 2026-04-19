@@ -1,6 +1,7 @@
 'use client'
 
-import { Bell, Menu } from 'lucide-react'
+import { useState } from 'react'
+import { Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DashboardTopNavProps {
@@ -9,6 +10,7 @@ interface DashboardTopNavProps {
 
 export function DashboardTopNav({ userName }: DashboardTopNavProps) {
   const initials = userName ? userName.charAt(0).toUpperCase() : '?'
+  const [search, setSearch] = useState('')
 
   return (
     <header
@@ -19,19 +21,13 @@ export function DashboardTopNav({ userName }: DashboardTopNavProps) {
         'transition-colors duration-200'
       )}
     >
-      {/* Left: hamburger (mobile) + search */}
+      {/* Left: search */}
       <div className="flex items-center gap-3 flex-1">
-        <button
-          type="button"
-          className="sm:hidden flex items-center justify-center w-8 h-8 rounded-full text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-elevated)] transition-colors"
-          aria-label="Open menu"
-        >
-          <Menu size={18} />
-        </button>
-
         <input
           type="search"
           placeholder="Search announcements..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
           className={cn(
             'hidden sm:block w-72 px-4 py-2 text-sm',
             'bg-[var(--color-surface-elevated)] rounded-full',

@@ -8,10 +8,16 @@ import { logout } from '@/app/(auth)/login/actions'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { href: '/dashboard', label: 'Home', icon: Home, exact: true },
-  { href: '/dashboard/announcements', label: 'Announcements', icon: Megaphone, exact: false },
-  { href: '/dashboard/announcements/new', label: 'New Announcement', icon: Plus, exact: false },
+  { href: '/dashboard', label: 'Home', icon: Home },
+  { href: '/dashboard/announcements', label: 'Announcements', icon: Megaphone },
+  { href: '/dashboard/announcements/new', label: 'New Announcement', icon: Plus },
 ]
+
+function getIsActive(href: string, pathname: string): boolean {
+  if (href === '/dashboard') return pathname === href
+  if (href === '/dashboard/announcements') return pathname === href
+  return pathname.startsWith(href)
+}
 
 interface DashboardSidebarProps {
   displayName?: string | null
@@ -35,12 +41,8 @@ export function DashboardSidebar({ displayName, role }: DashboardSidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {navItems.map(({ href, label, icon: Icon, exact }) => {
-          const isActive = href === '/dashboard'
-            ? pathname === href
-            : href === '/dashboard/announcements/new'
-            ? pathname.startsWith(href)
-            : pathname === href
+        {navItems.map(({ href, label, icon: Icon }) => {
+          const isActive = getIsActive(href, pathname)
           return (
             <Link
               key={href}
