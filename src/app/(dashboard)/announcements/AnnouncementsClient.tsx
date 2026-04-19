@@ -100,7 +100,6 @@ export function AnnouncementsClient({ announcements }: AnnouncementsClientProps)
   function handleSearch(e: React.ChangeEvent<HTMLInputElement>) {
     setQuery(e.target.value)
     setPage(1)
-    setAnimKey((k) => k + 1)
   }
 
   return (
@@ -181,22 +180,26 @@ export function AnnouncementsClient({ announcements }: AnnouncementsClientProps)
           </p>
           <div className="flex items-center gap-1.5">
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button
+              <GlassCard
                 key={p}
-                onClick={() => setPage(p)}
+                hover={p !== clampedPage}
                 className={cn(
-                  'w-9 h-9 rounded-xl text-sm font-medium transition-all duration-200',
-                  p === clampedPage
-                    ? 'bg-[var(--color-accent)] text-white shadow-sm'
-                    : [
-                        'bg-[var(--color-glass-bg)] border border-[var(--color-glass-border)]',
-                        'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]',
-                        'hover:border-[var(--color-accent)]/40 backdrop-blur-[16px]',
-                      ].join(' ')
+                  'rounded-xl overflow-hidden',
+                  p === clampedPage && 'bg-[var(--color-accent)] border-[var(--color-accent)]'
                 )}
               >
-                {p}
-              </button>
+                <button
+                  onClick={() => setPage(p)}
+                  className={cn(
+                    'w-9 h-9 flex items-center justify-center text-sm font-medium transition-colors',
+                    p === clampedPage
+                      ? 'text-white'
+                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                  )}
+                >
+                  {p}
+                </button>
+              </GlassCard>
             ))}
           </div>
         </div>

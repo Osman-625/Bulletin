@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { AnnouncementsClient } from './AnnouncementsClient'
@@ -26,14 +27,22 @@ export default async function AnnouncementsPage() {
 
   const { data: { user } } = await supabase.auth.getUser()
 
+  if (!user) {
+    redirect('/login')
+  }
+
   // Get org membership
-  const { data: membership } = await supabase
+  const { data: membership, error: membershipError } = await supabase
     .from('organization_members')
     .select('organization_id')
-    .eq('user_id', user!.id)
+    .eq('user_id', user.id)
     .single()
 
-  const orgId = membership?.organization_id ?? null
+  if (membershipError || !membership?.organization_id) {
+    redirect('/login')
+  }
+
+  const orgId = membership.organization_id
 
   let announcements: AnnouncementRowData[] = []
   let totalPublished = 0
@@ -41,44 +50,42 @@ export default async function AnnouncementsPage() {
   let scheduled = 0
   let archived = 0
 
-  if (orgId) {
-    const { data: rows } = await supabase
-      .from('announcements')
-      .select(`
-        id,
-        title,
-        status,
-        banner_url,
-        published_at,
-        expires_at,
-        archived_at,
-        updated_at,
-        categories ( id, name, color ),
-        organizations ( id, name ),
-        author:users!announcements_author_id_fkey ( display_name )
-      `)
-      .eq('organization_id', orgId)
-      .order('updated_at', { ascending: false })
+  const { data: rows } = await supabase
+    .from('announcements')
+    .select(`
+      id,
+      title,
+      status,
+      banner_url,
+      published_at,
+      expires_at,
+      archived_at,
+      updated_at,
+      categories ( id, name, color ),
+      organizations ( id, name ),
+      author:users!announcements_author_id_fkey ( display_name )
+    `)
+    .eq('organization_id', orgId)
+    .order('updated_at', { ascending: false })
 
-    if (rows) {
-      const rawRows = rows as unknown as RawRow[]
-      announcements = rawRows.map((r) => ({
-        id: r.id,
-        title: r.title,
-        status: r.status as AnnouncementRowData['status'],
-        banner_url: r.banner_url,
-        published_at: r.published_at,
-        updated_at: r.updated_at,
-        categories: r.categories,
-        organizations: r.organizations,
-        author: r.author,
-      }))
+  if (rows) {
+    const rawRows = rows as unknown as RawRow[]
+    announcements = rawRows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      status: r.status as AnnouncementRowData['status'],
+      banner_url: r.banner_url,
+      published_at: r.published_at,
+      updated_at: r.updated_at,
+      categories: r.categories,
+      organizations: r.organizations,
+      author: r.author,
+    }))
 
-      totalPublished = rawRows.filter((r) => r.status === 'published').length
-      pendingDrafts = rawRows.filter((r) => r.status === 'draft').length
-      scheduled = rawRows.filter((r) => r.expires_at !== null && r.status === 'published').length
-      archived = rawRows.filter((r) => r.status === 'archived').length
-    }
+    totalPublished = rawRows.filter((r) => r.status === 'published').length
+    pendingDrafts = rawRows.filter((r) => r.status === 'draft').length
+    scheduled = rawRows.filter((r) => r.expires_at !== null && r.status === 'published').length
+    archived = rawRows.filter((r) => r.status === 'archived').length
   }
 
   const stats = [
