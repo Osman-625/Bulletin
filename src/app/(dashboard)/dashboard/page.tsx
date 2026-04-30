@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { StatusBadge } from '@/components/dashboard/StatusBadge'
+import { CountUp } from '@/components/dashboard/CountUp'
 
 export const metadata = { title: 'Dashboard — Bulletin' }
 
@@ -143,7 +144,7 @@ export default async function DashboardPage() {
           { label: 'Total all-time', value: total },
         ].map(({ label, value }) => (
           <div key={label} className="flex-1 px-6 first:pl-0 last:pr-0">
-            <p className="text-3xl font-bold font-mono text-[var(--color-accent)]">{value}</p>
+            <CountUp value={value} className="text-3xl font-bold font-mono text-[var(--color-accent)]" />
             <p className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] mt-1">{label}</p>
           </div>
         ))}

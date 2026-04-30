@@ -1,28 +1,40 @@
 'use client'
 
 import { useState } from 'react'
-import { Bell } from 'lucide-react'
+import { Bell, Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DashboardTopNavProps {
   userName?: string | null
+  onMenuClick?: () => void
 }
 
-export function DashboardTopNav({ userName }: DashboardTopNavProps) {
+export function DashboardTopNav({ userName, onMenuClick }: DashboardTopNavProps) {
   const initials = userName ? userName.charAt(0).toUpperCase() : '?'
   const [search, setSearch] = useState('')
 
   return (
     <header
       className={cn(
-        'fixed top-0 left-64 right-0 z-30 h-16',
-        'flex items-center justify-between px-6',
-        'bg-white/80 dark:bg-slate-950/75 backdrop-blur-xl dark:backdrop-blur-2xl border-b border-[var(--color-border)]',
-        'transition-colors duration-200'
+        'fixed top-0 left-0 right-0 z-30 h-16',
+        'md:left-12 lg:left-64',
+        'flex items-center justify-between px-4 md:px-6',
+        'bg-white/80 dark:bg-slate-950/75 backdrop-blur-xl dark:backdrop-blur-2xl',
+        'border-b border-[var(--color-border)]',
+        'transition-[left] duration-200'
       )}
     >
-      {/* Left: search */}
+      {/* Left: hamburger (mobile only) + search */}
       <div className="flex items-center gap-3 flex-1">
+        <button
+          type="button"
+          onClick={onMenuClick}
+          className="flex items-center justify-center w-8 h-8 rounded-lg text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-elevated)] transition-colors md:hidden"
+          aria-label="Open menu"
+        >
+          <Menu size={20} />
+        </button>
+
         <input
           type="search"
           placeholder="Search announcements..."
@@ -33,7 +45,7 @@ export function DashboardTopNav({ userName }: DashboardTopNavProps) {
             'bg-[var(--color-surface-elevated)] rounded-full',
             'text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]',
             'border-none outline-none',
-            'focus:ring-1 focus:ring-[var(--color-accent)]/40 focus:bg-[var(--color-surface-elevated)]',
+            'focus:ring-1 focus:ring-[var(--color-accent)]/40',
             'transition-all duration-150'
           )}
         />

@@ -192,6 +192,21 @@
   animation: fade-up 400ms cubic-bezier(0.25, 1, 0.5, 1) both;
 }
 
+@keyframes drawer-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-drawer-up {
+  animation: drawer-up 300ms cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
