@@ -10,37 +10,78 @@ export default async function LoginPage({
   const { error } = await searchParams
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+    <>
+      {/* Full-screen radial bloom (fixed, behind everything) */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 -z-10"
+        style={{
+          background:
+            'radial-gradient(ellipse 60% 50% at 35% 45%, rgba(200,16,46,0.06) 0%, transparent 100%)',
+        }}
+      />
 
-        {/* Wordmark */}
-        <div className="text-center mb-8">
-          <div className="font-display text-[30px] font-bold uppercase tracking-[0.2em] text-[#09090B] leading-none">
-            Bulletin
+      {/* Card — AuthLayout handles centering */}
+      <div
+        className="animate-fade-up w-full max-w-[420px] rounded-2xl border p-10"
+        style={{
+          background: 'var(--color-surface)',
+          borderColor: 'var(--color-border)',
+          boxShadow: '0 4px 40px rgba(0, 0, 0, 0.09)',
+        }}
+      >
+        {/* Logo */}
+        <div className="mb-8 flex flex-col items-center text-center">
+          <div
+            className="mb-4 flex h-[52px] w-[52px] items-center justify-center rounded-[14px]"
+            style={{
+              background: 'linear-gradient(135deg, #C8102E 55%, #F5A623 100%)',
+              boxShadow: '0 4px 18px rgba(200, 16, 46, 0.32)',
+            }}
+          >
+            <span
+              className="font-display font-bold leading-none text-white"
+              style={{ fontSize: 22 }}
+            >
+              B
+            </span>
           </div>
-          <div className="mt-1.5 font-sans text-[9px] font-medium tracking-[0.3em] uppercase text-[#71717A]">
-            INTI International University
-          </div>
+
+          <h2
+            className="font-display text-[23px] font-bold leading-tight mb-1.5"
+            style={{ color: 'var(--color-text-primary)' }}
+          >
+            Welcome back
+          </h2>
+          <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
+            Sign in to access Bulletin
+          </p>
         </div>
-
-        {/* Masthead rule */}
-        <div className="h-[3px] bg-[#09090B] mb-0.5" />
-        <div className="h-px bg-[#E4E4E7] mb-8" />
 
         {/* Error */}
         {error && (
-          <p className="mb-4 font-sans text-sm text-red-600 text-center" role="alert">
+          <div
+            className="animate-slide-in mb-5 rounded-[10px] border px-4 py-3 text-[13px]"
+            style={{
+              background: 'rgba(200, 16, 46, 0.08)',
+              borderColor: 'rgba(200, 16, 46, 0.25)',
+              color: 'var(--color-accent-inti)',
+            }}
+            role="alert"
+          >
             Invalid email or password.
-          </p>
+          </div>
         )}
 
-        <form action={login} className="space-y-5">
-          <div className="space-y-1.5">
+        {/* Form */}
+        <form action={login} className="flex flex-col gap-4">
+          <div>
             <label
               htmlFor="email"
-              className="block font-sans text-[10px] font-medium tracking-[0.18em] uppercase text-[#71717A]"
+              className="mb-2 block text-[11px] font-medium uppercase tracking-[0.15em]"
+              style={{ color: 'var(--color-text-muted)' }}
             >
-              Email
+              Email address
             </label>
             <input
               id="email"
@@ -48,14 +89,21 @@ export default async function LoginPage({
               type="email"
               required
               autoComplete="email"
-              className="w-full border border-[#E4E4E7] bg-white px-4 py-2.5 font-sans text-sm text-[#09090B] outline-none focus:border-[#1B4332] focus:ring-2 focus:ring-[#1B4332]/20 transition-colors placeholder:text-[#D4D4D8]"
+              placeholder="you@inti.edu.my"
+              className="input-inti w-full rounded-[10px] border px-4 py-2.5 text-[14px] transition-all duration-150 placeholder:opacity-40"
+              style={{
+                background: 'var(--color-surface-elevated)',
+                borderColor: 'var(--color-border)',
+                color: 'var(--color-text-primary)',
+              }}
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div>
             <label
               htmlFor="password"
-              className="block font-sans text-[10px] font-medium tracking-[0.18em] uppercase text-[#71717A]"
+              className="mb-2 block text-[11px] font-medium uppercase tracking-[0.15em]"
+              style={{ color: 'var(--color-text-muted)' }}
             >
               Password
             </label>
@@ -65,18 +113,39 @@ export default async function LoginPage({
               type="password"
               required
               autoComplete="current-password"
-              className="w-full border border-[#E4E4E7] bg-white px-4 py-2.5 font-sans text-sm text-[#09090B] outline-none focus:border-[#1B4332] focus:ring-2 focus:ring-[#1B4332]/20 transition-colors placeholder:text-[#D4D4D8]"
+              placeholder="••••••••"
+              className="input-inti w-full rounded-[10px] border px-4 py-2.5 text-[14px] transition-all duration-150 placeholder:opacity-40"
+              style={{
+                background: 'var(--color-surface-elevated)',
+                borderColor: 'var(--color-border)',
+                color: 'var(--color-text-primary)',
+              }}
             />
           </div>
 
           <button
             type="submit"
-            className="w-full bg-[#1B4332] text-white font-sans text-[11px] font-medium tracking-[0.18em] uppercase py-3 hover:bg-[#14532D] transition-colors duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1B4332] focus:ring-offset-2 mt-2"
+            className="mt-2 w-full cursor-pointer rounded-[10px] py-3 font-sans text-[14px] font-semibold text-white transition-all duration-200 hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            style={{
+              background: 'var(--color-accent-inti)',
+              boxShadow: '0 2px 12px rgba(200, 16, 46, 0.28)',
+            }}
           >
-            Sign In
+            Sign in
           </button>
         </form>
+
+        {/* Footer note */}
+        <div
+          className="mt-6 border-t pt-5 text-center text-[12px]"
+          style={{
+            borderColor: 'var(--color-border)',
+            color: 'var(--color-text-muted)',
+          }}
+        >
+          INTI Bulletin is for authorized personnel only.
+        </div>
       </div>
-    </div>
+    </>
   )
 }

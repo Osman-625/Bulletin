@@ -21,7 +21,10 @@ export async function getPublicAnnouncements(categorySlug?: string): Promise<Ann
   }
 
   const { data, error } = await query
-  if (error) throw error
+  if (error) {
+    console.error('[getPublicAnnouncements]', error.message, error.code)
+    return []
+  }
   return (data ?? []) as AnnouncementWithRelations[]
 }
 
@@ -46,6 +49,9 @@ export async function getActiveCategories(): Promise<DbCategory[]> {
     .eq('is_active', true)
     .order('name')
 
-  if (error) throw error
+  if (error) {
+    console.error('[getActiveCategories]', error.message, error.code)
+    return []
+  }
   return (data ?? []) as DbCategory[]
 }

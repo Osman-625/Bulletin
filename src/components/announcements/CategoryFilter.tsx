@@ -3,6 +3,8 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { DbCategory } from '@/lib/types'
 
+const PILL_TRANSITION = 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
+
 export default function CategoryFilter({ categories }: { categories: DbCategory[] }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -15,39 +17,55 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
     router.push(`/?${params.toString()}`)
   }
 
-  const base =
-    'inline-flex items-center px-3 py-1.5 font-sans text-[10px] font-medium tracking-[0.15em] uppercase transition-all duration-150 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1B4332] focus:ring-offset-1'
-
   return (
     <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
+      {/* All */}
       <button
         onClick={() => select('')}
-        className={`${base} border ${
-          !active
-            ? 'bg-[#09090B] text-white border-[#09090B]'
-            : 'bg-transparent text-[#71717A] border-[#E4E4E7] hover:border-[#09090B] hover:text-[#09090B]'
-        }`}
+        className="inline-flex cursor-pointer items-center rounded-full border px-4 py-1.5 text-[11px] font-semibold tracking-[0.07em] uppercase focus:outline-none focus-visible:ring-2 active:scale-[0.97]"
+        style={{
+          transition: PILL_TRANSITION,
+          ...(!active
+            ? {
+                background: 'var(--color-text-primary)',
+                borderColor: 'var(--color-text-primary)',
+                color: 'var(--color-canvas)',
+              }
+            : {
+                background: 'transparent',
+                borderColor: 'var(--color-border)',
+                color: 'var(--color-text-muted)',
+              }),
+        }}
         aria-pressed={!active}
       >
         All
       </button>
 
+      {/* Category pills */}
       {categories.map((cat) => {
         const isActive = active === cat.slug
+        const color = cat.color ?? '#C8102E'
         return (
           <button
             key={cat.id}
             onClick={() => select(cat.slug)}
-            className={`${base} border ${
-              isActive
-                ? 'text-white'
-                : 'bg-transparent text-[#71717A] border-[#E4E4E7] hover:border-[#09090B] hover:text-[#09090B]'
-            }`}
-            style={
-              isActive
-                ? { backgroundColor: cat.color ?? '#71717A', borderColor: cat.color ?? '#71717A' }
-                : undefined
-            }
+            className="inline-flex cursor-pointer items-center rounded-full border px-4 py-1.5 text-[11px] font-semibold tracking-[0.07em] uppercase focus:outline-none focus-visible:ring-2 active:scale-[0.97]"
+            style={{
+              transition: PILL_TRANSITION,
+              ...(isActive
+                ? {
+                    background: color,
+                    borderColor: color,
+                    color: '#fff',
+                    boxShadow: `0 2px 10px ${color}45`,
+                  }
+                : {
+                    background: 'transparent',
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-text-muted)',
+                  }),
+            }}
             aria-pressed={isActive}
           >
             {cat.name}
