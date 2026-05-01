@@ -47,17 +47,11 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
       className="card-lift group relative flex flex-col overflow-hidden rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       style={{
         background: 'var(--color-surface)',
-        border: '1px solid var(--color-border)',
+        border: `1px solid var(--color-border)`,
+        borderTop: `3px solid ${catColor}`,
         boxShadow: '0 2px 16px rgba(0, 0, 0, 0.07)',
       }}
     >
-      {/* Category colour stripe */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-y-0 left-0 w-1 rounded-l-2xl"
-        style={{ background: catColor }}
-      />
-
       {/* Banner */}
       {banner_url && (
         <div
@@ -74,7 +68,7 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
         </div>
       )}
 
-      <div className="flex flex-1 flex-col gap-3 p-5 pl-6">
+      <div className="flex flex-1 flex-col gap-3 p-5">
         {/* Badges */}
         <div className="flex flex-wrap items-center gap-1.5">
           {categories && (
@@ -155,20 +149,15 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
       className="card-lift group relative flex flex-col overflow-hidden rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-offset-2 lg:flex-row"
       style={{
         background: 'var(--color-surface)',
-        border: '1px solid var(--color-border)',
+        border: `1px solid var(--color-border)`,
+        borderTop: `3px solid ${catColor}`,
         boxShadow: '0 2px 20px rgba(0, 0, 0, 0.08)',
         minHeight: 220,
       }}
     >
-      {/* Left accent stripe — slightly wider for featured */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-y-0 left-0 w-1.5 rounded-l-2xl"
-        style={{ background: catColor }}
-      />
 
       {/* Content — left side */}
-      <div className="flex flex-1 flex-col justify-between p-7 pl-8">
+      <div className="flex flex-1 flex-col justify-between p-7">
         {/* Badges */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
           {categories && (

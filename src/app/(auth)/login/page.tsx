@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { login } from './actions'
 
 export const metadata = { title: 'Sign In' }
@@ -32,20 +33,14 @@ export default async function LoginPage({
       >
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center text-center">
-          <div
-            className="mb-4 flex h-[52px] w-[52px] items-center justify-center rounded-[14px]"
-            style={{
-              background: 'linear-gradient(135deg, #C8102E 55%, #F5A623 100%)',
-              boxShadow: '0 4px 18px rgba(200, 16, 46, 0.32)',
-            }}
-          >
-            <span
-              className="font-display font-bold leading-none text-white"
-              style={{ fontSize: 22 }}
-            >
-              B
-            </span>
-          </div>
+          <Image
+            src="/bulletin_logo.png"
+            alt="Bulletin"
+            width={56}
+            height={56}
+            className="mb-4 h-14 w-14 object-contain"
+            priority
+          />
 
           <h2
             className="font-display text-[23px] font-bold leading-tight mb-1.5"
@@ -63,8 +58,8 @@ export default async function LoginPage({
           <div
             className="animate-slide-in mb-5 rounded-[10px] border px-4 py-3 text-[13px]"
             style={{
-              background: 'rgba(200, 16, 46, 0.08)',
-              borderColor: 'rgba(200, 16, 46, 0.25)',
+              background: 'var(--color-accent-surface)',
+              borderColor: 'var(--color-accent-inti)',
               color: 'var(--color-accent-inti)',
             }}
             role="alert"

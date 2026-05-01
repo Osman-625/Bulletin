@@ -43,7 +43,7 @@ export function DashboardSidebar({
           'hidden md:flex',
           'fixed inset-y-0 left-0 z-40 flex-col',
           'w-12 lg:w-64',
-          'bg-white/80 dark:bg-slate-950/75 backdrop-blur-xl dark:backdrop-blur-2xl',
+          'bg-[var(--color-canvas)]/90 backdrop-blur-xl',
           'border-r border-[var(--color-border)]',
           'transition-[width] duration-200 overflow-hidden'
         )}
@@ -136,7 +136,7 @@ export function DashboardSidebar({
       <div
         className={cn(
           'fixed inset-x-0 bottom-0 z-40 md:hidden',
-          'bg-white/95 dark:bg-slate-950/95 backdrop-blur-2xl',
+          'bg-[var(--color-canvas)]/95 backdrop-blur-2xl',
           'border-t border-[var(--color-border)]',
           'rounded-t-2xl',
           'transition-transform duration-300',

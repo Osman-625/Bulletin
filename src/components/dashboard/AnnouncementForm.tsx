@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import NextImage from 'next/image'
 import { Upload, X, Link2, Calendar, Trash2, ArrowLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ActionBar } from './ActionBar'
@@ -584,8 +585,7 @@ export function AnnouncementForm({
           </p>
           <GlassCard hover={false} className="overflow-hidden">
             {bannerUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={bannerUrl} alt="Preview banner" className="w-full h-36 object-cover" />
+              <NextImage src={bannerUrl} alt="Preview banner" width={600} height={144} className="w-full h-36 object-cover" unoptimized />
             )}
             <div className="p-5 space-y-2">
               {selectedCategory && (

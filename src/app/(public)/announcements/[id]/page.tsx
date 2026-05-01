@@ -45,7 +45,7 @@ export default async function AnnouncementPage({
         {/* Back link */}
         <Link
           href="/"
-          className="animate-fade-up mb-8 inline-flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.12em] transition-colors duration-200 focus:outline-none"
+          className="animate-fade-up mb-8 inline-flex items-center gap-1.5 rounded text-[11px] font-medium uppercase tracking-[0.12em] transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2"
           style={{ color: 'var(--color-text-muted)' }}
         >
           ← Back to Bulletin

@@ -115,7 +115,7 @@
   --color-border-subtle:    #F0ECE6;
   --color-text-primary:     #1A1614;
   --color-text-secondary:   #4A3F3B;
-  --color-text-muted:       #7A6F6A;
+  --color-text-muted:       #6B5E59;
   --color-accent:           #C8102E;
   --color-accent-inti:      #C8102E;
   --color-accent-hover:     #A80D24;
@@ -248,10 +248,6 @@
 }
 
 /* ── Animations ────────────────────────────────────────── */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(18px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
 @keyframes slideIn {
   from { opacity: 0; transform: translateX(-16px); }
   to   { opacity: 1; transform: translateX(0); }
@@ -266,11 +262,8 @@
 }
 
 @layer utilities {
-  .animate-fade-up {
-    animation: fadeUp 0.45s ease both;
-  }
   .animate-slide-in {
-    animation: slideIn 0.35s ease both;
+    animation: slideIn 0.35s cubic-bezier(0.25, 1, 0.5, 1) both;
   }
   .delay-1 { animation-delay: 0.08s; }
   .delay-2 { animation-delay: 0.14s; }

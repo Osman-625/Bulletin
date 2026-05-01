@@ -19,7 +19,7 @@ export function DashboardTopNav({ userName, onMenuClick }: DashboardTopNavProps)
         'fixed top-0 left-0 right-0 z-30 h-16',
         'md:left-12 lg:left-64',
         'flex items-center justify-between px-4 md:px-6',
-        'bg-white/80 dark:bg-slate-950/75 backdrop-blur-xl dark:backdrop-blur-2xl',
+        'bg-[var(--color-canvas)]/80 backdrop-blur-xl',
         'border-b border-[var(--color-border)]',
         'transition-[left] duration-200'
       )}
@@ -35,7 +35,9 @@ export function DashboardTopNav({ userName, onMenuClick }: DashboardTopNavProps)
           <Menu size={20} />
         </button>
 
+        <label htmlFor="topnav-search" className="sr-only">Search announcements</label>
         <input
+          id="topnav-search"
           type="search"
           placeholder="Search announcements..."
           value={search}
@@ -61,12 +63,13 @@ export function DashboardTopNav({ userName, onMenuClick }: DashboardTopNavProps)
           <Bell size={18} />
         </button>
 
-        <div
-          className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--color-accent-surface)] text-[var(--color-accent)] text-xs font-semibold select-none"
-          aria-label={userName ?? 'User avatar'}
+        <button
+          type="button"
+          className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--color-accent-surface)] text-[var(--color-accent)] text-xs font-semibold select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/50"
+          aria-label={userName ? `${userName} — account` : 'Account'}
         >
           {initials}
-        </div>
+        </button>
       </div>
     </header>
   )

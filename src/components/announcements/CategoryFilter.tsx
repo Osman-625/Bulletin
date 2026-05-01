@@ -57,7 +57,7 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
                 ? {
                     background: color,
                     borderColor: color,
-                    color: '#fff',
+                    color: '#FFFFFF',
                     boxShadow: `0 2px 10px ${color}45`,
                   }
                 : {
