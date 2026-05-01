@@ -3,7 +3,6 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { DbCategory } from '@/lib/types'
 
-const PILL_TRANSITION = 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)'
 
 export default function CategoryFilter({ categories }: { categories: DbCategory[] }) {
   const router = useRouter()
@@ -22,9 +21,8 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
       {/* All */}
       <button
         onClick={() => select('')}
-        className="inline-flex cursor-pointer items-center rounded-[10px] border px-4 py-[9px] text-[13px] font-medium focus:outline-none focus-visible:ring-2 active:scale-[0.97]"
+        className="tab-lift inline-flex cursor-pointer items-center rounded-[10px] border px-4 py-[9px] text-[13px] font-medium focus:outline-none focus-visible:ring-2"
         style={{
-          transition: PILL_TRANSITION,
           ...(!active
             ? {
                 background: 'var(--color-text-primary)',
@@ -50,9 +48,8 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
           <button
             key={cat.id}
             onClick={() => select(cat.slug)}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-[10px] border px-4 py-[9px] text-[13px] font-medium focus:outline-none focus-visible:ring-2 active:scale-[0.97]"
+            className="tab-lift inline-flex cursor-pointer items-center gap-2 rounded-[10px] border px-4 py-[9px] text-[13px] font-medium focus:outline-none focus-visible:ring-2"
             style={{
-              transition: PILL_TRANSITION,
               ...(isActive
                 ? {
                     background: color,

@@ -107,13 +107,13 @@
   --sidebar-ring: oklch(0.708 0 0);
 
   /* ── Bulletin design tokens — light ─────────────────── */
-  --color-canvas:           #FAF9F7;
-  --color-surface:          #FFFFFF;
-  --color-surface-elevated: #F4F1EC;
-  --color-surface-high:     #EDEAE4;
-  --color-border:           #E8E2D9;
-  --color-border-subtle:    #F0ECE6;
-  --color-text-primary:     #1A1614;
+  --color-canvas:           #F7F5F2;
+  --color-surface:          #FDFCFA;
+  --color-surface-elevated: #F2EEE8;
+  --color-surface-high:     #EAE6DF;
+  --color-border:           #E3DDD4;
+  --color-border-subtle:    #ECE8E2;
+  --color-text-primary:     #1E1A17;
   --color-text-secondary:   #4A3F3B;
   --color-text-muted:       #6B5E59;
   --color-accent:           #C8102E;
@@ -122,7 +122,7 @@
   --color-accent-surface:   rgba(200, 16, 46, 0.08);
   --color-gold:             #D4941F;
   --color-navy:             #002147;
-  --color-header-bg:        rgba(250, 249, 247, 0.88);
+  --color-header-bg:        rgba(247, 245, 242, 0.88);
   --color-glass-bg:         rgba(255, 255, 255, 0.75);
   --color-glass-border:     rgba(200, 16, 46, 0.12);
   --color-destructive:      #B91C1C;
@@ -168,22 +168,22 @@
   --sidebar-ring: oklch(0.556 0 0);
 
   /* ── Bulletin design tokens — dark ──────────────────── */
-  --color-canvas:           #0F0E0D;
-  --color-surface:          #1C1917;
-  --color-surface-elevated: #252220;
-  --color-surface-high:     #2E2925;
-  --color-border:           #2E2925;
-  --color-border-subtle:    #1E1B18;
-  --color-text-primary:     #F5F0EB;
-  --color-text-secondary:   #C4B8B2;
-  --color-text-muted:       #9C9189;
+  --color-canvas:           #161412;
+  --color-surface:          #211F1C;
+  --color-surface-elevated: #2A2721;
+  --color-surface-high:     #322F28;
+  --color-border:           #302D27;
+  --color-border-subtle:    #211F1C;
+  --color-text-primary:     #EDE8E3;
+  --color-text-secondary:   #BFB3AC;
+  --color-text-muted:       #978A83;
   --color-accent:           #E8203A;
   --color-accent-inti:      #E8203A;
   --color-accent-hover:     #FF3D52;
   --color-accent-surface:   rgba(232, 32, 58, 0.10);
   --color-gold:             #F5A623;
   --color-navy:             #3A6BAD;
-  --color-header-bg:        rgba(15, 14, 13, 0.88);
+  --color-header-bg:        rgba(22, 20, 18, 0.88);
   --color-glass-bg:         rgba(28, 25, 23, 0.75);
   --color-glass-border:     rgba(232, 32, 58, 0.10);
   --color-destructive:      #FF6B6B;
@@ -196,11 +196,11 @@
 }
 
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-up {
-  animation: fade-up 400ms cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation: fade-up 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes drawer-up {
@@ -271,23 +271,43 @@
   .delay-4 { animation-delay: 0.26s; }
   .delay-5 { animation-delay: 0.32s; }
 
-  /* Card hover lift — CSS-only, cubic-bezier spring feel */
+  /* Card hover lift */
   .card-lift {
     transition:
-      transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-      box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 0.35s cubic-bezier(0.16, 1, 0.3, 1);
     will-change: transform;
   }
   .card-lift:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12) !important;
+    transform: translateY(-6px);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.14) !important;
   }
   .card-lift:active {
-    transform: translateY(0) scale(0.99);
+    transform: translateY(-1px) scale(0.99);
     transition-duration: 0.1s;
   }
   .dark .card-lift:hover {
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.50) !important;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55) !important;
+  }
+
+  /* Filter tab hover — subtle lift */
+  .tab-lift {
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                background 0.22s ease, color 0.22s ease,
+                border-color 0.22s ease;
+  }
+  .tab-lift:hover:not([aria-pressed="true"]) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+  .tab-lift:active {
+    transform: scale(0.97);
+    transition-duration: 0.08s;
+  }
+  .dark .tab-lift:hover:not([aria-pressed="true"]) {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
   }
 
   /* Skeleton shimmer */
