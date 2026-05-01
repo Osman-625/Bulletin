@@ -50,7 +50,7 @@ export default async function PublicFeedPage({
             <h1
               className="font-display font-bold leading-[0.9] tracking-tighter"
               style={{
-                fontSize: 'clamp(2.8rem, 8vw, 4.8rem)',
+                fontSize: 'clamp(3.4rem, 9vw, 5.6rem)',
                 color: 'var(--color-text-primary)',
               }}
             >

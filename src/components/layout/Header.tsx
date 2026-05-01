@@ -21,7 +21,7 @@ export default function Header() {
           WebkitBackdropFilter: 'blur(18px)',
         }}
       >
-        <div className="mx-auto flex h-[62px] max-w-5xl items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-[70px] max-w-5xl items-center justify-between px-4 sm:px-6">
 
           {/* Wordmark */}
           <Link href="/" className="group flex items-center gap-3 focus:outline-none">
@@ -30,9 +30,9 @@ export default function Header() {
               <Image
                 src="/bulletin_logo.png"
                 alt="Bulletin"
-                width={40}
-                height={40}
-                className="h-10 w-10 object-contain"
+                width={48}
+                height={48}
+                className="h-12 w-12 object-contain"
                 priority
               />
             </div>
@@ -40,13 +40,13 @@ export default function Header() {
             {/* Text */}
             <div>
               <div
-                className="font-display font-bold leading-none transition-colors duration-200"
-                style={{ fontSize: 19, color: 'var(--color-text-primary)' }}
+                className="font-display font-bold leading-none tracking-tight transition-colors duration-200"
+                style={{ fontSize: 22, color: 'var(--color-text-primary)' }}
               >
                 Bulletin
               </div>
               <div
-                className="mt-[3px] text-[8.5px] font-medium tracking-[0.28em] uppercase leading-none"
+                className="mt-[4px] text-[9px] font-medium tracking-[0.22em] uppercase leading-none"
                 style={{ color: 'var(--color-text-muted)' }}
               >
                 INTI International University

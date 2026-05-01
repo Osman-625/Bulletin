@@ -22,7 +22,7 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
       {/* All */}
       <button
         onClick={() => select('')}
-        className="inline-flex cursor-pointer items-center rounded-full border px-4 py-1.5 text-[11px] font-semibold tracking-[0.07em] uppercase focus:outline-none focus-visible:ring-2 active:scale-[0.97]"
+        className="inline-flex cursor-pointer items-center rounded-[10px] border px-4 py-[9px] text-[13px] font-medium focus:outline-none focus-visible:ring-2 active:scale-[0.97]"
         style={{
           transition: PILL_TRANSITION,
           ...(!active
@@ -32,7 +32,7 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
                 color: 'var(--color-canvas)',
               }
             : {
-                background: 'transparent',
+                background: 'var(--color-surface-elevated)',
                 borderColor: 'var(--color-border)',
                 color: 'var(--color-text-muted)',
               }),
@@ -42,7 +42,7 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
         All
       </button>
 
-      {/* Category pills */}
+      {/* Category tabs */}
       {categories.map((cat) => {
         const isActive = active === cat.slug
         const color = cat.color ?? '#C8102E'
@@ -50,7 +50,7 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
           <button
             key={cat.id}
             onClick={() => select(cat.slug)}
-            className="inline-flex cursor-pointer items-center rounded-full border px-4 py-1.5 text-[11px] font-semibold tracking-[0.07em] uppercase focus:outline-none focus-visible:ring-2 active:scale-[0.97]"
+            className="inline-flex cursor-pointer items-center gap-2 rounded-[10px] border px-4 py-[9px] text-[13px] font-medium focus:outline-none focus-visible:ring-2 active:scale-[0.97]"
             style={{
               transition: PILL_TRANSITION,
               ...(isActive
@@ -58,16 +58,21 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
                     background: color,
                     borderColor: color,
                     color: '#FFFFFF',
-                    boxShadow: `0 2px 10px ${color}45`,
+                    boxShadow: `0 2px 10px ${color}40`,
                   }
                 : {
-                    background: 'transparent',
+                    background: 'var(--color-surface-elevated)',
                     borderColor: 'var(--color-border)',
                     color: 'var(--color-text-muted)',
                   }),
             }}
             aria-pressed={isActive}
           >
+            <span
+              className="h-2 w-2 rounded-full flex-shrink-0"
+              style={{ background: isActive ? 'rgba(255,255,255,0.7)' : color }}
+              aria-hidden="true"
+            />
             {cat.name}
           </button>
         )

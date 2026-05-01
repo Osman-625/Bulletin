@@ -44,14 +44,16 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
   return (
     <Link
       href={`/announcements/${id}`}
-      className="card-lift group relative flex flex-col overflow-hidden rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      className="card-lift group relative flex flex-col overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       style={{
         background: 'var(--color-surface)',
         border: `1px solid var(--color-border)`,
-        borderTop: `3px solid ${catColor}`,
         boxShadow: '0 2px 16px rgba(0, 0, 0, 0.07)',
       }}
     >
+      {/* Category color bar */}
+      <div className="h-[3px] w-full" style={{ background: catColor }} />
+
       {/* Banner */}
       {banner_url && (
         <div
@@ -73,18 +75,27 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
         <div className="flex flex-wrap items-center gap-1.5">
           {categories && (
             <span
-              className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.05em]"
+              className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold"
               style={{ color: catColor, background: catColor + '1A' }}
             >
+              <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: catColor }} aria-hidden="true" />
               {categories.name}
+            </span>
+          )}
+          {registration_link && !expiring && (
+            <span
+              className="rounded-md px-2.5 py-1 text-[11px] font-semibold"
+              style={{ color: 'var(--color-accent-inti)', background: 'rgba(200,16,46,0.09)' }}
+            >
+              Registration open
             </span>
           )}
           {expiring && (
             <span
-              className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold"
+              className="rounded-md px-2.5 py-1 text-[11px] font-semibold"
               style={{ color: 'var(--color-gold)', background: 'rgba(212,148,31,0.12)' }}
             >
-              Exp: {formatDate(expires_at!)}
+              Closing {formatDate(expires_at!)}
             </span>
           )}
         </div>
@@ -119,15 +130,6 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
             </span>
           )}
         </div>
-
-        {registration_link && (
-          <span
-            className="text-[10px] font-semibold tracking-[0.1em] uppercase"
-            style={{ color: 'var(--color-accent-inti)' }}
-          >
-            Register →
-          </span>
-        )}
       </div>
     </Link>
   )
@@ -146,11 +148,10 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
   return (
     <Link
       href={`/announcements/${id}`}
-      className="card-lift group relative flex flex-col overflow-hidden rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-offset-2 lg:flex-row"
+      className="card-lift group relative flex flex-col overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-offset-2 lg:flex-row"
       style={{
         background: 'var(--color-surface)',
         border: `1px solid var(--color-border)`,
-        borderTop: `3px solid ${catColor}`,
         boxShadow: '0 2px 20px rgba(0, 0, 0, 0.08)',
         minHeight: 220,
       }}
@@ -162,26 +163,35 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
         <div className="mb-4 flex flex-wrap items-center gap-2">
           {categories && (
             <span
-              className="rounded-full px-3 py-1 text-[10px] font-semibold tracking-[0.06em]"
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-[11px] font-semibold"
               style={{ color: catColor, background: catColor + '1A' }}
             >
+              <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: catColor }} aria-hidden="true" />
               {categories.name}
+            </span>
+          )}
+          {registration_link && !expiring && (
+            <span
+              className="rounded-md px-3 py-1 text-[11px] font-semibold"
+              style={{ color: 'var(--color-accent-inti)', background: 'rgba(200,16,46,0.09)' }}
+            >
+              Registration open
             </span>
           )}
           {expiring && (
             <span
-              className="rounded-full px-3 py-1 text-[10px] font-semibold"
+              className="rounded-md px-3 py-1 text-[11px] font-semibold"
               style={{ color: 'var(--color-gold)', background: 'rgba(212,148,31,0.12)' }}
             >
-              Exp: {formatDate(expires_at!)}
+              Closing {formatDate(expires_at!)}
             </span>
           )}
         </div>
 
         {/* Title — larger for featured */}
         <h2
-          className="font-display font-semibold leading-[1.25] mb-3"
-          style={{ fontSize: 'clamp(1.25rem, 2.5vw, 1.55rem)', color: 'var(--color-text-primary)' }}
+          className="font-display font-semibold leading-[1.2] mb-3"
+          style={{ fontSize: 'clamp(1.35rem, 2.5vw, 1.65rem)', color: 'var(--color-text-primary)' }}
         >
           {title}
         </h2>
@@ -195,26 +205,16 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
         </p>
 
         {/* Footer */}
-        <div>
-          <div
-            className="flex items-center justify-between gap-2 border-t pt-4"
-            style={{ borderColor: 'var(--color-border)' }}
-          >
-            <span className="truncate text-[12px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
-              {organizations?.name}
-            </span>
-            {published_at && (
-              <span className="flex-shrink-0 text-[12px]" style={{ color: 'var(--color-text-muted)' }}>
-                {formatDate(published_at)}
-              </span>
-            )}
-          </div>
-          {registration_link && (
-            <span
-              className="mt-3 block text-[10px] font-semibold tracking-[0.1em] uppercase"
-              style={{ color: 'var(--color-accent-inti)' }}
-            >
-              Register →
+        <div
+          className="flex items-center justify-between gap-2 border-t pt-4"
+          style={{ borderColor: 'var(--color-border)' }}
+        >
+          <span className="truncate text-[12px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
+            {organizations?.name}
+          </span>
+          {published_at && (
+            <span className="flex-shrink-0 text-[12px]" style={{ color: 'var(--color-text-muted)' }}>
+              {formatDate(published_at)}
             </span>
           )}
         </div>
