@@ -116,6 +116,7 @@
   --color-text-primary:     #1A1614;
   --color-text-secondary:   #4A3F3B;
   --color-text-muted:       #7A6F6A;
+  --color-accent:           #C8102E;
   --color-accent-inti:      #C8102E;
   --color-accent-hover:     #A80D24;
   --color-accent-surface:   rgba(200, 16, 46, 0.08);
@@ -176,6 +177,7 @@
   --color-text-primary:     #F5F0EB;
   --color-text-secondary:   #C4B8B2;
   --color-text-muted:       #9C9189;
+  --color-accent:           #E8203A;
   --color-accent-inti:      #E8203A;
   --color-accent-hover:     #FF3D52;
   --color-accent-surface:   rgba(232, 32, 58, 0.10);
@@ -191,6 +193,29 @@
   --color-status-draft-bg:       rgba(245, 166, 35, 0.10);
   --color-status-archived-text:  #64748B;
   --color-status-archived-bg:    rgba(100, 116, 139, 0.10);
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fade-up 400ms cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+@keyframes drawer-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.animate-drawer-up {
+  animation: drawer-up 300ms cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
+  }
 }
 
 @layer base {
