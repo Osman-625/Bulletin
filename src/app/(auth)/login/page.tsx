@@ -31,25 +31,47 @@ export default async function LoginPage({
           boxShadow: '0 4px 40px rgba(0, 0, 0, 0.09)',
         }}
       >
-        {/* Logo */}
-        <div className="mb-8 flex flex-col items-center text-center">
-          <Image
-            src="/bulletin_logo.png"
-            alt="Bulletin"
-            width={80}
-            height={80}
-            className="mb-4 h-20 w-20 object-contain"
-            priority
-          />
+        {/* Masthead */}
+        <div className="mb-8">
+          <div className="mb-5 flex items-center gap-3">
+            <Image
+              src="/bulletin_logo.png"
+              alt="Bulletin"
+              width={48}
+              height={48}
+              className="h-12 w-12 shrink-0 object-contain"
+              priority
+            />
+            <div>
+              <p
+                className="text-[10px] font-bold uppercase tracking-[0.2em]"
+                style={{ color: 'var(--color-accent-inti)' }}
+              >
+                INTI International University
+              </p>
+              <p
+                className="font-display text-[22px] font-bold leading-none tracking-tight"
+                style={{ color: 'var(--color-text-primary)' }}
+              >
+                Bulletin
+              </p>
+            </div>
+          </div>
 
-          <h2
-            className="font-display text-[23px] font-bold leading-tight mb-1.5"
+          {/* Rule */}
+          <div className="mb-5">
+            <div className="h-[2px] w-8 rounded-full" style={{ background: 'var(--color-accent-inti)' }} />
+            <div className="mt-1 h-px" style={{ background: 'var(--color-border)' }} />
+          </div>
+
+          <h1
+            className="font-display text-[28px] font-bold leading-[1.1] tracking-tight"
             style={{ color: 'var(--color-text-primary)' }}
           >
-            Welcome back
-          </h2>
-          <p className="text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
-            Sign in to access Bulletin
+            Publisher<br />sign-in
+          </h1>
+          <p className="mt-2 text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
+            Authorized personnel only.
           </p>
         </div>
 
@@ -130,16 +152,6 @@ export default async function LoginPage({
           </button>
         </form>
 
-        {/* Footer note */}
-        <div
-          className="mt-6 border-t pt-5 text-center text-[12px]"
-          style={{
-            borderColor: 'var(--color-border)',
-            color: 'var(--color-text-muted)',
-          }}
-        >
-          INTI Bulletin is for authorized personnel only.
-        </div>
       </div>
     </>
   )
