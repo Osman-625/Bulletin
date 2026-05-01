@@ -68,7 +68,6 @@ export default async function PublicFeedPage({
             className="max-w-[440px] text-[15px] leading-relaxed"
             style={{ color: 'var(--color-text-muted)' }}
           >
-            All official announcements from INTI — always current, never missed.
           </p>
         </div>
 
