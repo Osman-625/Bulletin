@@ -36,9 +36,9 @@ export default async function LoginPage({
           <Image
             src="/bulletin_logo.png"
             alt="Bulletin"
-            width={56}
-            height={56}
-            className="mb-4 h-14 w-14 object-contain"
+            width={80}
+            height={80}
+            className="mb-4 h-20 w-20 object-contain"
             priority
           />
 
