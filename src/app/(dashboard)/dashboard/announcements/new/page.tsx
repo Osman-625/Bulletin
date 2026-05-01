@@ -35,7 +35,6 @@ export default async function NewAnnouncementPage() {
       initialData={initialData}
       categories={categories ?? []}
       onSave={createAnnouncement}
-      onPublish={async () => {}}
       onSaveAndPublish={createAndPublishAnnouncement}
       isNew
     />

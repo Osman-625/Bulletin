@@ -35,7 +35,7 @@ interface AnnouncementFormProps {
   initialData: AnnouncementFormData
   categories: CategoryOption[]
   onSave: (formData: FormData) => Promise<{ success: boolean } | void>
-  onPublish: () => Promise<{ success: boolean } | void>
+  onPublish?: () => Promise<{ success: boolean } | void>
   onSaveAndPublish?: (formData: FormData) => Promise<{ success: boolean } | void>
   onUnpublish?: () => Promise<{ success: boolean } | void>
   onDelete?: () => Promise<void>
@@ -159,7 +159,7 @@ export function AnnouncementForm({
         await onSaveAndPublish(fd)
       } else {
         await onSave(fd)
-        await onPublish()
+        if (onPublish) await onPublish()
         setStatus('published')
         setSaveState('saved')
         dirtyRef.current = false
