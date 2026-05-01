@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { ThemeToggle } from './ThemeToggle'
 
 export default function Header() {
@@ -25,19 +26,15 @@ export default function Header() {
           {/* Wordmark */}
           <Link href="/" className="group flex items-center gap-3 focus:outline-none">
             {/* Logo mark */}
-            <div
-              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-[9px] transition-transform duration-200 group-hover:scale-105"
-              style={{
-                background: 'linear-gradient(135deg, #C8102E 55%, #F5A623 100%)',
-                boxShadow: '0 2px 8px rgba(200, 16, 46, 0.35)',
-              }}
-            >
-              <span
-                className="font-display font-bold leading-none text-white"
-                style={{ fontSize: 14 }}
-              >
-                B
-              </span>
+            <div className="flex-shrink-0 transition-transform duration-200 group-hover:scale-105">
+              <Image
+                src="/bulletin_logo.png"
+                alt="Bulletin"
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain"
+                priority
+              />
             </div>
 
             {/* Text */}

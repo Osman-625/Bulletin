@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, Megaphone, Plus, LogOut } from 'lucide-react'
@@ -47,17 +48,22 @@ export function DashboardSidebar({
           'transition-[width] duration-200 overflow-hidden'
         )}
       >
-        {/* Wordmark — desktop only */}
-        <div className="px-3 lg:px-6 py-6 border-b border-[var(--color-border)] overflow-hidden">
-          <p className="hidden lg:block text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent)]">
-            BULLETIN
-          </p>
-          <p className="hidden lg:block text-[10px] text-[var(--color-text-muted)] mt-0.5 leading-tight">
-            INTI International University
-          </p>
-          {/* Tablet: accent dot as brand marker */}
-          <div className="lg:hidden w-6 h-6 rounded-full bg-[var(--color-accent-surface)] flex items-center justify-center mx-auto">
-            <span className="w-2 h-2 rounded-full bg-[var(--color-accent)] block" />
+        {/* Wordmark */}
+        <div className="px-3 lg:px-6 py-5 border-b border-[var(--color-border)] overflow-hidden flex items-center gap-3">
+          <Image
+            src="/bulletin_logo.png"
+            alt="Bulletin"
+            width={32}
+            height={32}
+            className="h-8 w-8 shrink-0 object-contain"
+          />
+          <div className="hidden lg:block min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent)]">
+              BULLETIN
+            </p>
+            <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5 leading-tight">
+              INTI International University
+            </p>
           </div>
         </div>
 
@@ -146,9 +152,18 @@ export function DashboardSidebar({
         </div>
 
         {/* Wordmark */}
-        <div className="px-6 pb-3 border-b border-[var(--color-border)]">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent)]">BULLETIN</p>
-          <p className="text-[10px] text-[var(--color-text-muted)]">INTI International University</p>
+        <div className="px-6 pb-3 border-b border-[var(--color-border)] flex items-center gap-3">
+          <Image
+            src="/bulletin_logo.png"
+            alt="Bulletin"
+            width={28}
+            height={28}
+            className="h-7 w-7 shrink-0 object-contain"
+          />
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--color-accent)]">BULLETIN</p>
+            <p className="text-[10px] text-[var(--color-text-muted)]">INTI International University</p>
+          </div>
         </div>
 
         {/* Nav */}
