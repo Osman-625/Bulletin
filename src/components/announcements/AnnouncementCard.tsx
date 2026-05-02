@@ -2,6 +2,19 @@ import Link from 'next/link'
 import Image from 'next/image'
 import type { AnnouncementWithRelations } from '@/lib/types'
 
+function stripMarkdown(md: string): string {
+  return md
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/`(.+?)`/g, '$1')
+    .replace(/\[(.+?)\]\(.+?\)/g, '$1')
+    .replace(/^\s*[-*]\s+/gm, '')
+    .replace(/\|/g, ' ')
+    .replace(/\n+/g, ' ')
+    .trim()
+}
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-MY', {
     day: 'numeric',
@@ -113,7 +126,7 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
           className="flex-1 line-clamp-2 text-[13px] leading-relaxed"
           style={{ color: 'var(--color-text-muted)' }}
         >
-          {body}
+          {body ? stripMarkdown(body) : ''}
         </p>
 
         {/* Footer */}
@@ -201,7 +214,7 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
           className="line-clamp-3 flex-1 text-[14px] leading-relaxed mb-5"
           style={{ color: 'var(--color-text-muted)' }}
         >
-          {body}
+          {body ? stripMarkdown(body) : ''}
         </p>
 
         {/* Footer */}

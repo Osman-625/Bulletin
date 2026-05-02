@@ -25,8 +25,6 @@ export default async function PublicFeedPage({
   })
 
   const [featured, ...rest] = announcements
-  const withRegistration = announcements.filter((a) => a.registration_link).length
-
   return (
     <div style={{ minHeight: '100dvh' }}>
       <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6">
@@ -71,31 +69,6 @@ export default async function PublicFeedPage({
           </p>
         </div>
 
-        {/* ── Stats bar ────────────────────────────────── */}
-        {announcements.length > 0 && (
-          <div
-            className="animate-fade-up delay-1 mb-8 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-xl border px-5 py-3"
-            style={{
-              background: 'var(--color-surface)',
-              borderColor: 'var(--color-border)',
-            }}
-          >
-            <StatPill value={announcements.length} label="Active" />
-            <Divider />
-            <StatPill value={categories.length} label="Categories" />
-            {withRegistration > 0 && (
-              <>
-                <Divider />
-                <StatPill
-                  value={withRegistration}
-                  label="Require Registration"
-                  accent
-                />
-              </>
-            )}
-          </div>
-        )}
-
         {/* ── Category filter ───────────────────────────── */}
         <div className="animate-fade-up delay-2 mb-8">
           <Suspense fallback={<FilterSkeleton />}>
@@ -133,39 +106,6 @@ export default async function PublicFeedPage({
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
-
-function StatPill({
-  value,
-  label,
-  accent = false,
-}: {
-  value: number
-  label: string
-  accent?: boolean
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <span
-        className="font-display text-[20px] font-bold"
-        style={{ color: accent ? 'var(--color-accent-inti)' : 'var(--color-text-primary)' }}
-      >
-        {value}
-      </span>
-      <span className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>
-        {label}
-      </span>
-    </div>
-  )
-}
-
-function Divider() {
-  return (
-    <div
-      className="hidden h-4 w-px sm:block"
-      style={{ background: 'var(--color-border)' }}
-    />
-  )
-}
 
 function FilterSkeleton() {
   return (
