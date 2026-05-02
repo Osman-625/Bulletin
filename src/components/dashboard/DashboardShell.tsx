@@ -8,9 +8,11 @@ interface DashboardShellProps {
   children: React.ReactNode
   displayName: string | null
   role: string | null
+  variant?: 'publisher' | 'admin' | 'super_admin'
+  pendingReviewCount?: number
 }
 
-export function DashboardShell({ children, displayName, role }: DashboardShellProps) {
+export function DashboardShell({ children, displayName, role, variant = 'publisher', pendingReviewCount }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
@@ -20,6 +22,8 @@ export function DashboardShell({ children, displayName, role }: DashboardShellPr
         role={role}
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
+        variant={variant}
+        pendingReviewCount={pendingReviewCount}
       />
 
       {/* Mobile overlay backdrop */}

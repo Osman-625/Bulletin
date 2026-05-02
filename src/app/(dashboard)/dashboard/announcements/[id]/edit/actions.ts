@@ -113,6 +113,26 @@ export async function unpublishAnnouncement(id: string) {
   return { success: true }
 }
 
+export async function submitForReview(id: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+
+  await verifyOwnership(supabase, id, user.id)
+
+  const { error } = await supabase
+    .from('announcements')
+    .update({ status: 'submitted', updated_at: new Date().toISOString() })
+    .eq('id', id)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath('/dashboard/announcements')
+  revalidatePath(`/dashboard/announcements/${id}/edit`)
+
+  return { success: true }
+}
+
 export async function deleteAnnouncement(id: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

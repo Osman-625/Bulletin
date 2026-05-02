@@ -11,10 +11,20 @@ export async function login(formData: FormData) {
     password: formData.get('password') as string,
   })
 
-  if (error) {
-    redirect('/login?error=invalid_credentials')
-  }
+  if (error) redirect('/login?error=invalid_credentials')
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login?error=invalid_credentials')
+
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role, force_password_change')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.force_password_change) redirect('/change-password')
+  if (profile?.role === 'super_admin') redirect('/super-admin')
+  if (profile?.role === 'admin') redirect('/admin')
   redirect('/dashboard')
 }
 

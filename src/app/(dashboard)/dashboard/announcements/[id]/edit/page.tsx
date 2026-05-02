@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { AnnouncementForm } from '@/components/dashboard/AnnouncementForm'
 import {
   updateAnnouncement,
-  publishAnnouncement,
+  submitForReview,
   unpublishAnnouncement,
   deleteAnnouncement,
 } from './actions'
@@ -76,7 +76,7 @@ export default async function EditAnnouncementPage({
       initialData={initialData}
       categories={categories ?? []}
       onSave={updateAnnouncement.bind(null, id)}
-      onPublish={publishAnnouncement.bind(null, id)}
+      onPublish={submitForReview.bind(null, id)}
       onUnpublish={unpublishAnnouncement.bind(null, id)}
       onDelete={deleteAnnouncement.bind(null, id)}
     />

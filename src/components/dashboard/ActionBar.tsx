@@ -7,7 +7,7 @@ import type { AutosaveStatus } from './AutosaveIndicator'
 import { Loader2 } from 'lucide-react'
 
 interface ActionBarProps {
-  status: 'draft' | 'published' | 'archived'
+  status: 'draft' | 'submitted' | 'published' | 'rejected' | 'expired' | 'archived'
   saveState: AutosaveStatus
   isPublished: boolean
   onSaveDraft: () => void
@@ -111,7 +111,7 @@ export function ActionBar({
               )}
             >
               {isPublishing && <Loader2 size={14} className="animate-spin" />}
-              Publish
+              Submit for Review
             </button>
           </>
         )}

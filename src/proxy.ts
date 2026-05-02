@@ -30,15 +30,41 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protect dashboard routes — redirect unauthenticated users to /login
   const { pathname } = request.nextUrl
-  const protectedPaths = ['/dashboard', '/admin']
+
+  const protectedPaths = ['/dashboard', '/admin', '/super-admin', '/change-password']
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p))
 
   if (isProtected && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
+  }
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role, force_password_change')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.force_password_change && pathname !== '/change-password') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/change-password'
+      return NextResponse.redirect(url)
+    }
+
+    if (profile && pathname.startsWith('/super-admin') && profile.role !== 'super_admin') {
+      const url = request.nextUrl.clone()
+      url.pathname = profile.role === 'admin' ? '/admin' : '/dashboard'
+      return NextResponse.redirect(url)
+    }
+
+    if (profile && pathname.startsWith('/admin') && !['admin', 'super_admin'].includes(profile.role)) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse

@@ -6,12 +6,13 @@ import { AnnouncementRow } from '@/components/dashboard/AnnouncementRow'
 import type { AnnouncementRowData } from '@/components/dashboard/AnnouncementRow'
 import { cn } from '@/lib/utils'
 
-type Tab = 'all' | 'published' | 'drafts' | 'archived'
+type Tab = 'all' | 'published' | 'drafts' | 'pending' | 'archived'
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'all', label: 'All', icon: FileText },
   { id: 'published', label: 'Published', icon: CheckCircle2 },
   { id: 'drafts', label: 'Drafts', icon: PenLine },
+  { id: 'pending', label: 'Pending / Rejected', icon: FileText },
   { id: 'archived', label: 'Archived', icon: Archive },
 ]
 
@@ -26,6 +27,7 @@ function EmptyState({ tab }: { tab: Tab }) {
     all: { title: 'No announcements yet', body: 'Create your first announcement to get started.' },
     published: { title: 'Nothing published', body: 'Published announcements will appear here.' },
     drafts: { title: 'No drafts', body: 'Save an announcement as a draft to see it here.' },
+    pending: { title: 'No pending submissions', body: 'Submitted announcements awaiting review will appear here.' },
     archived: { title: 'Nothing archived', body: 'Archived announcements will appear here.' },
   }
   const { title, body } = messages[tab]
@@ -65,6 +67,8 @@ export function AnnouncementsClient({ announcements }: AnnouncementsClientProps)
       items = items.filter((a) => a.status === 'published')
     } else if (activeTab === 'drafts') {
       items = items.filter((a) => a.status === 'draft')
+    } else if (activeTab === 'pending') {
+      items = items.filter((a) => a.status === 'submitted' || a.status === 'rejected')
     } else if (activeTab === 'archived') {
       items = items.filter((a) => a.status === 'archived' || a.status === 'expired')
     }

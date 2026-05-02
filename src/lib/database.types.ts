@@ -6,6 +6,36 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      announcement_reviews: {
+        Row: {
+          id: string
+          announcement_id: string
+          reviewer_id: string
+          action: 'approved' | 'rejected'
+          comment: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          announcement_id: string
+          reviewer_id: string
+          action: 'approved' | 'rejected'
+          comment?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          announcement_id?: string
+          reviewer_id?: string
+          action?: 'approved' | 'rejected'
+          comment?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'announcement_reviews_announcement_id_fkey'; columns: ['announcement_id']; referencedRelation: 'announcements'; referencedColumns: ['id'] },
+          { foreignKeyName: 'announcement_reviews_reviewer_id_fkey'; columns: ['reviewer_id']; referencedRelation: 'users'; referencedColumns: ['id'] },
+        ]
+      }
       announcements: {
         Row: {
           id: string
@@ -17,6 +47,7 @@ export type Database = {
           organization_id: string
           author_id: string
           registration_link: string | null
+          rejection_comment: string | null
           published_at: string | null
           expires_at: string | null
           archived_at: string | null
@@ -33,6 +64,7 @@ export type Database = {
           organization_id: string
           author_id: string
           registration_link?: string | null
+          rejection_comment?: string | null
           published_at?: string | null
           expires_at?: string | null
           archived_at?: string | null
@@ -49,6 +81,7 @@ export type Database = {
           organization_id?: string
           author_id?: string
           registration_link?: string | null
+          rejection_comment?: string | null
           published_at?: string | null
           expires_at?: string | null
           archived_at?: string | null
@@ -126,6 +159,8 @@ export type Database = {
           email: string
           token: string
           role: Database['public']['Enums']['user_role']
+          member_role: Database['public']['Enums']['org_member_role']
+          org_ids: string[]
           invited_by: string
           accepted_at: string | null
           expires_at: string
@@ -136,6 +171,8 @@ export type Database = {
           email: string
           token?: string
           role?: Database['public']['Enums']['user_role']
+          member_role?: Database['public']['Enums']['org_member_role']
+          org_ids?: string[]
           invited_by: string
           accepted_at?: string | null
           expires_at?: string
@@ -146,6 +183,8 @@ export type Database = {
           email?: string
           token?: string
           role?: Database['public']['Enums']['user_role']
+          member_role?: Database['public']['Enums']['org_member_role']
+          org_ids?: string[]
           invited_by?: string
           accepted_at?: string | null
           expires_at?: string
@@ -155,18 +194,45 @@ export type Database = {
           { foreignKeyName: 'invitations_invited_by_fkey'; columns: ['invited_by']; referencedRelation: 'users'; referencedColumns: ['id'] },
         ]
       }
+      org_category_permissions: {
+        Row: {
+          org_id: string
+          category_id: string
+          granted_by: string | null
+          created_at: string
+        }
+        Insert: {
+          org_id: string
+          category_id: string
+          granted_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          org_id?: string
+          category_id?: string
+          granted_by?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'org_cat_perms_org_id_fkey'; columns: ['org_id']; referencedRelation: 'organizations'; referencedColumns: ['id'] },
+          { foreignKeyName: 'org_cat_perms_category_id_fkey'; columns: ['category_id']; referencedRelation: 'categories'; referencedColumns: ['id'] },
+        ]
+      }
       organization_members: {
         Row: {
           organization_id: string
           user_id: string
+          member_role: Database['public']['Enums']['org_member_role']
         }
         Insert: {
           organization_id: string
           user_id: string
+          member_role?: Database['public']['Enums']['org_member_role']
         }
         Update: {
           organization_id?: string
           user_id?: string
+          member_role?: Database['public']['Enums']['org_member_role']
         }
         Relationships: [
           { foreignKeyName: 'organization_members_organization_id_fkey'; columns: ['organization_id']; referencedRelation: 'organizations'; referencedColumns: ['id'] },
@@ -228,6 +294,7 @@ export type Database = {
           display_name: string
           role: Database['public']['Enums']['user_role']
           avatar_url: string | null
+          force_password_change: boolean
           created_at: string
           updated_at: string
         }
@@ -237,6 +304,7 @@ export type Database = {
           display_name: string
           role?: Database['public']['Enums']['user_role']
           avatar_url?: string | null
+          force_password_change?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -246,6 +314,7 @@ export type Database = {
           display_name?: string
           role?: Database['public']['Enums']['user_role']
           avatar_url?: string | null
+          force_password_change?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -260,23 +329,15 @@ export type Database = {
       }
     }
     Enums: {
+      org_member_role: 'publisher' | 'admin'
       org_status: 'pending' | 'approved' | 'rejected' | 'suspended'
       org_type: 'club' | 'department' | 'society' | 'faculty' | 'other'
-      post_status: 'draft' | 'published' | 'expired' | 'archived'
+      post_status: 'draft' | 'submitted' | 'rejected' | 'published' | 'expired' | 'archived'
       user_role: 'super_admin' | 'admin' | 'publisher'
     }
     CompositeTypes: Record<string, never>
   }
 }
 
-export type Tables<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Row']
-
-export type TablesInsert<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Insert']
-
-export type TablesUpdate<T extends keyof Database['public']['Tables']> =
-  Database['public']['Tables'][T]['Update']
-
-export type Enums<T extends keyof Database['public']['Enums']> =
-  Database['public']['Enums'][T]
+export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
+export type Enums<T extends keyof Database['public']['Enums']> = Database['public']['Enums'][T]

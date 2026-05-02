@@ -91,8 +91,7 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             {(() => {
-              const displayStatus = (announcement.status === 'expired' ? 'archived' : announcement.status) satisfies 'draft' | 'published' | 'archived'
-              return <StatusBadge status={displayStatus} />
+              return <StatusBadge status={announcement.status as 'draft' | 'submitted' | 'published' | 'rejected' | 'expired' | 'archived'} />
             })()}
             <span className="text-lg font-semibold text-[var(--color-text-primary)] truncate leading-tight">
               {announcement.title}
