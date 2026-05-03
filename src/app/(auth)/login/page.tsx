@@ -98,7 +98,7 @@ export default async function LoginPage({
               className="mb-2 block text-[11px] font-medium uppercase tracking-[0.15em]"
               style={{ color: 'var(--color-text-muted)' }}
             >
-              Email address
+              Email or username
             </label>
             <input
               id="email"
@@ -106,7 +106,7 @@ export default async function LoginPage({
               type="email"
               required
               autoComplete="email"
-              placeholder="you@inti.edu.my"
+              placeholder="Email or username"
               className="input-inti w-full rounded-[10px] border px-4 py-2.5 text-[14px] transition-all duration-150 placeholder:opacity-40"
               style={{
                 background: 'var(--color-surface-elevated)',

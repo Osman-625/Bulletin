@@ -8,7 +8,7 @@ interface DashboardShellProps {
   children: React.ReactNode
   displayName: string | null
   role: string | null
-  variant?: 'publisher' | 'admin' | 'super_admin'
+  variant?: 'publisher' | 'admin' | 'super_admin' | 'owner'
   pendingReviewCount?: number
 }
 

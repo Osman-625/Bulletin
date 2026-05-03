@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation'
 import {
   Home, Megaphone, Plus, LogOut,
   LayoutDashboard, ClipboardList, Building2, Users, BarChart3,
-  ShieldCheck, Tag, UserCog,
+  ShieldCheck, Tag, UserCog, Crown, ScrollText,
 } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import { logout } from '@/app/(auth)/login/actions'
@@ -32,6 +32,7 @@ function adminNav(pendingCount: number): NavItem[] {
     { href: '/admin/review', label: 'Review Queue', icon: ClipboardList, badge: pendingCount || undefined },
     { href: '/admin/orgs', label: 'Organizations', icon: Building2 },
     { href: '/admin/publishers', label: 'Publishers', icon: Users },
+    { href: '/admin/categories', label: 'Categories', icon: Tag },
     { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
   ]
 }
@@ -44,6 +45,14 @@ const superAdminNav: NavItem[] = [
   { href: '/super-admin/analytics', label: 'Analytics', icon: BarChart3 },
 ]
 
+const ownerNav: NavItem[] = [
+  { href: '/owner', label: 'System', icon: LayoutDashboard, exact: true },
+  { href: '/owner/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/owner/users', label: 'All Users', icon: Users },
+  { href: '/owner/categories', label: 'Categories', icon: Tag },
+  { href: '/owner/audit', label: 'Audit Log', icon: ScrollText },
+]
+
 function getIsActive(item: NavItem, pathname: string): boolean {
   if (item.exact) return pathname === item.href
   return pathname.startsWith(item.href)
@@ -54,7 +63,7 @@ interface DashboardSidebarProps {
   role?: string | null
   mobileOpen?: boolean
   onMobileClose?: () => void
-  variant?: 'publisher' | 'admin' | 'super_admin'
+  variant?: 'publisher' | 'admin' | 'super_admin' | 'owner'
   pendingReviewCount?: number
 }
 
@@ -69,11 +78,13 @@ export function DashboardSidebar({
   const pathname = usePathname()
 
   const navItems =
-    variant === 'admin'
-      ? adminNav(pendingReviewCount)
-      : variant === 'super_admin'
-        ? superAdminNav
-        : publisherNav
+    variant === 'owner'
+      ? ownerNav
+      : variant === 'admin'
+        ? adminNav(pendingReviewCount)
+        : variant === 'super_admin'
+          ? superAdminNav
+          : publisherNav
 
   const NavLinks = ({ onClick }: { onClick?: () => void }) => (
     <>
@@ -154,7 +165,10 @@ export function DashboardSidebar({
           <div className="flex items-center justify-center lg:justify-between lg:px-3">
             <div className="hidden lg:block min-w-0">
               <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{displayName ?? '—'}</p>
-              <p className="text-[10px] text-[var(--color-text-muted)] capitalize">{role?.replace('_', ' ') ?? '—'}</p>
+              <div className="flex items-center gap-1.5">
+                {variant === 'owner' && <Crown size={10} className="text-[var(--color-gold)] shrink-0" />}
+                <p className="text-[10px] text-[var(--color-text-muted)] capitalize">{role?.replace('_', ' ') ?? '—'}</p>
+              </div>
             </div>
             <ThemeToggle />
           </div>

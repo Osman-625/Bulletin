@@ -4,15 +4,8 @@
 --       org_category_permissions, force_password_change, invite org_ids
 -- ============================================================
 
--- ─── Extend post_status ─────────────────────────────────────
-ALTER TYPE public.post_status ADD VALUE IF NOT EXISTS 'submitted';
-ALTER TYPE public.post_status ADD VALUE IF NOT EXISTS 'rejected';
-
 -- ─── New enum: org_member_role ──────────────────────────────
-DO $$ BEGIN
-  CREATE TYPE public.org_member_role AS ENUM ('publisher', 'admin');
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+CREATE TYPE public.org_member_role AS ENUM ('publisher', 'admin');
 
 -- ─── organization_members: add member_role ──────────────────
 ALTER TABLE public.organization_members
@@ -75,7 +68,7 @@ CREATE POLICY "org_cat_perms: admin manage" ON public.org_category_permissions
 
 -- ─── Update announcements RLS ────────────────────────────────
 
-DROP POLICY IF EXISTS "announcements: publisher create draft"    ON public.announcements;
+DROP POLICY IF EXISTS "announcements: publisher create draft"      ON public.announcements;
 DROP POLICY IF EXISTS "announcements: publisher manage own drafts" ON public.announcements;
 DROP POLICY IF EXISTS "announcements: publisher delete own drafts" ON public.announcements;
 
@@ -109,12 +102,3 @@ CREATE POLICY "announcements: publisher delete draft" ON public.announcements
     author_id = auth.uid()
     AND status = 'draft'
   );
-
--- ─── Seed: give test org all category permissions ────────────
-INSERT INTO public.org_category_permissions (org_id, category_id, granted_by)
-SELECT
-  '00000000-0000-0000-0000-000000000002',
-  id,
-  '00000000-0000-0000-0000-000000000001'
-FROM public.categories
-ON CONFLICT DO NOTHING;

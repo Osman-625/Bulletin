@@ -1,15 +1,27 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
-  })
+  let email = formData.get('email') as string
+  const password = formData.get('password') as string
+
+  // Username login: no @ means look up the real email
+  if (!email.includes('@')) {
+    const service = await createServiceClient()
+    const { data: match } = await service
+      .from('users')
+      .select('email')
+      .eq('display_name', email)
+      .single()
+    if (!match?.email) redirect('/login?error=invalid_credentials')
+    email = match.email
+  }
+
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) redirect('/login?error=invalid_credentials')
 
@@ -23,6 +35,7 @@ export async function login(formData: FormData) {
     .single()
 
   if (profile?.force_password_change) redirect('/change-password')
+  if (profile?.role === 'owner') redirect('/owner')
   if (profile?.role === 'super_admin') redirect('/super-admin')
   if (profile?.role === 'admin') redirect('/admin')
   redirect('/dashboard')

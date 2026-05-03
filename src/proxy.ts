@@ -32,7 +32,7 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  const protectedPaths = ['/dashboard', '/admin', '/super-admin', '/change-password']
+  const protectedPaths = ['/dashboard', '/admin', '/super-admin', '/owner', '/change-password']
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p))
 
   if (isProtected && !user) {
@@ -54,13 +54,19 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    if (profile && pathname.startsWith('/super-admin') && profile.role !== 'super_admin') {
+    if (profile && pathname.startsWith('/owner') && profile.role !== 'owner') {
+      const url = request.nextUrl.clone()
+      url.pathname = profile.role === 'super_admin' ? '/super-admin' : profile.role === 'admin' ? '/admin' : '/dashboard'
+      return NextResponse.redirect(url)
+    }
+
+    if (profile && pathname.startsWith('/super-admin') && !['super_admin', 'owner'].includes(profile.role)) {
       const url = request.nextUrl.clone()
       url.pathname = profile.role === 'admin' ? '/admin' : '/dashboard'
       return NextResponse.redirect(url)
     }
 
-    if (profile && pathname.startsWith('/admin') && !['admin', 'super_admin'].includes(profile.role)) {
+    if (profile && pathname.startsWith('/admin') && !['admin', 'super_admin', 'owner'].includes(profile.role)) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
