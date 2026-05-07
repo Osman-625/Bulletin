@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { DashboardShell } from '@/components/dashboard/DashboardShell'
+import { canAccessSuperAdminArea, getDefaultAppPath, type AppRole } from '@/lib/auth/authz'
 
 export default async function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -13,12 +14,14 @@ export default async function SuperAdminLayout({ children }: { children: React.R
     .eq('id', user.id)
     .single()
 
-  if (!profile || profile.role !== 'super_admin') redirect('/dashboard')
+  const role = profile?.role as AppRole | undefined
+  if (!role) redirect('/login?error=profile_missing')
+  if (!canAccessSuperAdminArea(role)) redirect(getDefaultAppPath(role))
 
   return (
     <DashboardShell
-      displayName={profile.display_name}
-      role={profile.role}
+      displayName={profile?.display_name ?? null}
+      role={role}
       variant="super_admin"
     >
       {children}

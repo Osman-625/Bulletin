@@ -1,6 +1,13 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AnnouncementForm } from '@/components/dashboard/AnnouncementForm'
+import { canManageAnnouncementForOrg } from '@/lib/announcements/access'
+import {
+  DEFAULT_DISPLAY_FONT,
+  DEFAULT_DISPLAY_SIZE,
+  DEFAULT_URGENCY,
+} from '@/lib/announcements/presentation'
+import { getCurrentAccessContext } from '@/lib/auth/authz'
 import {
   updateAnnouncement,
   submitForReview,
@@ -26,18 +33,16 @@ export default async function EditAnnouncementPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+
   const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const [{ data: announcement }, { data: categories }, { data: membership }] = await Promise.all([
+  const [{ data: announcement }, { data: categories }] = await Promise.all([
     supabase
       .from('announcements')
       .select(
-        'id, title, body, status, category_id, banner_url, registration_link, expires_at, published_at, organization_id'
+        'id, title, body, status, category_id, banner_url, registration_link, expires_at, published_at, organization_id, urgency, display_font, display_size'
       )
       .eq('id', id)
       .single(),
@@ -46,16 +51,11 @@ export default async function EditAnnouncementPage({
       .select('id, name, color')
       .eq('is_active', true)
       .order('name'),
-    supabase
-      .from('organization_members')
-      .select('organization_id')
-      .eq('user_id', user.id)
-      .single(),
   ])
 
   if (!announcement) notFound()
 
-  if (!membership || announcement.organization_id !== membership.organization_id) {
+  if (!canManageAnnouncementForOrg(access, announcement.organization_id)) {
     redirect('/dashboard/announcements')
   }
 
@@ -69,6 +69,9 @@ export default async function EditAnnouncementPage({
     registration_link: announcement.registration_link,
     expires_at: announcement.expires_at,
     published_at: announcement.published_at,
+    urgency: announcement.urgency ?? DEFAULT_URGENCY,
+    display_font: announcement.display_font ?? DEFAULT_DISPLAY_FONT,
+    display_size: announcement.display_size ?? DEFAULT_DISPLAY_SIZE,
   }
 
   return (

@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { Loader2 } from 'lucide-react'
 
 export type AutosaveStatus = 'idle' | 'saving' | 'saved' | 'error'
@@ -10,18 +9,6 @@ interface AutosaveIndicatorProps {
 }
 
 export function AutosaveIndicator({ saveState }: AutosaveIndicatorProps) {
-  const [visible, setVisible] = useState(true)
-
-  useEffect(() => {
-    if (saveState === 'saved') {
-      setVisible(true)
-      const timer = setTimeout(() => setVisible(false), 2000)
-      return () => clearTimeout(timer)
-    } else {
-      setVisible(true)
-    }
-  }, [saveState])
-
   if (saveState === 'idle') return null
 
   if (saveState === 'saving') {
@@ -33,7 +20,7 @@ export function AutosaveIndicator({ saveState }: AutosaveIndicatorProps) {
     )
   }
 
-  if (saveState === 'saved' && visible) {
+  if (saveState === 'saved') {
     return (
       <span className="text-xs font-mono text-[var(--color-text-muted)] transition-opacity duration-300">
         Saved ✓

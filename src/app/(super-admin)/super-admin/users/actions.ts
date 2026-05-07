@@ -10,6 +10,9 @@ export async function resetUserPassword(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const { data: callerProfile } = await supabase.from('users').select('role').eq('id', user.id).single()
+  if (!['super_admin', 'owner'].includes(callerProfile?.role ?? '')) redirect('/login')
+
   const targetUserId = formData.get('user_id') as string
   const tempPassword = formData.get('temp_password') as string
 

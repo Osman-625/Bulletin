@@ -45,7 +45,7 @@ export default async function AuditLogPage({
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-semibold text-[var(--color-text-primary)]">{entry.action}</p>
-                  <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] uppercase tracking-wide">
+                  <span className="text-[15px] font-medium px-2 py-0.5 rounded bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] uppercase tracking-wide">
                     {entry.target_type}
                   </span>
                 </div>
@@ -53,7 +53,7 @@ export default async function AuditLogPage({
                   {actor?.display_name ?? 'System'} · {(actor?.role as string | undefined)?.replace('_', ' ') ?? '—'}
                 </p>
                 {entry.metadata && (
-                  <p className="text-[11px] font-mono text-[var(--color-text-muted)] mt-1 truncate">
+                  <p className="text-[16.5px] font-mono text-[var(--color-text-muted)] mt-1 truncate">
                     {JSON.stringify(entry.metadata)}
                   </p>
                 )}

@@ -3,13 +3,27 @@
 import { useState, useEffect, useRef, useCallback, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import NextImage from 'next/image'
-import { Upload, X, Link2, Calendar, Trash2, ArrowLeft } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Calendar, Link2, Trash2, Type, Upload, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ActionBar } from './ActionBar'
 import { GlassCard } from './GlassCard'
 import type { AutosaveStatus } from './AutosaveIndicator'
 import type { PostStatus } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import {
+  ANNOUNCEMENT_DISPLAY_FONTS,
+  ANNOUNCEMENT_DISPLAY_SIZES,
+  ANNOUNCEMENT_URGENCIES,
+  CARD_TITLE_SIZES,
+  DETAIL_BODY_SIZES,
+  DISPLAY_FONT_LABELS,
+  DISPLAY_SIZE_LABELS,
+  URGENCY_META,
+  getAnnouncementTitleFontClass,
+  type AnnouncementDisplayFont,
+  type AnnouncementDisplaySize,
+  type AnnouncementUrgency,
+} from '@/lib/announcements/presentation'
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -29,6 +43,9 @@ export type AnnouncementFormData = {
   registration_link: string | null
   expires_at: string | null
   published_at: string | null
+  urgency: AnnouncementUrgency
+  display_font: AnnouncementDisplayFont
+  display_size: AnnouncementDisplaySize
 }
 
 interface AnnouncementFormProps {
@@ -78,6 +95,9 @@ export function AnnouncementForm({
   const [registrationLink, setRegistrationLink] = useState(initialData.registration_link ?? '')
   const [expiresAt, setExpiresAt] = useState(initialData.expires_at?.slice(0, 10) ?? '')
   const [status, setStatus] = useState<PostStatus>(initialData.status)
+  const [urgency, setUrgency] = useState<AnnouncementUrgency>(initialData.urgency)
+  const [displayFont, setDisplayFont] = useState<AnnouncementDisplayFont>(initialData.display_font)
+  const [displaySize, setDisplaySize] = useState<AnnouncementDisplaySize>(initialData.display_size)
 
   // UI state
   const [saveState, setSaveState] = useState<AutosaveStatus>('idle')
@@ -96,7 +116,7 @@ export function AnnouncementForm({
   // Track dirty state
   useEffect(() => {
     dirtyRef.current = true
-  }, [title, body, categoryId, bannerUrl, registrationLink, expiresAt])
+  }, [title, body, categoryId, bannerUrl, registrationLink, expiresAt, urgency, displayFont, displaySize])
 
   // Auto-grow textarea
   useEffect(() => {
@@ -129,8 +149,11 @@ export function AnnouncementForm({
     if (bannerUrl) fd.set('banner_url', bannerUrl)
     if (registrationLink) fd.set('registration_link', registrationLink)
     if (expiresAt) fd.set('expires_at', new Date(expiresAt).toISOString())
+    fd.set('urgency', urgency)
+    fd.set('display_font', displayFont)
+    fd.set('display_size', displaySize)
     return fd
-  }, [title, body, categoryId, bannerUrl, registrationLink, expiresAt])
+  }, [title, body, categoryId, bannerUrl, registrationLink, expiresAt, urgency, displayFont, displaySize])
 
   // ─── Handlers ────────────────────────────────────────────────
 
@@ -264,6 +287,8 @@ export function AnnouncementForm({
   }, [])
 
   const selectedCategory = categories.find((c) => c.id === categoryId)
+  const selectedUrgency = URGENCY_META[urgency]
+  const titleFontClass = getAnnouncementTitleFontClass(displayFont)
 
   // ─── Render ──────────────────────────────────────────────────
 
@@ -329,7 +354,7 @@ export function AnnouncementForm({
             >
               Title
             </label>
-            <span className="text-[10px] font-mono text-[var(--color-text-muted)]">
+            <span className="text-[15px] font-mono text-[var(--color-text-muted)]">
               {title.length}/{TITLE_MAX}
             </span>
           </div>
@@ -454,6 +479,103 @@ export function AnnouncementForm({
           </div>
         </div>
 
+        {/* Urgency */}
+        <div>
+          <div className="mb-2 flex items-center gap-2">
+            <AlertTriangle size={14} className="text-[var(--color-text-muted)]" aria-hidden="true" />
+            <label className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium">
+              Urgency
+            </label>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {ANNOUNCEMENT_URGENCIES.map((option) => {
+              const meta = URGENCY_META[option]
+              const active = urgency === option
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={active}
+                  onClick={() => setUrgency(option)}
+                  className={cn(
+                    'min-h-11 rounded-xl border px-3 text-sm font-semibold transition-all duration-200',
+                    'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30',
+                    active
+                      ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)] text-[var(--color-text-primary)]'
+                      : 'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40'
+                  )}
+                >
+                  <span style={{ color: active ? meta.tone : undefined }}>{meta.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Typography */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <Type size={14} className="text-[var(--color-text-muted)]" aria-hidden="true" />
+              <label className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium">
+                Font
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {ANNOUNCEMENT_DISPLAY_FONTS.map((option) => {
+                const active = displayFont === option
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setDisplayFont(option)}
+                    className={cn(
+                      'min-h-11 rounded-xl border px-3 text-sm font-semibold transition-all duration-200',
+                      'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30',
+                      active
+                        ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)] text-[var(--color-text-primary)]'
+                        : 'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40'
+                    )}
+                  >
+                    <span className={getAnnouncementTitleFontClass(option)}>
+                      {DISPLAY_FONT_LABELS[option]}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium">
+              Text Size
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {ANNOUNCEMENT_DISPLAY_SIZES.map((option) => {
+                const active = displaySize === option
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => setDisplaySize(option)}
+                    className={cn(
+                      'min-h-11 rounded-xl border px-2 text-sm font-semibold transition-all duration-200',
+                      'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30',
+                      active
+                        ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)] text-[var(--color-text-primary)]'
+                        : 'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40'
+                    )}
+                  >
+                    {DISPLAY_SIZE_LABELS[option]}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
         {/* Banner Image Upload */}
         <div>
           <label className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium mb-2 block">
@@ -466,7 +588,7 @@ export function AnnouncementForm({
               <img
                 src={bannerUrl}
                 alt="Banner preview"
-                className="w-full h-48 object-cover"
+                className="h-48 w-full object-contain"
               />
               <button
                 type="button"
@@ -585,28 +707,47 @@ export function AnnouncementForm({
           </p>
           <GlassCard hover={false} className="overflow-hidden">
             {bannerUrl && (
-              <NextImage src={bannerUrl} alt="Preview banner" width={600} height={144} className="w-full h-36 object-cover" unoptimized />
+              <NextImage src={bannerUrl} alt="Preview banner" width={600} height={144} className="h-36 w-full object-contain" unoptimized />
             )}
             <div className="p-5 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {urgency !== 'normal' && (
+                  <span
+                    className="rounded-md px-2.5 py-1 text-[15px] font-semibold"
+                    style={{ color: selectedUrgency.tone, background: selectedUrgency.background }}
+                  >
+                    {selectedUrgency.label}
+                  </span>
+                )}
+                <span className="rounded-md bg-[var(--color-surface-elevated)] px-2.5 py-1 text-[15px] font-medium text-[var(--color-text-muted)]">
+                  {DISPLAY_FONT_LABELS[displayFont]} · {DISPLAY_SIZE_LABELS[displaySize]}
+                </span>
+              </div>
               {selectedCategory && (
                 <div className="flex items-center gap-2">
                   <span
                     className="w-2 h-2 rounded-full"
                     style={{ backgroundColor: selectedCategory.color ?? 'var(--color-accent)' }}
                   />
-                  <span className="text-[9px] uppercase tracking-[0.2em] text-[var(--color-text-muted)] font-medium">
+                  <span className="text-[13.5px] uppercase tracking-[0.2em] text-[var(--color-text-muted)] font-medium">
                     {selectedCategory.name}
                   </span>
                 </div>
               )}
-              <h3 className="text-lg font-semibold text-[var(--color-text-primary)] leading-tight">
+              <h3
+                className={cn(titleFontClass, 'font-semibold text-[var(--color-text-primary)] leading-tight')}
+                style={{ fontSize: CARD_TITLE_SIZES[displaySize] }}
+              >
                 {title || 'Untitled Announcement'}
               </h3>
-              <p className="text-sm text-[var(--color-text-secondary)] line-clamp-3 leading-relaxed">
+              <p
+                className="text-[var(--color-text-secondary)] line-clamp-3 leading-relaxed"
+                style={{ fontSize: DETAIL_BODY_SIZES[displaySize] }}
+              >
                 {body || 'Announcement body will appear here…'}
               </p>
               {registrationLink && !urlError && (
-                <span className="inline-block text-[10px] font-medium uppercase tracking-wider text-[var(--color-accent)]">
+                <span className="inline-block text-[15px] font-medium uppercase tracking-wider text-[var(--color-accent)]">
                   Register Here →
                 </span>
               )}

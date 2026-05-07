@@ -26,7 +26,7 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
       <GlassCard hover={false} className="overflow-hidden">
         {announcement.banner_url && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={announcement.banner_url} alt="" className="w-full h-48 object-cover" />
+          <img src={announcement.banner_url} alt="" className="h-48 w-full object-contain" />
         )}
         <div className="p-6 space-y-4">
           <div className="space-y-2">
@@ -34,7 +34,7 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
               <StatusBadge status="submitted" />
               {announcement.categories && (
                 <span
-                  className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider text-white"
+                  className="inline-flex items-center px-2 py-0.5 rounded text-[15px] font-bold uppercase tracking-wider text-white"
                   style={{ background: announcement.categories.color ?? '#C8102E' }}
                 >
                   {announcement.categories.name}

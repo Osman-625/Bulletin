@@ -1,20 +1,14 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import { DashboardShell } from '@/components/dashboard/DashboardShell'
+import { canAccessPublisherArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('display_name, role')
-    .eq('id', user.id)
-    .single()
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+  if (!canAccessPublisherArea(access.role)) redirect(getDefaultAppPath(access.role))
 
   return (
-    <DashboardShell displayName={profile?.display_name ?? null} role={profile?.role ?? null}>
+    <DashboardShell displayName={access.displayName} role={access.role}>
       {children}
     </DashboardShell>
   )

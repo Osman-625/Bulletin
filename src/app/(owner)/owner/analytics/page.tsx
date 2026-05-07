@@ -116,7 +116,7 @@ export default async function OwnerAnalyticsPage() {
             {['published', 'submitted', 'draft', 'rejected', 'archived', 'expired'].map((s) => (
               <GlassCard key={s} hover={false} className="p-4">
                 <CountUp value={statusCounts[s] ?? 0} className="text-2xl font-bold font-mono text-[var(--color-text-primary)]" />
-                <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] mt-1">{s}</p>
+                <p className="text-[15px] uppercase tracking-wider text-[var(--color-text-muted)] mt-1">{s}</p>
                 {totalAnnouncements > 0 && (
                   <div className="mt-2 h-0.5 rounded-full bg-[var(--color-surface-elevated)]">
                     <div
@@ -182,7 +182,7 @@ export default async function OwnerAnalyticsPage() {
                   <p className="text-sm text-[var(--color-text-primary)]">{u.display_name}</p>
                   <p className="text-xs text-[var(--color-text-muted)]">{u.email}</p>
                 </div>
-                <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">{(u.role as string).replace('_', ' ')}</span>
+                <span className="text-[15px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">{(u.role as string).replace('_', ' ')}</span>
                 <p className="text-xs font-mono text-[var(--color-text-muted)] shrink-0">
                   {new Date(u.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
                 </p>

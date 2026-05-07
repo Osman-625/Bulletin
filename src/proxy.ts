@@ -1,5 +1,13 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import {
+  canAccessAdminArea,
+  canAccessOwnerArea,
+  canAccessPublisherArea,
+  canAccessSuperAdminArea,
+  getDefaultAppPath,
+  type AppRole,
+} from '@/lib/auth/authz'
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
@@ -48,27 +56,41 @@ export async function proxy(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
+    const role = profile?.role as AppRole | undefined
+
     if (profile?.force_password_change && pathname !== '/change-password') {
       const url = request.nextUrl.clone()
       url.pathname = '/change-password'
       return NextResponse.redirect(url)
     }
 
-    if (profile && pathname.startsWith('/owner') && profile.role !== 'owner') {
+    if (!role) {
       const url = request.nextUrl.clone()
-      url.pathname = profile.role === 'super_admin' ? '/super-admin' : profile.role === 'admin' ? '/admin' : '/dashboard'
+      url.pathname = '/login'
       return NextResponse.redirect(url)
     }
 
-    if (profile && pathname.startsWith('/super-admin') && !['super_admin', 'owner'].includes(profile.role)) {
+    if (pathname.startsWith('/owner') && !canAccessOwnerArea(role)) {
       const url = request.nextUrl.clone()
-      url.pathname = profile.role === 'admin' ? '/admin' : '/dashboard'
+      url.pathname = getDefaultAppPath(role)
       return NextResponse.redirect(url)
     }
 
-    if (profile && pathname.startsWith('/admin') && !['admin', 'super_admin', 'owner'].includes(profile.role)) {
+    if (pathname.startsWith('/super-admin') && !canAccessSuperAdminArea(role)) {
       const url = request.nextUrl.clone()
-      url.pathname = '/dashboard'
+      url.pathname = getDefaultAppPath(role)
+      return NextResponse.redirect(url)
+    }
+
+    if (pathname.startsWith('/admin') && !canAccessAdminArea(role)) {
+      const url = request.nextUrl.clone()
+      url.pathname = getDefaultAppPath(role)
+      return NextResponse.redirect(url)
+    }
+
+    if (pathname.startsWith('/dashboard') && !canAccessPublisherArea(role)) {
+      const url = request.nextUrl.clone()
+      url.pathname = getDefaultAppPath(role)
       return NextResponse.redirect(url)
     }
   }

@@ -43,6 +43,9 @@ export type Database = {
           body: string
           banner_url: string | null
           status: Database['public']['Enums']['post_status']
+          urgency: Database['public']['Enums']['announcement_urgency']
+          display_font: Database['public']['Enums']['announcement_display_font']
+          display_size: Database['public']['Enums']['announcement_display_size']
           category_id: string | null
           organization_id: string
           author_id: string
@@ -60,6 +63,9 @@ export type Database = {
           body: string
           banner_url?: string | null
           status?: Database['public']['Enums']['post_status']
+          urgency?: Database['public']['Enums']['announcement_urgency']
+          display_font?: Database['public']['Enums']['announcement_display_font']
+          display_size?: Database['public']['Enums']['announcement_display_size']
           category_id?: string | null
           organization_id: string
           author_id: string
@@ -77,6 +83,9 @@ export type Database = {
           body?: string
           banner_url?: string | null
           status?: Database['public']['Enums']['post_status']
+          urgency?: Database['public']['Enums']['announcement_urgency']
+          display_font?: Database['public']['Enums']['announcement_display_font']
+          display_size?: Database['public']['Enums']['announcement_display_size']
           category_id?: string | null
           organization_id?: string
           author_id?: string
@@ -329,11 +338,14 @@ export type Database = {
       }
     }
     Enums: {
+      announcement_display_font: 'editorial' | 'clean'
+      announcement_display_size: 'compact' | 'standard' | 'large'
+      announcement_urgency: 'normal' | 'important' | 'urgent'
       org_member_role: 'publisher' | 'admin'
       org_status: 'pending' | 'approved' | 'rejected' | 'suspended'
       org_type: 'club' | 'department' | 'society' | 'faculty' | 'other'
       post_status: 'draft' | 'submitted' | 'rejected' | 'published' | 'expired' | 'archived'
-      user_role: 'super_admin' | 'admin' | 'publisher'
+      user_role: 'owner' | 'super_admin' | 'admin' | 'publisher'
     }
     CompositeTypes: Record<string, never>
   }

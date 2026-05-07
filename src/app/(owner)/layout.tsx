@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation'
-import { createServiceClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { DashboardShell } from '@/components/dashboard/DashboardShell'
+import { canAccessOwnerArea, getDefaultAppPath, type AppRole } from '@/lib/auth/authz'
 
 export default async function OwnerLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createServiceClient()
+  const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
@@ -13,12 +14,14 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
     .eq('id', user.id)
     .single()
 
-  if (!profile || profile.role !== 'owner') redirect('/dashboard')
+  const role = profile?.role as AppRole | undefined
+  if (!role) redirect('/login?error=profile_missing')
+  if (!canAccessOwnerArea(role)) redirect(getDefaultAppPath(role))
 
   return (
     <DashboardShell
-      displayName={profile.display_name}
-      role={profile.role}
+      displayName={profile?.display_name ?? null}
+      role={role}
       variant="owner"
     >
       {children}

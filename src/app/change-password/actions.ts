@@ -2,11 +2,17 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
 
 export async function changePassword(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  const rateLimit = await checkActionRateLimit('change-password', user.id)
+  if (rateLimit.limited) {
+    redirect('/change-password?error=Too+many+password+change+attempts')
+  }
 
   const password = formData.get('password') as string
   const confirm = formData.get('confirm') as string
@@ -31,6 +37,7 @@ export async function changePassword(formData: FormData) {
     .eq('id', user.id)
     .single()
 
+  if (profile?.role === 'owner') redirect('/owner')
   if (profile?.role === 'super_admin') redirect('/super-admin')
   if (profile?.role === 'admin') redirect('/admin')
   redirect('/dashboard')

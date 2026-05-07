@@ -1,8 +1,30 @@
 import { createServiceClient } from '@/lib/supabase/server'
+import { checkRateLimit, rateLimitKey } from '@/lib/security/rate-limit'
 import { NextResponse } from 'next/server'
 
-// One-time owner bootstrap — disabled permanently after first successful call.
-export async function POST() {
+// One-time owner bootstrap — requires SETUP_SECRET header.
+// Delete this route once the owner account is created.
+export async function POST(request: Request) {
+  if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test') {
+    const rateLimit = checkRateLimit(rateLimitKey('setup', request.headers), {
+      limit: 5,
+      windowMs: 60_000,
+    })
+    if (rateLimit.limited) {
+      return NextResponse.json(
+        { error: 'Too many setup attempts' },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSeconds) } }
+      )
+    }
+  }
+
+  const secret =
+    process.env.SETUP_SECRET ??
+    (process.env.NODE_ENV !== 'production' ? 'test-setup-secret' : undefined)
+  if (!secret || request.headers.get('x-setup-secret') !== secret) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const supabase = await createServiceClient()
 
   const { data: existingOwner } = await supabase
@@ -15,7 +37,10 @@ export async function POST() {
     return NextResponse.json({ error: 'Setup already complete' }, { status: 409 })
   }
 
-  // Check if the auth user was already created manually via Dashboard
+  const array = new Uint8Array(16)
+  crypto.getRandomValues(array)
+  const tempPassword = Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('')
+
   const { data: existingUser } = await supabase
     .from('users')
     .select('id')
@@ -23,23 +48,23 @@ export async function POST() {
     .maybeSingle()
 
   if (existingUser) {
-    // User exists — just promote to owner
+    await supabase.auth.admin.updateUserById(existingUser.id, { password: tempPassword })
     await supabase
       .from('users')
-      .update({ role: 'owner', display_name: 'osman_owner' })
+      .update({ role: 'owner', display_name: 'osman_owner', force_password_change: true })
       .eq('id', existingUser.id)
 
     return NextResponse.json({
       ok: true,
       username: 'osman_owner',
-      note: 'Existing user promoted to owner.',
+      temp_password: tempPassword,
+      note: 'Log in and change your password immediately.',
     })
   }
 
-  // No user yet — create from scratch
   const { data: authData, error: authError } = await supabase.auth.admin.createUser({
     email: 'osman_owner@bulletin.internal',
-    password: 'Maaney121@',
+    password: tempPassword,
     email_confirm: true,
     user_metadata: { display_name: 'osman_owner' },
   })
@@ -50,13 +75,13 @@ export async function POST() {
 
   await supabase
     .from('users')
-    .update({ role: 'owner', display_name: 'osman_owner' })
+    .update({ role: 'owner', display_name: 'osman_owner', force_password_change: true })
     .eq('id', authData.user.id)
 
   return NextResponse.json({
     ok: true,
     username: 'osman_owner',
-    password: 'Maaney121@',
-    note: 'Change your password after first login.',
+    temp_password: tempPassword,
+    note: 'Log in and change your password immediately.',
   })
 }

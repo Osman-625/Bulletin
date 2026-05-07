@@ -1,0 +1,40 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
+      SETUP_SECRET: ${{ secrets.TEST_SETUP_SECRET }}
+      TEST_OWNER_EMAIL: ${{ secrets.TEST_OWNER_EMAIL }}
+      TEST_OWNER_PASSWORD: ${{ secrets.TEST_OWNER_PASSWORD }}
+      TEST_SUPER_ADMIN_EMAIL: ${{ secrets.TEST_SUPER_ADMIN_EMAIL }}
+      TEST_SUPER_ADMIN_PASSWORD: ${{ secrets.TEST_SUPER_ADMIN_PASSWORD }}
+      TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
+      TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+      TEST_PUBLISHER_EMAIL: ${{ secrets.TEST_PUBLISHER_EMAIL }}
+      TEST_PUBLISHER_PASSWORD: ${{ secrets.TEST_PUBLISHER_PASSWORD }}
+      TEST_FORCE_CHANGE_EMAIL: ${{ secrets.TEST_FORCE_CHANGE_EMAIL }}
+      TEST_FORCE_CHANGE_PASSWORD: ${{ secrets.TEST_FORCE_CHANGE_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npx playwright install --with-deps chromium webkit
+      - run: npm run test:e2e

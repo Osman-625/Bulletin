@@ -4,38 +4,25 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { AnnouncementsClient } from './AnnouncementsClient'
+import { getCurrentAccessContext } from '@/lib/auth/authz'
+import { shouldScopeAnnouncementsToMembership } from '@/lib/announcements/access'
 import type { AnnouncementRowData } from '@/components/dashboard/AnnouncementRow'
 import type { DbAnnouncement } from '@/lib/types'
 
 export const metadata = { title: 'Announcements — Bulletin' }
 
-type QueryRow = Pick<DbAnnouncement, 'id' | 'title' | 'status' | 'banner_url' | 'published_at' | 'expires_at' | 'archived_at' | 'updated_at'> & {
+type QueryRow = Pick<DbAnnouncement, 'id' | 'title' | 'status' | 'urgency' | 'banner_url' | 'published_at' | 'expires_at' | 'archived_at' | 'updated_at'> & {
   categories: { id: string; name: string; color: string | null } | null
   organizations: { id: string; name: string } | null
   author: { display_name: string } | null
 }
 
 export default async function AnnouncementsPage() {
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    redirect('/login')
-  }
-
-  // Get org membership
-  const { data: membership, error: membershipError } = await supabase
-    .from('organization_members')
-    .select('organization_id')
-    .eq('user_id', user.id)
-    .single()
-
-  if (membershipError || !membership?.organization_id) {
-    redirect('/login')
-  }
-
-  const orgId = membership.organization_id
+  const scopeToMembership = shouldScopeAnnouncementsToMembership(access)
 
   let announcements: AnnouncementRowData[] = []
   let totalPublished = 0
@@ -43,12 +30,13 @@ export default async function AnnouncementsPage() {
   let expiringSoon = 0
   let archived = 0
 
-  const { data: rows } = await supabase
+  let query = supabase
     .from('announcements')
     .select(`
       id,
       title,
       status,
+      urgency,
       banner_url,
       published_at,
       expires_at,
@@ -58,8 +46,17 @@ export default async function AnnouncementsPage() {
       organizations ( id, name ),
       author:users!announcements_author_id_fkey ( display_name )
     `)
-    .eq('organization_id', orgId)
     .order('updated_at', { ascending: false })
+
+  if (scopeToMembership) {
+    if (access.orgIds.length === 0) {
+      query = query.eq('organization_id', '00000000-0000-0000-0000-000000000000')
+    } else {
+      query = query.in('organization_id', access.orgIds)
+    }
+  }
+
+  const { data: rows } = await query
 
   if (rows) {
     const rawRows = rows as unknown as QueryRow[]
@@ -67,6 +64,7 @@ export default async function AnnouncementsPage() {
       id: r.id,
       title: r.title,
       status: r.status as AnnouncementRowData['status'],
+      urgency: r.urgency,
       banner_url: r.banner_url,
       published_at: r.published_at,
       updated_at: r.updated_at,
@@ -97,7 +95,9 @@ export default async function AnnouncementsPage() {
             Announcements
           </h1>
           <p className="text-[var(--color-text-secondary)] mt-1">
-            Manage your organization&apos;s updates.
+            {scopeToMembership
+              ? 'Manage your organization&apos;s updates.'
+              : 'Manage announcements across approved organizations.'}
           </p>
         </div>
         <Link

@@ -83,7 +83,7 @@ export default async function SuperAdminAnalyticsPage() {
                   </span>
                 </div>
                 <p className="flex-1 text-sm text-[var(--color-text-primary)]">{u.display_name}</p>
-                <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">{u.role.replace('_', ' ')}</span>
+                <span className="text-[15px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">{u.role.replace('_', ' ')}</span>
                 <p className="text-xs font-mono text-[var(--color-text-muted)] shrink-0">
                   {new Date(u.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
                 </p>

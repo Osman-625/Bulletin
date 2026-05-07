@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Bell, Menu } from 'lucide-react'
+import Link from 'next/link'
+import { Bell, Menu, Newspaper } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DashboardTopNavProps {
@@ -55,6 +56,21 @@ export function DashboardTopNav({ userName, onMenuClick }: DashboardTopNavProps)
 
       {/* Right: bell + avatar */}
       <div className="flex items-center gap-3">
+        <Link
+          href="/"
+          className="hidden min-h-9 items-center gap-2 rounded-full border border-[var(--color-border)] px-3 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)] sm:inline-flex"
+        >
+          <Newspaper size={15} />
+          Public Feed
+        </Link>
+        <Link
+          href="/"
+          className="flex h-8 w-8 items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-elevated)] sm:hidden"
+          aria-label="Open public announcements"
+        >
+          <Newspaper size={18} />
+        </Link>
+
         <button
           type="button"
           className="flex items-center justify-center w-8 h-8 rounded-full text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-elevated)] transition-colors"

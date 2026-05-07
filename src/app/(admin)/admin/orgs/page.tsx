@@ -38,7 +38,7 @@ export default async function OrgsPage() {
             <GlassCard key={org.id} hover className="px-5 py-4 flex items-center gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${orgStatusStyles[org.status] ?? orgStatusStyles.pending}`}>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[15px] font-bold uppercase tracking-wider ${orgStatusStyles[org.status] ?? orgStatusStyles.pending}`}>
                     {org.status}
                   </span>
                   <span className="text-xs text-[var(--color-text-muted)] capitalize">{org.org_type}</span>

@@ -3,16 +3,17 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { canManageAnnouncementForOrg } from '@/lib/announcements/access'
+import {
+  normalizeAnnouncementDisplayFont,
+  normalizeAnnouncementDisplaySize,
+  normalizeAnnouncementUrgency,
+} from '@/lib/announcements/presentation'
+import { getCurrentAccessContext } from '@/lib/auth/authz'
 
-/** Verify the current user owns the announcement via organization membership */
-async function verifyOwnership(supabase: Awaited<ReturnType<typeof createClient>>, announcementId: string, userId: string) {
-  const { data: membership } = await supabase
-    .from('organization_members')
-    .select('organization_id')
-    .eq('user_id', userId)
-    .single()
-
-  if (!membership?.organization_id) throw new Error('No organization')
+async function verifyAnnouncementAccess(supabase: Awaited<ReturnType<typeof createClient>>, announcementId: string) {
+  const access = await getCurrentAccessContext()
+  if (!access) throw new Error('Unauthorized')
 
   const { data: announcement } = await supabase
     .from('announcements')
@@ -21,19 +22,16 @@ async function verifyOwnership(supabase: Awaited<ReturnType<typeof createClient>
     .single()
 
   if (!announcement) throw new Error('Announcement not found')
-  if (announcement.organization_id !== membership.organization_id) {
+  if (!canManageAnnouncementForOrg(access, announcement.organization_id)) {
     throw new Error('Unauthorized: announcement belongs to a different organization')
   }
 
-  return { organizationId: membership.organization_id }
+  return { organizationId: announcement.organization_id }
 }
 
 export async function updateAnnouncement(id: string, formData: FormData) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-
-  await verifyOwnership(supabase, id, user.id)
+  await verifyAnnouncementAccess(supabase, id)
 
   const title = formData.get('title') as string
   const body = formData.get('body') as string
@@ -41,6 +39,9 @@ export async function updateAnnouncement(id: string, formData: FormData) {
   const bannerUrl = formData.get('banner_url') as string | null
   const registrationLink = formData.get('registration_link') as string | null
   const expiresAt = formData.get('expires_at') as string | null
+  const urgency = normalizeAnnouncementUrgency(formData.get('urgency'))
+  const displayFont = normalizeAnnouncementDisplayFont(formData.get('display_font'))
+  const displaySize = normalizeAnnouncementDisplaySize(formData.get('display_size'))
 
   const { error } = await supabase
     .from('announcements')
@@ -48,6 +49,9 @@ export async function updateAnnouncement(id: string, formData: FormData) {
       title: title || 'Untitled Announcement',
       body: body || '',
       category_id: categoryId || null,
+      urgency,
+      display_font: displayFont,
+      display_size: displaySize,
       banner_url: bannerUrl || null,
       registration_link: registrationLink || null,
       expires_at: expiresAt || null,
@@ -65,10 +69,7 @@ export async function updateAnnouncement(id: string, formData: FormData) {
 
 export async function publishAnnouncement(id: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-
-  await verifyOwnership(supabase, id, user.id)
+  await verifyAnnouncementAccess(supabase, id)
 
   const now = new Date().toISOString()
 
@@ -91,10 +92,7 @@ export async function publishAnnouncement(id: string) {
 
 export async function unpublishAnnouncement(id: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-
-  await verifyOwnership(supabase, id, user.id)
+  await verifyAnnouncementAccess(supabase, id)
 
   const { error } = await supabase
     .from('announcements')
@@ -115,10 +113,7 @@ export async function unpublishAnnouncement(id: string) {
 
 export async function submitForReview(id: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-
-  await verifyOwnership(supabase, id, user.id)
+  await verifyAnnouncementAccess(supabase, id)
 
   const { error } = await supabase
     .from('announcements')
@@ -135,10 +130,7 @@ export async function submitForReview(id: string) {
 
 export async function deleteAnnouncement(id: string) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) throw new Error('Unauthorized')
-
-  await verifyOwnership(supabase, id, user.id)
+  await verifyAnnouncementAccess(supabase, id)
 
   const { error } = await supabase
     .from('announcements')

@@ -1,25 +1,47 @@
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { CountUp } from '@/components/dashboard/CountUp'
 import { createClient } from '@/lib/supabase/server'
+import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
+import { redirect } from 'next/navigation'
 
 export const metadata = { title: 'Analytics — Bulletin Admin' }
 
 export default async function AdminAnalyticsPage() {
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+  if (!canAccessAdminArea(access.role)) redirect(getDefaultAppPath(access.role))
+
   const supabase = await createClient()
+
+  let byStatusQuery = supabase.from('announcements').select('status')
+  let byCategoryQuery = supabase.from('announcements').select('categories(name, color), status').eq('status', 'published')
+  let recentPublishedQuery = supabase
+    .from('announcements')
+    .select('title, organizations(name), published_at')
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .limit(10)
+
+  if (access.role === 'admin') {
+    if (access.orgIds.length === 0) {
+      byStatusQuery = byStatusQuery.eq('organization_id', '__none__')
+      byCategoryQuery = byCategoryQuery.eq('organization_id', '__none__')
+      recentPublishedQuery = recentPublishedQuery.eq('organization_id', '__none__')
+    } else {
+      byStatusQuery = byStatusQuery.in('organization_id', access.orgIds)
+      byCategoryQuery = byCategoryQuery.in('organization_id', access.orgIds)
+      recentPublishedQuery = recentPublishedQuery.in('organization_id', access.orgIds)
+    }
+  }
 
   const [
     { data: byStatus },
     { data: byCategory },
     { data: recentPublished },
   ] = await Promise.all([
-    supabase.from('announcements').select('status'),
-    supabase.from('announcements').select('categories(name, color), status').eq('status', 'published'),
-    supabase
-      .from('announcements')
-      .select('title, organizations(name), published_at')
-      .eq('status', 'published')
-      .order('published_at', { ascending: false })
-      .limit(10),
+    byStatusQuery,
+    byCategoryQuery,
+    recentPublishedQuery,
   ])
 
   const statusCounts = (byStatus ?? []).reduce<Record<string, number>>((acc, r) => {

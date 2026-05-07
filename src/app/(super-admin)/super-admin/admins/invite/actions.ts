@@ -2,14 +2,19 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { canAccessSuperAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
 
 export async function inviteAdmin(formData: FormData) {
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+  if (!canAccessSuperAdminArea(access.role)) redirect(getDefaultAppPath(access.role))
+
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
 
   const email = (formData.get('email') as string).trim().toLowerCase()
-  const role = (formData.get('role') as string) || 'admin'
+  const ALLOWED_ROLES = ['admin', 'super_admin']
+  const rawRole = (formData.get('role') as string) || 'admin'
+  const role = ALLOWED_ROLES.includes(rawRole) ? rawRole : 'admin'
 
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + 7)
@@ -19,7 +24,7 @@ export async function inviteAdmin(formData: FormData) {
     role: role as 'admin' | 'super_admin',
     member_role: 'admin',
     org_ids: [],
-    invited_by: user.id,
+    invited_by: access.userId,
     expires_at: expiresAt.toISOString(),
   }).select('token').single()
 

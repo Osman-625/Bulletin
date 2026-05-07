@@ -1,14 +1,21 @@
 'use client'
 
 import { useTheme } from 'next-themes'
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
+
+const emptySubscribe = () => () => {}
+const getClientSnapshot = () => true
+const getServerSnapshot = () => false
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    getClientSnapshot,
+    getServerSnapshot
+  )
 
-  if (!mounted) return <div className="h-9 w-9 rounded-[10px]" />
+  if (!mounted) return <div className="h-[4.5rem] w-[4.5rem] rounded-full" />
 
   const isDark = resolvedTheme === 'dark'
 
@@ -16,18 +23,18 @@ export function ThemeToggle() {
     <button
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-[10px] border focus:outline-none focus-visible:ring-2 active:scale-[0.95]"
+      className="action-lift flex h-[4.5rem] w-[4.5rem] cursor-pointer items-center justify-center rounded-full border focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] disabled:pointer-events-none"
       style={{
-        transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
         background: 'var(--color-surface-elevated)',
         borderColor: 'var(--color-border)',
         color: 'var(--color-text-muted)',
+        boxShadow: 'var(--shadow-button)',
       }}
     >
       {isDark ? (
         <svg
-          width="15"
-          height="15"
+          width="24"
+          height="24"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -41,8 +48,8 @@ export function ThemeToggle() {
         </svg>
       ) : (
         <svg
-          width="15"
-          height="15"
+          width="24"
+          height="24"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"

@@ -3,15 +3,22 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
 
 export async function invitePublisher(formData: FormData) {
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+  if (!canAccessAdminArea(access.role)) redirect(getDefaultAppPath(access.role))
+
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
 
   const email = (formData.get('email') as string).trim().toLowerCase()
   const orgIds = formData.getAll('org_ids') as string[]
   const memberRole = (formData.get('member_role') as string) || 'publisher'
+
+  if (access.role === 'admin' && orgIds.some((orgId) => !access.orgIds.includes(orgId))) {
+    redirect('/admin/publishers/invite?error=You+can+only+invite+publishers+into+your+own+organizations')
+  }
 
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + 7)
@@ -21,7 +28,7 @@ export async function invitePublisher(formData: FormData) {
     role: 'publisher',
     member_role: memberRole as 'publisher' | 'admin',
     org_ids: orgIds,
-    invited_by: user.id,
+    invited_by: access.userId,
     expires_at: expiresAt.toISOString(),
   }).select('token').single()
 

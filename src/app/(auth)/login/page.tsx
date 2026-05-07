@@ -44,13 +44,13 @@ export default async function LoginPage({
             />
             <div>
               <p
-                className="text-[10px] font-bold uppercase tracking-[0.2em]"
+                className="text-[15px] font-bold uppercase tracking-[0.2em]"
                 style={{ color: 'var(--color-accent-inti)' }}
               >
                 INTI International University
               </p>
               <p
-                className="font-display text-[22px] font-bold leading-none tracking-tight"
+                className="font-display text-[33px] font-bold leading-none tracking-tight"
                 style={{ color: 'var(--color-text-primary)' }}
               >
                 Bulletin
@@ -65,12 +65,12 @@ export default async function LoginPage({
           </div>
 
           <h1
-            className="font-display text-[28px] font-bold leading-[1.1] tracking-tight"
+            className="font-display text-[42px] font-bold leading-[1.1] tracking-tight"
             style={{ color: 'var(--color-text-primary)' }}
           >
             Publisher<br />sign-in
           </h1>
-          <p className="mt-2 text-[13px]" style={{ color: 'var(--color-text-muted)' }}>
+          <p className="mt-2 text-[19.5px]" style={{ color: 'var(--color-text-muted)' }}>
             Authorized personnel only.
           </p>
         </div>
@@ -78,7 +78,7 @@ export default async function LoginPage({
         {/* Error */}
         {error && (
           <div
-            className="animate-slide-in mb-5 rounded-[10px] border px-4 py-3 text-[13px]"
+            className="animate-slide-in mb-5 rounded-[10px] border px-4 py-3 text-[19.5px]"
             style={{
               background: 'var(--color-accent-surface)',
               borderColor: 'var(--color-accent-inti)',
@@ -95,7 +95,7 @@ export default async function LoginPage({
           <div>
             <label
               htmlFor="email"
-              className="mb-2 block text-[11px] font-medium uppercase tracking-[0.15em]"
+              className="mb-2 block text-[16.5px] font-medium uppercase tracking-[0.15em]"
               style={{ color: 'var(--color-text-muted)' }}
             >
               Email or username
@@ -107,7 +107,7 @@ export default async function LoginPage({
               required
               autoComplete="email"
               placeholder="Email or username"
-              className="input-inti w-full rounded-[10px] border px-4 py-2.5 text-[14px] transition-all duration-150 placeholder:opacity-40"
+              className="input-inti w-full rounded-[10px] border px-4 py-2.5 text-[21px] transition-all duration-150 placeholder:opacity-40"
               style={{
                 background: 'var(--color-surface-elevated)',
                 borderColor: 'var(--color-border)',
@@ -119,7 +119,7 @@ export default async function LoginPage({
           <div>
             <label
               htmlFor="password"
-              className="mb-2 block text-[11px] font-medium uppercase tracking-[0.15em]"
+              className="mb-2 block text-[16.5px] font-medium uppercase tracking-[0.15em]"
               style={{ color: 'var(--color-text-muted)' }}
             >
               Password
@@ -131,7 +131,7 @@ export default async function LoginPage({
               required
               autoComplete="current-password"
               placeholder="••••••••"
-              className="input-inti w-full rounded-[10px] border px-4 py-2.5 text-[14px] transition-all duration-150 placeholder:opacity-40"
+              className="input-inti w-full rounded-[10px] border px-4 py-2.5 text-[21px] transition-all duration-150 placeholder:opacity-40"
               style={{
                 background: 'var(--color-surface-elevated)',
                 borderColor: 'var(--color-border)',
@@ -142,7 +142,7 @@ export default async function LoginPage({
 
           <button
             type="submit"
-            className="mt-2 w-full cursor-pointer rounded-[10px] py-3 font-sans text-[14px] font-semibold text-white transition-all duration-200 hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            className="mt-2 w-full cursor-pointer rounded-[10px] py-3 font-sans text-[21px] font-semibold text-white transition-all duration-200 hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
             style={{
               background: 'var(--color-accent-inti)',
               boxShadow: '0 2px 12px rgba(200, 16, 46, 0.28)',

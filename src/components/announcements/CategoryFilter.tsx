@@ -13,15 +13,18 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
     const params = new URLSearchParams(searchParams.toString())
     if (slug) params.set('category', slug)
     else params.delete('category')
-    router.push(`/?${params.toString()}`)
+    const query = params.toString()
+    router.push(query ? `/?${query}` : '/')
   }
 
   return (
     <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
       {/* All */}
       <button
+        type="button"
+        data-category=""
         onClick={() => select('')}
-        className="tab-lift inline-flex cursor-pointer items-center rounded-[10px] border px-4 py-[9px] text-[13px] font-medium focus:outline-none focus-visible:ring-2"
+        className="tab-lift inline-flex min-h-9 cursor-pointer items-center rounded-[10px] border px-3.5 text-[1.340625rem] font-semibold focus:outline-none focus-visible:ring-2"
         style={{
           ...(!active
             ? {
@@ -46,9 +49,11 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
         const color = cat.color ?? '#C8102E'
         return (
           <button
+            type="button"
+            data-category={cat.slug}
             key={cat.id}
             onClick={() => select(cat.slug)}
-            className="tab-lift inline-flex cursor-pointer items-center gap-2 rounded-[10px] border px-4 py-[9px] text-[13px] font-medium focus:outline-none focus-visible:ring-2"
+            className="tab-lift inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-[10px] border px-3.5 text-[1.340625rem] font-semibold focus:outline-none focus-visible:ring-2"
             style={{
               ...(isActive
                 ? {

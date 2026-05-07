@@ -1,9 +1,12 @@
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { StatusBadge } from '@/components/dashboard/StatusBadge'
 import { CountUp } from '@/components/dashboard/CountUp'
+import { getCurrentAccessContext } from '@/lib/auth/authz'
+import { shouldScopeAnnouncementsToMembership } from '@/lib/announcements/access'
 
 export const metadata = { title: 'Dashboard — Bulletin' }
 
@@ -64,38 +67,30 @@ function EmptyState() {
 }
 
 export default async function DashboardPage() {
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+
   const supabase = await createClient()
-
-  // 1. Auth + user profile
-  const { data: { user } } = await supabase.auth.getUser()
-
-  const { data: profile } = await supabase
-    .from('users')
-    .select('display_name')
-    .eq('id', user!.id)
-    .single()
-
-  // 2. Get organization_id via organization_members
-  const { data: membership } = await supabase
-    .from('organization_members')
-    .select('organization_id')
-    .eq('user_id', user!.id)
-    .single()
-
-  const orgId = membership?.organization_id ?? null
 
   // 3. Stats + recent announcements (only if org exists)
   let total = 0
   let inDraft = 0
   let publishedThisMonth = 0
   let recentAnnouncements: RecentAnnouncement[] = []
+  const scopeToMembership = shouldScopeAnnouncementsToMembership(access)
+  const hasAnnouncementScope = !scopeToMembership || access.orgIds.length > 0
 
-  if (orgId) {
+  if (hasAnnouncementScope) {
     // Fetch all rows for stats in one query
-    const { data: statsRows } = await supabase
+    let statsQuery = supabase
       .from('announcements')
       .select('status, published_at')
-      .eq('organization_id', orgId)
+
+    if (scopeToMembership) {
+      statsQuery = statsQuery.in('organization_id', access.orgIds)
+    }
+
+    const { data: statsRows } = await statsQuery
 
     if (statsRows) {
       const now = new Date()
@@ -109,12 +104,17 @@ export default async function DashboardPage() {
     }
 
     // Fetch recent 5
-    const { data: recent } = await supabase
+    let recentQuery = supabase
       .from('announcements')
       .select('id, title, status, updated_at, categories(name)')
-      .eq('organization_id', orgId)
       .order('updated_at', { ascending: false })
       .limit(5)
+
+    if (scopeToMembership) {
+      recentQuery = recentQuery.in('organization_id', access.orgIds)
+    }
+
+    const { data: recent } = await recentQuery
 
     if (recent) {
       recentAnnouncements = (recent as unknown) as RecentAnnouncement[]
@@ -122,28 +122,34 @@ export default async function DashboardPage() {
   }
 
   const greeting = getGreeting()
-  const displayName = profile?.display_name ?? null
+  const displayName = access.displayName
+  const isInheritedWorkspace = access.role !== 'publisher'
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
       {/* Section 1 — Greeting */}
-      <div>
-        <h1 className="text-3xl font-bold text-[var(--color-text-primary)] tracking-tight">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-3xl">
           {greeting}, {displayName ?? 'Publisher'}
         </h1>
-        <p className="text-[var(--color-text-secondary)] mt-1">
-          Manage INTI&apos;s announcements from here.
+        <p className="max-w-2xl text-sm text-[var(--color-text-secondary)] sm:text-base">
+          {isInheritedWorkspace
+            ? 'Use the announcement creator tools alongside your higher-level workspace.'
+            : 'Manage INTI&apos;s announcements from here.'}
         </p>
       </div>
 
       {/* Section 2 — Stats strip */}
-      <div className="flex items-center gap-0 divide-x divide-[var(--color-border)]">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-[var(--color-border)]">
         {[
           { label: 'Published this month', value: publishedThisMonth },
           { label: 'In draft', value: inDraft },
           { label: 'Total all-time', value: total },
         ].map(({ label, value }) => (
-          <div key={label} className="flex-1 px-6 first:pl-0 last:pr-0">
+          <div
+            key={label}
+            className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-6 sm:first:pl-0 sm:last:pr-0"
+          >
             <CountUp value={value} className="text-3xl font-bold font-mono text-[var(--color-accent)]" />
             <p className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] mt-1">{label}</p>
           </div>
@@ -152,7 +158,7 @@ export default async function DashboardPage() {
 
       {/* Section 3 — Recent announcements */}
       <div>
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Recent</h2>
           <Link href="/dashboard/announcements" className="text-sm text-[var(--color-accent)] hover:underline">
             View all →
@@ -172,10 +178,11 @@ export default async function DashboardPage() {
       {/* Section 4 — FAB */}
       <Link
         href="/dashboard/announcements/new"
-        className="fixed bottom-8 right-8 z-50 flex items-center justify-center w-14 h-14 rounded-full bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white shadow-lg transition-all duration-300 active:scale-95 group"
+        className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] z-50 flex h-14 min-w-14 items-center justify-center rounded-full bg-[var(--color-accent)] px-4 text-white shadow-lg transition-all duration-300 active:scale-95 group sm:right-6 sm:bottom-8 sm:w-14 sm:px-0"
         aria-label="New announcement"
       >
-        <Plus size={24} className="transition-transform duration-300 group-hover:rotate-90" />
+        <Plus size={24} className="shrink-0 transition-transform duration-300 group-hover:rotate-90" />
+        <span className="ml-2 text-sm font-semibold sm:hidden">New</span>
       </Link>
     </div>
   )

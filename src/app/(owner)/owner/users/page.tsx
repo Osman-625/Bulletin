@@ -2,7 +2,17 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { createServiceClient } from '@/lib/supabase/server'
+import {
+  canAccessOwnerArea,
+  canManageUser,
+  getAssignableRoles,
+  getCurrentAccessContext,
+  getDefaultAppPath,
+  type AppRole,
+} from '@/lib/auth/authz'
+import { syncAuthUsersToProfiles } from '@/lib/auth/sync-users'
 
+export const dynamic = 'force-dynamic'
 export const metadata = { title: 'All Users — Bulletin Owner' }
 
 const PRIVILEGE = { owner: 0, super_admin: 1, admin: 2, publisher: 3 } as const
@@ -22,17 +32,22 @@ const LEVEL_COLOR: Record<number, string> = {
   3: 'var(--color-text-muted)',
 }
 
-const ASSIGNABLE: UserRole[] = ['super_admin', 'admin', 'publisher']
-
 async function createUser(formData: FormData) {
   'use server'
+
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+  if (!canAccessOwnerArea(access.role)) redirect(getDefaultAppPath(access.role))
+
   const supabase = await createServiceClient()
   const displayName = (formData.get('display_name') as string).trim()
   const rawEmail = (formData.get('email') as string).trim()
   const email = rawEmail || `${displayName.toLowerCase().replace(/\s+/g, '_')}@bulletin.internal`
   const password = formData.get('password') as string
-  const role = formData.get('role') as string
+  const role = formData.get('role') as AppRole
+  const assignableRoles = getAssignableRoles(access.role)
   if (!displayName || !password || !role) redirect('/owner/users?add=true&err=missing_fields')
+  if (!assignableRoles.includes(role)) redirect('/owner/users?add=true&err=invalid_role')
   const { data: authData, error } = await supabase.auth.admin.createUser({
     email,
     password,
@@ -40,35 +55,73 @@ async function createUser(formData: FormData) {
     user_metadata: { display_name: displayName },
   })
   if (error || !authData.user) redirect(`/owner/users?add=true&err=${encodeURIComponent(error?.message ?? 'Failed')}`)
-  await supabase.from('users').update({ role, display_name: displayName }).eq('id', authData.user.id)
+  await supabase.from('users').upsert(
+    { id: authData.user.id, email, display_name: displayName, role },
+    { onConflict: 'id' }
+  )
+  revalidatePath('/owner/users')
   redirect('/owner/users')
 }
 
 async function setRole(userId: string, newRole: string) {
   'use server'
+
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+  if (!canAccessOwnerArea(access.role)) redirect(getDefaultAppPath(access.role))
+  const role = newRole as AppRole
+  if (!getAssignableRoles(access.role).includes(role)) return
+
   const supabase = await createServiceClient()
-  const { data: target } = await supabase.from('users').select('role').eq('id', userId).single()
-  if (!target || target.role === 'owner') return
-  await supabase.from('users').update({ role: newRole }).eq('id', userId)
+  const { data: target } = await supabase
+    .from('users')
+    .select('id, role')
+    .eq('id', userId)
+    .single()
+  if (!target) return
+  if (!canManageUser({ id: access.userId, role: access.role, orgIds: access.orgIds }, { id: target.id, role: target.role as AppRole, orgIds: [] })) return
+  await supabase.from('users').update({ role }).eq('id', userId)
   revalidatePath('/owner/users')
 }
 
-async function resetPassword(userId: string, displayName: string) {
+async function resetPassword(userId: string, formData: FormData) {
   'use server'
+
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+  if (!canAccessOwnerArea(access.role)) redirect(getDefaultAppPath(access.role))
+
   const supabase = await createServiceClient()
-  const { data: target } = await supabase.from('users').select('role').eq('id', userId).single()
-  if (!target || target.role === 'owner') return
-  const temp = `Bulletin${Math.random().toString(36).slice(2, 8).toUpperCase()}!`
+  const { data: target } = await supabase
+    .from('users')
+    .select('id, role')
+    .eq('id', userId)
+    .single()
+  if (!target) return
+  if (!canManageUser({ id: access.userId, role: access.role, orgIds: access.orgIds }, { id: target.id, role: target.role as AppRole, orgIds: [] })) return
+  const temp = formData.get('temp_password') as string
+  if (!temp || temp.length < 8) redirect('/owner/users?msg=Password+must+be+at+least+8+characters.')
   await supabase.auth.admin.updateUserById(userId, { password: temp })
   await supabase.from('users').update({ force_password_change: true }).eq('id', userId)
-  redirect(`/owner/users?msg=${encodeURIComponent(`Temp password for ${displayName}: ${temp}`)}`)
+  revalidatePath('/owner/users')
+  redirect('/owner/users?msg=Password+updated.+User+will+be+prompted+to+change+it+on+next+login.')
 }
 
 async function deleteUser(userId: string) {
   'use server'
+
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+  if (!canAccessOwnerArea(access.role)) redirect(getDefaultAppPath(access.role))
+
   const supabase = await createServiceClient()
-  const { data: target } = await supabase.from('users').select('role').eq('id', userId).single()
-  if (!target || target.role === 'owner') return
+  const { data: target } = await supabase
+    .from('users')
+    .select('id, role')
+    .eq('id', userId)
+    .single()
+  if (!target) return
+  if (!canManageUser({ id: access.userId, role: access.role, orgIds: access.orgIds }, { id: target.id, role: target.role as AppRole, orgIds: [] })) return
   await supabase.auth.admin.deleteUser(userId)
   revalidatePath('/owner/users')
 }
@@ -80,12 +133,18 @@ export default async function OwnerUsersPage({
 }) {
   const { role: filterRole, msg, edit, confirm, add, err } = await searchParams
   const isAdding = add === 'true'
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+  if (!canAccessOwnerArea(access.role)) redirect(getDefaultAppPath(access.role))
+
+  await syncAuthUsersToProfiles()
+
+  const assignableRoles = getAssignableRoles(access.role)
   const supabase = await createServiceClient()
-  const { data: meData } = await supabase.auth.getUser()
-  const myId = meData.user?.id
+  const myId = access.userId
 
   let query = supabase.from('users').select('*').order('created_at', { ascending: false })
-  if (filterRole && ROLE_LABELS[filterRole]) query = query.eq('role', filterRole)
+  if (filterRole && ROLE_LABELS[filterRole]) query = query.eq('role', filterRole as AppRole)
   const { data: users } = await query
   const { data: allUsers } = await supabase.from('users').select('role')
 
@@ -114,7 +173,7 @@ export default async function OwnerUsersPage({
       {isAdding && (
         <GlassCard hover={false} className="p-6">
           <p className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">New User</p>
-          {err && <p className="text-xs text-[var(--color-status-rejected-text)] mb-3">{err === 'missing_fields' ? 'All fields are required.' : err}</p>}
+          {err && <p className="text-xs text-[var(--color-status-rejected-text)] mb-3">{err === 'missing_fields' ? 'All fields are required.' : err === 'invalid_role' ? 'That role is not allowed from this screen.' : err}</p>}
           <form action={createUser} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -132,7 +191,7 @@ export default async function OwnerUsersPage({
               <div>
                 <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Role *</label>
                 <select name="role" required className="w-full px-3 py-2 rounded-lg text-sm bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] border border-[var(--color-border)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]">
-                  {ASSIGNABLE.map((r) => (
+                  {assignableRoles.map((r) => (
                     <option key={r} value={r}>{ROLE_LABELS[r]} (L{PRIVILEGE[r]})</option>
                   ))}
                 </select>
@@ -177,12 +236,20 @@ export default async function OwnerUsersPage({
           const level = PRIVILEGE[role] ?? 3
           const isEditing = edit === u.id
           const isConfirming = confirm === u.id
-          const canManage = !isMe && role !== 'owner'
+          const canManage = canManageUser(
+            { id: access.userId, role: access.role, orgIds: access.orgIds },
+            { id: u.id, role: role as AppRole, orgIds: [] }
+          )
           const base = filterRole ? `/owner/users?role=${filterRole}` : '/owner/users'
+          const separator = base.includes('?') ? '&' : '?'
 
           return (
             <GlassCard
               key={u.id}
+              data-testid="user-card"
+              data-user-email={u.email}
+              data-user-role={role}
+              data-current-user={isMe ? 'true' : 'false'}
               hover={false}
               className={isConfirming ? 'ring-1 ring-[var(--color-status-rejected-text)]' : isEditing ? 'ring-1 ring-[var(--color-accent)]' : ''}
             >
@@ -196,22 +263,22 @@ export default async function OwnerUsersPage({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-sm font-semibold text-[var(--color-text-primary)]">{u.display_name}</p>
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">
+                    <span className="text-[15px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">
                       {ROLE_LABELS[role] ?? role}
                     </span>
                     <span
-                      className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[var(--color-surface-elevated)]"
+                      className="text-[15px] font-mono font-bold px-1.5 py-0.5 rounded bg-[var(--color-surface-elevated)]"
                       style={{ color: LEVEL_COLOR[level] }}
                     >
                       L{level}
                     </span>
                     {isMe && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-accent-surface)] text-[var(--color-accent)]">
+                      <span className="text-[15px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-accent-surface)] text-[var(--color-accent)]">
                         You
                       </span>
                     )}
                     {u.force_password_change && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)]">
+                      <span className="text-[15px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)]">
                         Must change pw
                       </span>
                     )}
@@ -226,13 +293,13 @@ export default async function OwnerUsersPage({
                 {canManage && !isEditing && !isConfirming && (
                   <div className="flex gap-2 shrink-0">
                     <a
-                      href={`${base}&edit=${u.id}`}
+                      href={`${base}${separator}edit=${u.id}`}
                       className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
                     >
                       Edit
                     </a>
                     <a
-                      href={`${base}&confirm=${u.id}`}
+                      href={`${base}${separator}confirm=${u.id}`}
                       className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--color-status-rejected-bg)] text-[var(--color-status-rejected-text)] hover:opacity-80 transition-opacity"
                     >
                       Delete
@@ -249,11 +316,11 @@ export default async function OwnerUsersPage({
                 )}
               </div>
 
-              {isEditing && (
+              {isEditing && canManage && (
                 <div className="px-5 pb-4 pt-3 border-t border-[var(--color-border)] space-y-4">
                   <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Assign Role</p>
                   <div className="flex flex-wrap gap-2">
-                    {ASSIGNABLE.map((r) => (
+                    {assignableRoles.map((r) => (
                       <form key={r} action={setRole.bind(null, u.id, r)}>
                         <button
                           type="submit"
@@ -269,18 +336,26 @@ export default async function OwnerUsersPage({
                       </form>
                     ))}
                   </div>
-                  <form action={resetPassword.bind(null, u.id, u.display_name)}>
+                  <form action={resetPassword.bind(null, u.id)} className="flex gap-2 items-center">
+                    <input
+                      name="temp_password"
+                      type="password"
+                      required
+                      minLength={8}
+                      placeholder="New temp password"
+                      className="px-3 py-2 rounded-lg text-sm bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] border border-[var(--color-border)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] w-48"
+                    />
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)] hover:opacity-80 transition-opacity"
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)] hover:opacity-80 transition-opacity shrink-0"
                     >
-                      Reset Password
+                      Set Password
                     </button>
                   </form>
                 </div>
               )}
 
-              {isConfirming && (
+              {isConfirming && canManage && (
                 <div className="px-5 pb-4 pt-3 border-t border-[var(--color-border)] space-y-3">
                   <p className="text-sm font-semibold text-[var(--color-status-rejected-text)]">
                     Delete {u.display_name}?

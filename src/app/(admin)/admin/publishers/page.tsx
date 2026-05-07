@@ -44,7 +44,7 @@ export default async function PublishersPage() {
                       {orgs.map((m) => (
                         <span
                           key={m.organization_id}
-                          className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]"
+                          className="inline-flex items-center px-2 py-0.5 rounded text-[15px] font-medium bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]"
                         >
                           {m.organizations?.name} · {m.member_role}
                         </span>

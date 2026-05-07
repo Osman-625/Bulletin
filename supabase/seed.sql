@@ -177,6 +177,144 @@ BEGIN
     now() + interval '15 days'
   );
 
+  -- EVENT SAMPLE CONTENT WITH LOCAL PUBLIC POSTERS --------------------------
+
+  INSERT INTO public.announcements (
+    id, title, body, status, category_id, organization_id, author_id,
+    urgency, display_font, display_size,
+    banner_url, registration_link, published_at, expires_at
+  ) VALUES (
+    '10000000-0000-4000-8000-000000000101',
+    'Campus Night Market & Food Festival',
+    E'## Campus Night Market & Food Festival\n\nStudent Affairs is turning the central plaza into a night market with food booths, mini games, and live acoustic sets.\n\n### Event Details\n\n- **Date:** 22 May 2026\n- **Time:** 6:00 pm - 10:30 pm\n- **Venue:** Central Plaza\n- **Entry:** Free for all students and staff\n\nClubs can register one booth each. Booth slots are limited and confirmed on a first-ready, first-approved basis.',
+    'published',
+    cat_events,
+    v_org_id,
+    v_user_id,
+    'urgent',
+    'editorial',
+    'large',
+    '/sample-announcements/campus-festival.png',
+    'https://forms.gle/example-campus-night-market',
+    now() - interval '1 day',
+    now() + interval '21 days'
+  ) ON CONFLICT (id) DO UPDATE SET
+    title = excluded.title,
+    body = excluded.body,
+    status = excluded.status,
+    category_id = excluded.category_id,
+    organization_id = excluded.organization_id,
+    author_id = excluded.author_id,
+    urgency = excluded.urgency,
+    display_font = excluded.display_font,
+    display_size = excluded.display_size,
+    banner_url = excluded.banner_url,
+    registration_link = excluded.registration_link,
+    published_at = excluded.published_at,
+    expires_at = excluded.expires_at;
+
+  INSERT INTO public.announcements (
+    id, title, body, status, category_id, organization_id, author_id,
+    urgency, display_font, display_size,
+    banner_url, registration_link, published_at, expires_at
+  ) VALUES (
+    '10000000-0000-4000-8000-000000000102',
+    'Graduate Career Booth Week',
+    E'## Meet Employers Before Internship Season\n\nCareer Services is hosting booth sessions with employers from banking, logistics, hospitality, technology, and creative industries.\n\n### What to Bring\n\n- Updated resume\n- Student ID\n- Portfolio link if relevant\n- Questions about internship and graduate roles\n\nStudents may book resume clinics in 15-minute slots before meeting recruiters.',
+    'published',
+    cat_opps,
+    v_org_id,
+    v_user_id,
+    'important',
+    'clean',
+    'standard',
+    '/sample-announcements/career-booth.jpg',
+    'https://forms.gle/example-career-week',
+    now() - interval '2 days',
+    now() + interval '18 days'
+  ) ON CONFLICT (id) DO UPDATE SET
+    title = excluded.title,
+    body = excluded.body,
+    status = excluded.status,
+    category_id = excluded.category_id,
+    organization_id = excluded.organization_id,
+    author_id = excluded.author_id,
+    urgency = excluded.urgency,
+    display_font = excluded.display_font,
+    display_size = excluded.display_size,
+    banner_url = excluded.banner_url,
+    registration_link = excluded.registration_link,
+    published_at = excluded.published_at,
+    expires_at = excluded.expires_at;
+
+  INSERT INTO public.announcements (
+    id, title, body, status, category_id, organization_id, author_id,
+    urgency, display_font, display_size,
+    banner_url, registration_link, published_at, expires_at
+  ) VALUES (
+    '10000000-0000-4000-8000-000000000103',
+    'Student Creative Showcase Submissions',
+    E'## Share Your Best Work\n\nThe Student Creative Showcase is accepting posters, short films, photography, prototypes, and performance proposals.\n\n### Submission Categories\n\n- Visual design and illustration\n- Photography and short video\n- Product or software prototype\n- Live performance\n\nSelected work will be exhibited in the library gallery and featured on the public bulletin feed.',
+    'published',
+    cat_student_life,
+    v_org_id,
+    v_user_id,
+    'normal',
+    'editorial',
+    'large',
+    '/sample-announcements/student-showcase.png',
+    'https://forms.gle/example-creative-showcase',
+    now() - interval '3 days',
+    now() + interval '25 days'
+  ) ON CONFLICT (id) DO UPDATE SET
+    title = excluded.title,
+    body = excluded.body,
+    status = excluded.status,
+    category_id = excluded.category_id,
+    organization_id = excluded.organization_id,
+    author_id = excluded.author_id,
+    urgency = excluded.urgency,
+    display_font = excluded.display_font,
+    display_size = excluded.display_size,
+    banner_url = excluded.banner_url,
+    registration_link = excluded.registration_link,
+    published_at = excluded.published_at,
+    expires_at = excluded.expires_at;
+
+  INSERT INTO public.announcements (
+    id, title, body, status, category_id, organization_id, author_id,
+    urgency, display_font, display_size,
+    banner_url, registration_link, published_at, expires_at
+  ) VALUES (
+    '10000000-0000-4000-8000-000000000104',
+    'AI Study Skills Workshop',
+    E'## Use AI Responsibly for Learning\n\nThis workshop helps students use AI tools for planning, revision, feedback, and citation checking while staying within academic integrity rules.\n\n### Topics Covered\n\n- Prompting for study plans\n- Checking understanding without copying\n- Turning notes into revision questions\n- What must be cited or avoided\n\nBring a laptop and one current assignment brief.',
+    'published',
+    cat_academic,
+    v_org_id,
+    v_user_id,
+    'important',
+    'clean',
+    'compact',
+    '/sample-announcements/workshop-poster.jpeg',
+    'https://forms.gle/example-ai-study-skills',
+    now() - interval '4 days',
+    now() + interval '14 days'
+  ) ON CONFLICT (id) DO UPDATE SET
+    title = excluded.title,
+    body = excluded.body,
+    status = excluded.status,
+    category_id = excluded.category_id,
+    organization_id = excluded.organization_id,
+    author_id = excluded.author_id,
+    urgency = excluded.urgency,
+    display_font = excluded.display_font,
+    display_size = excluded.display_size,
+    banner_url = excluded.banner_url,
+    registration_link = excluded.registration_link,
+    published_at = excluded.published_at,
+    expires_at = excluded.expires_at;
+
   -- DRAFT ----------------------------------------------------
 
   INSERT INTO public.announcements (

@@ -36,7 +36,7 @@ export default async function AdminPage() {
                 <div className="flex items-start justify-between mb-3">
                   <Icon size={18} className={urgent ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-muted)]'} />
                   {urgent && value > 0 && (
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-accent)] bg-[var(--color-accent-surface)] px-2 py-0.5 rounded-full">
+                    <span className="text-[15px] font-bold uppercase tracking-wider text-[var(--color-accent)] bg-[var(--color-accent-surface)] px-2 py-0.5 rounded-full">
                       Action needed
                     </span>
                   )}

@@ -2,12 +2,20 @@
 
 import { redirect } from 'next/navigation'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
+import { getDefaultAppPath } from '@/lib/auth/authz'
+import { ensureAuthUserProfile } from '@/lib/auth/sync-users'
+import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
 
-  let email = formData.get('email') as string
-  const password = formData.get('password') as string
+  let email = ((formData.get('email') as string | null) ?? '').trim()
+  const password = (formData.get('password') as string | null) ?? ''
+
+  const rateLimit = await checkActionRateLimit('login', email)
+  if (rateLimit.limited) redirect('/login?error=too_many_attempts')
+
+  if (!email || !password) redirect('/login?error=invalid_credentials')
 
   // Username login: no @ means look up the real email
   if (!email.includes('@')) {
@@ -28,17 +36,17 @@ export async function login(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login?error=invalid_credentials')
 
+  await ensureAuthUserProfile(user)
+
   const { data: profile } = await supabase
     .from('users')
     .select('role, force_password_change')
     .eq('id', user.id)
     .single()
 
+  if (!profile?.role) redirect('/login?error=profile_missing')
   if (profile?.force_password_change) redirect('/change-password')
-  if (profile?.role === 'owner') redirect('/owner')
-  if (profile?.role === 'super_admin') redirect('/super-admin')
-  if (profile?.role === 'admin') redirect('/admin')
-  redirect('/dashboard')
+  redirect(getDefaultAppPath(profile.role))
 }
 
 export async function logout() {

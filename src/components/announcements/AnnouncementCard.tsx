@@ -1,5 +1,15 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { cn } from '@/lib/utils'
+import {
+  CARD_TITLE_SIZES,
+  FEATURED_TITLE_SIZES,
+  URGENCY_META,
+  getAnnouncementTitleFontClass,
+  normalizeAnnouncementDisplayFont,
+  normalizeAnnouncementDisplaySize,
+  normalizeAnnouncementUrgency,
+} from '@/lib/announcements/presentation'
 import type { AnnouncementWithRelations } from '@/lib/types'
 
 function stripMarkdown(md: string): string {
@@ -29,6 +39,40 @@ function isExpiringSoon(expiresAt: string | null): boolean {
   return diff > 0 && diff < 7 * 24 * 60 * 60 * 1000
 }
 
+function PosterImage({
+  src,
+  alt,
+  sizes,
+  priority = false,
+}: {
+  src: string
+  alt: string
+  sizes: string
+  priority?: boolean
+}) {
+  return (
+    <>
+      <Image
+        src={src}
+        alt=""
+        fill
+        aria-hidden="true"
+        className="scale-110 object-cover opacity-45 blur-xl saturate-[1.08]"
+        sizes={sizes}
+      />
+      <div className="absolute inset-0 bg-[var(--color-surface)]/35" aria-hidden="true" />
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        className="object-contain"
+        sizes={sizes}
+        priority={priority}
+      />
+    </>
+  )
+}
+
 // ── Standard card ──────────────────────────────────────────────────────────────
 export default function AnnouncementCard({
   announcement,
@@ -53,42 +97,51 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
 
   const catColor = categories?.color ?? '#C8102E'
   const expiring = isExpiringSoon(expires_at)
+  const urgency = normalizeAnnouncementUrgency(announcement.urgency)
+  const displayFont = normalizeAnnouncementDisplayFont(announcement.display_font)
+  const displaySize = normalizeAnnouncementDisplaySize(announcement.display_size)
+  const urgencyMeta = URGENCY_META[urgency]
+  const titleFontClass = getAnnouncementTitleFontClass(displayFont)
 
   return (
     <Link
       href={`/announcements/${id}`}
-      className="card-lift group relative flex flex-col overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      data-testid="announcement-card"
+      className="card-lift group relative flex min-h-[15rem] flex-col overflow-hidden rounded-[18px] outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       style={{
         background: 'var(--color-surface)',
         border: `1px solid var(--color-border)`,
-        boxShadow: '0 2px 16px rgba(0, 0, 0, 0.07)',
+        boxShadow: 'var(--shadow-soft)',
       }}
     >
-      {/* Category color bar */}
-      <div className="h-[3px] w-full" style={{ background: catColor }} />
-
       {/* Banner */}
       {banner_url && (
         <div
-          className="relative h-40 overflow-hidden"
+          className="relative aspect-[2/3] overflow-hidden"
           style={{ background: 'var(--color-surface-elevated)' }}
         >
-          <Image
+          <PosterImage
             src={banner_url}
             alt={title}
-            fill
-            className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
             sizes="(max-width: 640px) 100vw, 50vw"
           />
         </div>
       )}
 
-      <div className="flex flex-1 flex-col gap-3 p-5">
+      <div className="flex flex-1 flex-col gap-4 p-6">
         {/* Badges */}
         <div className="flex flex-wrap items-center gap-1.5">
+          {urgency !== 'normal' && (
+            <span
+              className="rounded-md px-3 py-1.5 text-[1.3125rem] font-semibold"
+              style={{ color: urgencyMeta.tone, background: urgencyMeta.background }}
+            >
+              {urgencyMeta.label}
+            </span>
+          )}
           {categories && (
             <span
-              className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[11px] font-semibold"
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[1.3125rem] font-semibold"
               style={{ color: catColor, background: catColor + '1A' }}
             >
               <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: catColor }} aria-hidden="true" />
@@ -97,7 +150,7 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
           )}
           {registration_link && !expiring && (
             <span
-              className="rounded-md px-2.5 py-1 text-[11px] font-semibold"
+              className="rounded-md px-3 py-1.5 text-[1.3125rem] font-semibold"
               style={{ color: 'var(--color-accent-inti)', background: 'rgba(200,16,46,0.09)' }}
             >
               Registration open
@@ -105,7 +158,7 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
           )}
           {expiring && (
             <span
-              className="rounded-md px-2.5 py-1 text-[11px] font-semibold"
+              className="rounded-md px-3 py-1.5 text-[1.3125rem] font-semibold"
               style={{ color: 'var(--color-gold)', background: 'rgba(212,148,31,0.12)' }}
             >
               Closing {formatDate(expires_at!)}
@@ -115,15 +168,15 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
 
         {/* Title */}
         <h2
-          className="font-display font-semibold leading-[1.3]"
-          style={{ fontSize: 17, color: 'var(--color-text-primary)' }}
+          className={cn(titleFontClass, 'font-semibold leading-[1.18]')}
+          style={{ fontSize: CARD_TITLE_SIZES[displaySize], color: 'var(--color-text-primary)' }}
         >
           {title}
         </h2>
 
         {/* Excerpt */}
         <p
-          className="flex-1 line-clamp-2 text-[13px] leading-relaxed"
+          className="line-clamp-3 flex-1 text-[1.59375rem] leading-[1.65]"
           style={{ color: 'var(--color-text-muted)' }}
         >
           {body ? stripMarkdown(body) : ''}
@@ -134,11 +187,11 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
           className="flex items-center justify-between gap-2 border-t pt-3"
           style={{ borderColor: 'var(--color-border)' }}
         >
-          <span className="truncate text-[11.5px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
+          <span className="truncate text-[1.40625rem] font-medium" style={{ color: 'var(--color-text-muted)' }}>
             {organizations?.name}
           </span>
           {published_at && (
-            <span className="flex-shrink-0 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+            <span className="flex-shrink-0 text-[1.3125rem]" style={{ color: 'var(--color-text-muted)' }}>
               {formatDate(published_at)}
             </span>
           )}
@@ -157,26 +210,39 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
 
   const catColor = categories?.color ?? '#C8102E'
   const expiring = isExpiringSoon(expires_at)
+  const urgency = normalizeAnnouncementUrgency(announcement.urgency)
+  const displayFont = normalizeAnnouncementDisplayFont(announcement.display_font)
+  const displaySize = normalizeAnnouncementDisplaySize(announcement.display_size)
+  const urgencyMeta = URGENCY_META[urgency]
+  const titleFontClass = getAnnouncementTitleFontClass(displayFont)
 
   return (
     <Link
       href={`/announcements/${id}`}
-      className="card-lift group relative flex flex-col overflow-hidden rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-offset-2 lg:flex-row"
+      data-testid="announcement-card"
+      className="card-lift group relative grid overflow-hidden rounded-[24px] outline-none focus-visible:ring-2 focus-visible:ring-offset-2 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]"
       style={{
         background: 'var(--color-surface)',
         border: `1px solid var(--color-border)`,
-        boxShadow: '0 2px 20px rgba(0, 0, 0, 0.08)',
-        minHeight: 220,
+        boxShadow: 'var(--shadow-soft)',
+        minHeight: 300,
       }}
     >
-
       {/* Content — left side */}
-      <div className="flex flex-1 flex-col justify-between p-7">
+      <div className="flex min-h-[18rem] flex-col justify-between p-7 sm:p-8 lg:p-10">
         {/* Badges */}
         <div className="mb-4 flex flex-wrap items-center gap-2">
+          {urgency !== 'normal' && (
+            <span
+              className="rounded-md px-3 py-1.5 text-[1.3125rem] font-semibold"
+              style={{ color: urgencyMeta.tone, background: urgencyMeta.background }}
+            >
+              {urgencyMeta.label}
+            </span>
+          )}
           {categories && (
             <span
-              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-[11px] font-semibold"
+              className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[1.3125rem] font-semibold"
               style={{ color: catColor, background: catColor + '1A' }}
             >
               <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: catColor }} aria-hidden="true" />
@@ -185,7 +251,7 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
           )}
           {registration_link && !expiring && (
             <span
-              className="rounded-md px-3 py-1 text-[11px] font-semibold"
+              className="rounded-md px-3 py-1.5 text-[1.3125rem] font-semibold"
               style={{ color: 'var(--color-accent-inti)', background: 'rgba(200,16,46,0.09)' }}
             >
               Registration open
@@ -193,7 +259,7 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
           )}
           {expiring && (
             <span
-              className="rounded-md px-3 py-1 text-[11px] font-semibold"
+              className="rounded-md px-3 py-1.5 text-[1.3125rem] font-semibold"
               style={{ color: 'var(--color-gold)', background: 'rgba(212,148,31,0.12)' }}
             >
               Closing {formatDate(expires_at!)}
@@ -203,15 +269,15 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
 
         {/* Title — larger for featured */}
         <h2
-          className="font-display font-semibold leading-[1.2] mb-3"
-          style={{ fontSize: 'clamp(1.35rem, 2.5vw, 1.65rem)', color: 'var(--color-text-primary)' }}
+          className={cn(titleFontClass, 'mb-4 font-semibold leading-[1.08]')}
+          style={{ fontSize: FEATURED_TITLE_SIZES[displaySize], color: 'var(--color-text-primary)' }}
         >
           {title}
         </h2>
 
         {/* Excerpt — 3 lines */}
         <p
-          className="line-clamp-3 flex-1 text-[14px] leading-relaxed mb-5"
+          className="mb-6 line-clamp-4 flex-1 text-[1.6875rem] leading-[1.7]"
           style={{ color: 'var(--color-text-muted)' }}
         >
           {body ? stripMarkdown(body) : ''}
@@ -222,11 +288,11 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
           className="flex items-center justify-between gap-2 border-t pt-4"
           style={{ borderColor: 'var(--color-border)' }}
         >
-          <span className="truncate text-[12px] font-medium" style={{ color: 'var(--color-text-muted)' }}>
+          <span className="truncate text-[1.40625rem] font-medium" style={{ color: 'var(--color-text-muted)' }}>
             {organizations?.name}
           </span>
           {published_at && (
-            <span className="flex-shrink-0 text-[12px]" style={{ color: 'var(--color-text-muted)' }}>
+            <span className="flex-shrink-0 text-[1.40625rem]" style={{ color: 'var(--color-text-muted)' }}>
               {formatDate(published_at)}
             </span>
           )}
@@ -235,16 +301,14 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
 
       {/* Visual panel — right side */}
       <div
-        className="relative min-h-[180px] overflow-hidden lg:w-[42%] lg:min-h-0"
+        className="relative aspect-[2/3] overflow-hidden lg:min-h-full"
         style={{ background: catColor + '14' }}
       >
         {banner_url ? (
-          <Image
+          <PosterImage
             src={banner_url}
             alt={title}
-            fill
-            className="object-cover transition-transform duration-700 group-hover:scale-[1.04]"
-            sizes="(max-width: 1024px) 100vw, 42vw"
+            sizes="(max-width: 1024px) 100vw, 40vw"
             priority
           />
         ) : (
@@ -252,7 +316,7 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
           <div className="flex h-full items-center justify-center">
             <span
               className="font-display font-bold select-none leading-none opacity-[0.18]"
-              style={{ fontSize: 'clamp(5rem, 10vw, 9rem)', color: catColor }}
+              style={{ fontSize: 'clamp(7.5rem, 15vw, 13.5rem)', color: catColor }}
             >
               {categories?.name?.[0] ?? organizations?.name?.[0] ?? 'B'}
             </span>

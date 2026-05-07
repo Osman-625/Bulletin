@@ -12,6 +12,7 @@ dist/
 # Environment variables — NEVER commit these
 .env
 .env.local
+.env.test
 .env.development.local
 .env.test.local
 .env.production.local
@@ -24,6 +25,14 @@ supabase/.temp
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+test-results/
+playwright-report/
+.next-dev-*.log
+.next-dev-*.err.log
+
+# Local generated snapshots
+Bulletin/
+graphify-out/
 
 # OS
 .DS_Store

@@ -90,7 +90,7 @@ export default async function InvitePublisherPage({
                       <input type="checkbox" name="org_ids" value={org.id} className="accent-[var(--color-accent)] h-4 w-4" />
                       <div>
                         <p className="text-sm text-[var(--color-text-primary)]">{org.name}</p>
-                        <p className="text-[10px] text-[var(--color-text-muted)] capitalize">{org.org_type}</p>
+                        <p className="text-[15px] text-[var(--color-text-muted)] capitalize">{org.org_type}</p>
                       </div>
                     </label>
                   ))}

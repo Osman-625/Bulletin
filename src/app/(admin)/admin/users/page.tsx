@@ -1,61 +1,102 @@
+import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
+import {
+  canAccessAdminArea,
+  canManageUser,
+  getCurrentAccessContext,
+  getDefaultAppPath,
+  type AppRole,
+  type ScopedUser,
+} from '@/lib/auth/authz'
+import { getVisibleUsersForAdmin } from '@/lib/data'
+import { createServiceClient } from '@/lib/supabase/server'
 
-export const metadata = { title: 'Users — Bulletin Admin' }
-
-const PRIVILEGE = { owner: 0, super_admin: 1, admin: 2, publisher: 3 } as const
-type UserRole = keyof typeof PRIVILEGE
+export const metadata = { title: 'Users - Bulletin Admin' }
 
 const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
   publisher: 'Publisher',
 }
 
-const LEVEL_COLOR: Record<number, string> = {
-  2: 'var(--color-accent-inti)',
-  3: 'var(--color-text-muted)',
+const LEVEL_COLOR: Record<string, string> = {
+  admin: 'var(--color-accent-inti)',
+  publisher: 'var(--color-text-muted)',
 }
 
-// Admin can assign siblings (L2) and children (L3)
-const ASSIGNABLE: UserRole[] = ['admin', 'publisher']
+const EDITABLE_ROLES: AppRole[] = ['publisher']
 
-async function assertCanManage(targetId: string) {
-  const [client, service] = await Promise.all([createClient(), createServiceClient()])
-  const { data: { user } } = await client.auth.getUser()
-  if (!user) redirect('/login')
-  const [{ data: me }, { data: target }] = await Promise.all([
-    service.from('users').select('role').eq('id', user.id).single(),
-    service.from('users').select('role').eq('id', targetId).single(),
-  ])
-  if (!me || !target) throw new Error('User not found')
-  const myLevel = PRIVILEGE[me.role as UserRole] ?? 99
-  const targetLevel = PRIVILEGE[target.role as UserRole] ?? 99
-  if (myLevel < 2 || targetLevel < myLevel) throw new Error('Insufficient privilege')
+async function getTargetUser(targetId: string): Promise<ScopedUser> {
+  const supabase = await createServiceClient()
+  const { data: target } = await supabase
+    .from('users')
+    .select('id, role, organization_members ( organization_id )')
+    .eq('id', targetId)
+    .single()
+
+  if (!target) throw new Error('User not found')
+
+  return {
+    id: target.id,
+    role: target.role as AppRole,
+    orgIds: (target.organization_members ?? []).map((membership) => membership.organization_id),
+  }
+}
+
+async function assertAdminCanManage(targetId: string) {
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+  if (!canAccessAdminArea(access.role)) redirect(getDefaultAppPath(access.role))
+
+  const actor: ScopedUser = {
+    id: access.userId,
+    role: access.role,
+    orgIds: access.orgIds,
+  }
+  const target = await getTargetUser(targetId)
+
+  if (!canManageUser(actor, target)) {
+    throw new Error('Insufficient privilege')
+  }
+
+  return { access, target }
 }
 
 async function setRole(userId: string, newRole: string) {
   'use server'
-  await assertCanManage(userId)
+
+  const { target } = await assertAdminCanManage(userId)
+  if (!EDITABLE_ROLES.includes(newRole as AppRole) || target.role !== 'publisher') {
+    throw new Error('Insufficient privilege')
+  }
+
   const supabase = await createServiceClient()
-  await supabase.from('users').update({ role: newRole }).eq('id', userId)
+  await supabase.from('users').update({ role: newRole as AppRole }).eq('id', userId)
   revalidatePath('/admin/users')
 }
 
-async function resetPassword(userId: string, displayName: string) {
+async function resetPassword(userId: string, formData: FormData) {
   'use server'
-  await assertCanManage(userId)
+
+  const { target } = await assertAdminCanManage(userId)
+  if (target.role !== 'publisher') throw new Error('Insufficient privilege')
+
   const supabase = await createServiceClient()
-  const temp = `Bulletin${Math.random().toString(36).slice(2, 8).toUpperCase()}!`
+  const temp = formData.get('temp_password') as string
+  if (!temp || temp.length < 8) redirect('/admin/users?msg=Password+must+be+at+least+8+characters.')
   await supabase.auth.admin.updateUserById(userId, { password: temp })
   await supabase.from('users').update({ force_password_change: true }).eq('id', userId)
-  redirect(`/admin/users?msg=${encodeURIComponent(`Temp password for ${displayName}: ${temp}`)}`)
+  revalidatePath('/admin/users')
+  redirect('/admin/users?msg=Password+updated.+User+will+be+prompted+to+change+it+on+next+login.')
 }
 
 async function deleteUser(userId: string) {
   'use server'
-  await assertCanManage(userId)
+
+  const { target } = await assertAdminCanManage(userId)
+  if (target.role !== 'publisher') throw new Error('Insufficient privilege')
+
   const supabase = await createServiceClient()
   await supabase.auth.admin.deleteUser(userId)
   revalidatePath('/admin/users')
@@ -67,31 +108,45 @@ export default async function AdminUsersPage({
   searchParams: Promise<{ role?: string; msg?: string; edit?: string; confirm?: string }>
 }) {
   const { role: filterRole, msg, edit, confirm } = await searchParams
-  const supabase = await createClient()
-  const { data: { user: me } } = await supabase.auth.getUser()
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+  if (!canAccessAdminArea(access.role)) redirect(getDefaultAppPath(access.role))
 
-  // Admin sees only admins (siblings) and publishers (children)
-  let query = supabase
-    .from('users')
-    .select('*')
-    .in('role', ['admin', 'publisher'])
-    .order('created_at', { ascending: false })
-  if (filterRole && ROLE_LABELS[filterRole]) query = query.eq('role', filterRole)
-  const { data: users } = await query
-  const { data: allUsers } = await supabase.from('users').select('role').in('role', ['admin', 'publisher'])
+  const actor: ScopedUser = {
+    id: access.userId,
+    role: access.role,
+    orgIds: access.orgIds,
+  }
 
-  const roleCounts = (allUsers ?? []).reduce<Record<string, number>>((acc, u) => {
-    acc[u.role as string] = (acc[u.role as string] ?? 0) + 1
+  const allUsers = await getVisibleUsersForAdmin()
+  let users = allUsers
+  if (filterRole && ROLE_LABELS[filterRole]) {
+    users = users.filter((user) => user.role === filterRole)
+  }
+
+  const roleCounts = allUsers.reduce<Record<string, number>>((acc, user) => {
+    acc[user.role as string] = (acc[user.role as string] ?? 0) + 1
     return acc
   }, {})
 
+  const base = filterRole ? `/admin/users?role=${filterRole}` : '/admin/users'
+  const separator = base.includes('?') ? '&' : '?'
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-[var(--color-text-primary)] tracking-tight">Users</h1>
-        <p className="text-[var(--color-text-secondary)] mt-1">
-          {users?.length ?? 0} users{filterRole ? ` · ${ROLE_LABELS[filterRole] ?? filterRole}` : ''}
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-[var(--color-text-primary)] tracking-tight">Users</h1>
+          <p className="text-[var(--color-text-secondary)] mt-1">
+            {users.length} users{filterRole ? ` - ${ROLE_LABELS[filterRole] ?? filterRole}` : ''}
+          </p>
+        </div>
+        <Link
+          href="/admin/publishers/invite"
+          className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity shrink-0"
+        >
+          Invite Publisher
+        </Link>
       </div>
 
       {msg && (
@@ -102,8 +157,11 @@ export default async function AdminUsersPage({
 
       <div className="flex flex-wrap gap-2">
         {[
-          { key: '', label: `All (${allUsers?.length ?? 0})` },
-          ...Object.keys(ROLE_LABELS).map((r) => ({ key: r, label: `${ROLE_LABELS[r]} (${roleCounts[r] ?? 0})` })),
+          { key: '', label: `All (${allUsers.length})` },
+          ...Object.keys(ROLE_LABELS).map((role) => ({
+            key: role,
+            label: `${ROLE_LABELS[role]} (${roleCounts[role] ?? 0})`,
+          })),
         ].map(({ key, label }) => (
           <a
             key={key}
@@ -120,74 +178,91 @@ export default async function AdminUsersPage({
       </div>
 
       <div className="space-y-2">
-        {(users ?? []).map((u) => {
-          const isMe = u.id === me?.id
-          const role = u.role as UserRole
-          const level = PRIVILEGE[role] ?? 3
-          const isEditing = edit === u.id
-          const isConfirming = confirm === u.id
-          const canManage = !isMe
-          const base = filterRole ? `/admin/users?role=${filterRole}` : '/admin/users'
+        {users.map((user) => {
+          const role = user.role as AppRole
+          const isEditing = edit === user.id
+          const isConfirming = confirm === user.id
+          const target: ScopedUser = {
+            id: user.id,
+            role,
+            orgIds: (user.organization_members ?? []).map((membership: { organization_id: string }) => membership.organization_id),
+          }
+          const canManage = role === 'publisher' && canManageUser(actor, target)
 
           return (
             <GlassCard
-              key={u.id}
+              key={user.id}
+              data-testid="user-card"
+              data-user-email={user.email}
+              data-user-role={role}
+              data-current-user={user.id === access.userId ? 'true' : 'false'}
               hover={false}
-              className={isConfirming ? 'ring-1 ring-[var(--color-status-rejected-text)]' : isEditing ? 'ring-1 ring-[var(--color-accent)]' : ''}
+              className={
+                isConfirming
+                  ? 'ring-1 ring-[var(--color-status-rejected-text)]'
+                  : isEditing
+                    ? 'ring-1 ring-[var(--color-accent)]'
+                    : ''
+              }
             >
               <div className="px-5 py-4 flex items-center gap-4">
                 <div className="h-9 w-9 rounded-full bg-[var(--color-surface-elevated)] flex items-center justify-center shrink-0">
                   <span className="text-sm font-bold text-[var(--color-text-secondary)]">
-                    {u.display_name.charAt(0).toUpperCase()}
+                    {user.display_name.charAt(0).toUpperCase()}
                   </span>
                 </div>
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">{u.display_name}</p>
-                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">
+                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">{user.display_name}</p>
+                    <span className="text-[15px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">
                       {ROLE_LABELS[role] ?? role}
                     </span>
                     <span
-                      className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-[var(--color-surface-elevated)]"
-                      style={{ color: LEVEL_COLOR[level] ?? 'var(--color-text-muted)' }}
+                      className="text-[15px] font-mono font-bold px-1.5 py-0.5 rounded bg-[var(--color-surface-elevated)]"
+                      style={{ color: LEVEL_COLOR[role] ?? 'var(--color-text-muted)' }}
                     >
-                      L{level}
+                      L{role === 'admin' ? 2 : 3}
                     </span>
-                    {isMe && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-accent-surface)] text-[var(--color-accent)]">
+                    {user.id === access.userId && (
+                      <span className="text-[15px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-accent-surface)] text-[var(--color-accent)]">
                         You
                       </span>
                     )}
-                    {u.force_password_change && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)]">
+                    {user.force_password_change && (
+                      <span className="text-[15px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)]">
                         Must change pw
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{u.email}</p>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{user.email}</p>
                 </div>
 
                 <p className="text-xs font-mono text-[var(--color-text-muted)] shrink-0 hidden sm:block">
-                  {new Date(u.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {new Date(user.created_at).toLocaleDateString('en-MY', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })}
                 </p>
 
                 {canManage && !isEditing && !isConfirming && (
                   <div className="flex gap-2 shrink-0">
                     <a
-                      href={`${base}&edit=${u.id}`}
+                      href={`${base}${separator}edit=${user.id}`}
                       className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
                     >
                       Edit
                     </a>
                     <a
-                      href={`${base}&confirm=${u.id}`}
+                      href={`${base}${separator}confirm=${user.id}`}
                       className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--color-status-rejected-bg)] text-[var(--color-status-rejected-text)] hover:opacity-80 transition-opacity"
                     >
                       Delete
                     </a>
                   </div>
                 )}
+
                 {(isEditing || isConfirming) && (
                   <a
                     href={base}
@@ -198,46 +273,45 @@ export default async function AdminUsersPage({
                 )}
               </div>
 
-              {isEditing && (
+              {isEditing && canManage && (
                 <div className="px-5 pb-4 pt-3 border-t border-[var(--color-border)] space-y-4">
-                  <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Assign Role</p>
-                  <div className="flex flex-wrap gap-2">
-                    {ASSIGNABLE.map((r) => (
-                      <form key={r} action={setRole.bind(null, u.id, r)}>
-                        <button
-                          type="submit"
-                          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${
-                            role === r
-                              ? 'bg-[var(--color-accent)] text-white'
-                              : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-surface)] hover:text-[var(--color-accent)]'
-                          }`}
-                        >
-                          {ROLE_LABELS[r]}{' '}
-                          <span className="opacity-50 font-mono">L{PRIVILEGE[r]}</span>
-                        </button>
-                      </form>
-                    ))}
-                  </div>
-                  <form action={resetPassword.bind(null, u.id, u.display_name)}>
+                  <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Publisher Controls</p>
+                  <form action={setRole.bind(null, user.id, 'publisher')}>
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)] hover:opacity-80 transition-opacity"
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--color-accent)] text-white"
                     >
-                      Reset Password
+                      Keep as Publisher <span className="opacity-60 font-mono">L3</span>
+                    </button>
+                  </form>
+                  <form action={resetPassword.bind(null, user.id)} className="flex gap-2 items-center">
+                    <input
+                      name="temp_password"
+                      type="password"
+                      required
+                      minLength={8}
+                      placeholder="New temp password"
+                      className="px-3 py-2 rounded-lg text-sm bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] border border-[var(--color-border)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] w-48"
+                    />
+                    <button
+                      type="submit"
+                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)] hover:opacity-80 transition-opacity shrink-0"
+                    >
+                      Set Password
                     </button>
                   </form>
                 </div>
               )}
 
-              {isConfirming && (
+              {isConfirming && canManage && (
                 <div className="px-5 pb-4 pt-3 border-t border-[var(--color-border)] space-y-3">
                   <p className="text-sm font-semibold text-[var(--color-status-rejected-text)]">
-                    Delete {u.display_name}?
+                    Delete {user.display_name}?
                   </p>
                   <p className="text-xs text-[var(--color-text-secondary)]">
                     This permanently removes their account and all associated data. This cannot be undone.
                   </p>
-                  <form action={deleteUser.bind(null, u.id)}>
+                  <form action={deleteUser.bind(null, user.id)}>
                     <button
                       type="submit"
                       className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--color-status-rejected-text)] text-white hover:opacity-80 transition-opacity"

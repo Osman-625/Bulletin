@@ -15,7 +15,11 @@ export type DbOrgCategoryPermission = Tables<'org_category_permissions'>
 // ─── Enum types ──────────────────────────────────────────────
 
 export type PostStatus = Enums<'post_status'>
+export type AnnouncementUrgency = Enums<'announcement_urgency'>
+export type AnnouncementDisplayFont = Enums<'announcement_display_font'>
+export type AnnouncementDisplaySize = Enums<'announcement_display_size'>
 export type UserRole = Enums<'user_role'>
+export type AppRole = UserRole | 'owner'
 export type OrgStatus = Enums<'org_status'>
 export type OrgType = Enums<'org_type'>
 export type OrgMemberRole = Enums<'org_member_role'>

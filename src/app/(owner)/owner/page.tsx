@@ -1,4 +1,4 @@
-import { Crown, Tag, Users, ScrollText, BarChart3, ArrowRight } from 'lucide-react'
+import { Crown, Tag, Users, ScrollText, BarChart3, ArrowRight, ClipboardList, Megaphone, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { CountUp } from '@/components/dashboard/CountUp'
@@ -35,6 +35,9 @@ export default async function OwnerPage() {
   const publishRate = totalAnnouncements ? Math.round(((publishedCount ?? 0) / totalAnnouncements) * 100) : 0
 
   const quickLinks = [
+    { href: '/super-admin', label: 'Super Admin Workspace', icon: ShieldCheck, desc: 'Use platform admin tools and user oversight' },
+    { href: '/admin', label: 'Admin Workspace', icon: ClipboardList, desc: 'Review queues, organizations, publishers, and reports' },
+    { href: '/dashboard', label: 'Publisher Workspace', icon: Megaphone, desc: 'Create and manage announcement content' },
     { href: '/owner/analytics', label: 'Analytics', icon: BarChart3, desc: 'Full platform analytics and system metrics' },
     { href: '/owner/users', label: 'All Users', icon: Users, desc: 'Manage all roles including super admins' },
     { href: '/owner/categories', label: 'Categories', icon: Tag, desc: 'Create, edit, and force delete categories' },
@@ -142,13 +145,13 @@ export default async function OwnerPage() {
               return (
                 <div key={i} className="flex items-start gap-3">
                   <div className="h-6 w-6 rounded-full bg-[var(--color-surface-elevated)] flex items-center justify-center shrink-0 mt-0.5">
-                    <span className="text-[9px] font-bold text-[var(--color-text-secondary)]">{actor.charAt(0).toUpperCase()}</span>
+                    <span className="text-[13.5px] font-bold text-[var(--color-text-secondary)]">{actor.charAt(0).toUpperCase()}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-[var(--color-text-primary)] truncate">{entry.action}</p>
-                    <p className="text-[10px] text-[var(--color-text-muted)]">{actor} · {entry.target_type}</p>
+                    <p className="text-[15px] text-[var(--color-text-muted)]">{actor} · {entry.target_type}</p>
                   </div>
-                  <p className="text-[10px] font-mono text-[var(--color-text-muted)] shrink-0">
+                  <p className="text-[15px] font-mono text-[var(--color-text-muted)] shrink-0">
                     {new Date(entry.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
                   </p>
                 </div>

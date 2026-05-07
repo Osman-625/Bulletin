@@ -2,13 +2,19 @@
 
 import { useTheme } from 'next-themes'
 import { Sun, Moon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useSyncExternalStore } from 'react'
+
+const emptySubscribe = () => () => {}
+const getClientSnapshot = () => true
+const getServerSnapshot = () => false
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => setMounted(true), [])
+  const mounted = useSyncExternalStore(
+    emptySubscribe,
+    getClientSnapshot,
+    getServerSnapshot
+  )
 
   if (!mounted) return <div className="w-8 h-8" />
 

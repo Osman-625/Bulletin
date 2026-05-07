@@ -7,11 +7,17 @@ import { cn } from '@/lib/utils'
 import { GlassCard } from './GlassCard'
 import { StatusBadge } from './StatusBadge'
 import type { PostStatus } from '@/lib/types'
+import {
+  URGENCY_META,
+  normalizeAnnouncementUrgency,
+  type AnnouncementUrgency,
+} from '@/lib/announcements/presentation'
 
 export type AnnouncementRowData = {
   id: string
   title: string
   status: PostStatus
+  urgency: AnnouncementUrgency
   banner_url: string | null
   published_at: string | null
   updated_at: string
@@ -28,6 +34,8 @@ interface AnnouncementRowProps {
 export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
   const router = useRouter()
   const isDraft = announcement.status === 'draft'
+  const urgency = normalizeAnnouncementUrgency(announcement.urgency)
+  const urgencyMeta = URGENCY_META[urgency]
 
   function handleRowClick(e: React.MouseEvent) {
     // Prevent navigation if clicking action buttons
@@ -77,7 +85,7 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
               alt={announcement.title}
               width={64}
               height={64}
-              className="w-full h-full object-cover"
+              className="h-full w-full object-contain"
             />
           ) : (
             <FileImage
@@ -93,6 +101,14 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
             {(() => {
               return <StatusBadge status={announcement.status as 'draft' | 'submitted' | 'published' | 'rejected' | 'expired' | 'archived'} />
             })()}
+            {urgency !== 'normal' && (
+              <span
+                className="rounded px-2 py-0.5 text-[15px] font-bold uppercase tracking-wider"
+                style={{ color: urgencyMeta.tone, background: urgencyMeta.background }}
+              >
+                {urgencyMeta.label}
+              </span>
+            )}
             <span className="text-lg font-semibold text-[var(--color-text-primary)] truncate leading-tight">
               {announcement.title}
             </span>

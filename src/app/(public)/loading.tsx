@@ -1,5 +1,5 @@
-// Skeleton matches the actual feed layout:
-// hero + stats bar + filter pills + featured card + 2-col grid
+// Skeleton matches the public feed layout:
+// masthead + search/filter row + pinned card + card grid
 
 function Bone({
   className = '',
@@ -83,46 +83,60 @@ function CardSkeleton() {
 
 export default function PublicLoading() {
   return (
-    <div style={{ minHeight: '100dvh' }}>
-      <main className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6">
+    <div className="min-h-[100dvh]">
+      <main className="w-full px-4 py-8 sm:px-6 sm:py-10 lg:px-10 xl:px-14 2xl:px-16">
+        <div className="mx-auto flex w-full max-w-[112rem] flex-col gap-8">
+          <section className="flex flex-col gap-7 border-b border-[var(--color-border)] pb-8 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-[46rem]">
+              <div className="mb-5 flex items-center gap-3">
+                <div
+                  className="h-7 w-1.5 rounded-full"
+                  style={{ background: 'var(--color-border)' }}
+                />
+                <Bone className="h-3 w-52" />
+              </div>
+              <div className="flex flex-col gap-3">
+                <Bone className="h-16 w-full max-w-[34rem] rounded-lg sm:h-20 lg:h-32" />
+                <Bone className="h-16 w-4/5 max-w-[30rem] rounded-lg sm:h-20 lg:h-32" />
+              </div>
+              <div className="mt-6 flex flex-col gap-2">
+                <Bone className="h-4 w-full max-w-[30rem]" />
+                <Bone className="h-4 w-4/5 max-w-[24rem]" />
+              </div>
+            </div>
 
-        {/* Hero skeleton */}
-        <div className="mb-10">
-          <div className="mb-3 flex items-center gap-3">
-            <div
-              className="h-6 w-1.5 rounded-full"
-              style={{ background: 'var(--color-border)' }}
-            />
-            <Bone className="h-3 w-52" />
-          </div>
-          <Bone className="mb-2 h-16 w-72 rounded-lg" />
-          <Bone className="h-4 w-64" />
-        </div>
+            <div className="flex w-full flex-col gap-4 lg:max-w-[34rem] lg:items-end">
+              <Bone className="h-3 w-36" />
+            </div>
+          </section>
 
-        {/* Stats bar skeleton */}
-        <div
-          className="mb-8 flex flex-wrap items-center gap-5 rounded-xl border px-5 py-3"
-          style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
-        >
-          <Bone className="h-4 w-16" />
-          <Bone className="h-4 w-20" />
-          <Bone className="h-4 w-28" />
-        </div>
+          <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
+              <Bone className="h-11 min-w-0 flex-1 rounded-[10px]" />
+              <Bone className="h-11 w-24 rounded-[10px]" />
+            </div>
+            <div className="flex flex-wrap gap-2 lg:max-w-[46rem]">
+              {[40, 72, 64, 80, 56].map((w, i) => (
+                <Bone key={i} className="h-[30px] rounded-full" style={{ width: w }} />
+              ))}
+            </div>
+          </section>
 
-        {/* Filter skeleton */}
-        <div className="mb-8 flex gap-2">
-          {[40, 72, 64, 80, 56].map((w, i) => (
-            <Bone key={i} className="h-[30px] rounded-full" style={{ width: w }} />
-          ))}
-        </div>
-
-        {/* Feed skeleton */}
-        <div className="flex flex-col gap-4">
-          <FeaturedSkeleton />
-          <div className="grid gap-4 sm:grid-cols-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <CardSkeleton key={i} />
-            ))}
+          <div className="flex flex-col gap-8">
+            <section>
+              <Bone className="mb-3 h-3 w-16" />
+              <FeaturedSkeleton />
+            </section>
+            <section>
+              <div className="mb-3 border-t border-[var(--color-border)] pt-5">
+                <Bone className="h-3 w-44" />
+              </div>
+              <div className="grid gap-4 xl:grid-cols-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <CardSkeleton key={i} />
+                ))}
+              </div>
+            </section>
           </div>
         </div>
       </main>

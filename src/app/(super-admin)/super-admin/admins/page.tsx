@@ -39,7 +39,7 @@ export default async function AdminsPage() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="text-sm font-semibold text-[var(--color-text-primary)]">{a.display_name}</p>
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${roleBadge(a.role)}`}>
+                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[15px] font-bold uppercase tracking-wider ${roleBadge(a.role)}`}>
                   {a.role.replace('_', ' ')}
                 </span>
               </div>

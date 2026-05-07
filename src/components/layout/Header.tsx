@@ -11,7 +11,7 @@ export default function Header() {
       }}
     >
       {/* INTI red top stripe */}
-      <div className="h-[3px]" style={{ background: 'var(--color-accent-inti)' }} />
+      <div className="h-[5px]" style={{ background: 'var(--color-accent-inti)' }} />
 
       {/* Nav bar — frosted glass */}
       <div
@@ -21,18 +21,21 @@ export default function Header() {
           WebkitBackdropFilter: 'blur(18px)',
         }}
       >
-        <div className="mx-auto flex h-[70px] max-w-5xl items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-[147px] w-full max-w-[169rem] items-center justify-between px-4 sm:h-[162px] sm:px-6 lg:px-10 xl:px-12">
 
           {/* Wordmark */}
-          <Link href="/" className="group flex items-center gap-3 focus:outline-none">
+          <Link
+            href="/"
+            className="group flex items-center gap-6 rounded-full pr-3 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+          >
             {/* Logo mark */}
-            <div className="flex-shrink-0 transition-transform duration-200 group-hover:scale-105">
+            <div className="flex-shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-105">
               <Image
                 src="/bulletin_logo.png"
                 alt="Bulletin"
-                width={48}
-                height={48}
-                className="h-12 w-12 object-contain"
+                width={128}
+                height={128}
+                className="h-[105px] w-[105px] object-contain sm:h-[128px] sm:w-[128px]"
                 priority
               />
             </div>
@@ -40,13 +43,13 @@ export default function Header() {
             {/* Text */}
             <div>
               <div
-                className="font-display font-bold leading-none tracking-tight transition-colors duration-200"
-                style={{ fontSize: 22, color: 'var(--color-text-primary)' }}
+                className="font-display font-bold leading-none tracking-tight transition-colors duration-300"
+                style={{ fontSize: 'clamp(4.365rem, 5.625vw, 5.49rem)', color: 'var(--color-text-primary)' }}
               >
                 Bulletin
               </div>
               <div
-                className="mt-[4px] text-[9px] font-medium tracking-[0.22em] uppercase leading-none"
+                className="mt-2.5 text-[22.5px] font-semibold uppercase leading-none tracking-[0.24em] sm:text-[27px]"
                 style={{ color: 'var(--color-text-muted)' }}
               >
                 INTI International University
@@ -55,15 +58,14 @@ export default function Header() {
           </Link>
 
           {/* Right actions */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-4">
             <ThemeToggle />
             <Link
               href="/login"
-              className="inline-flex cursor-pointer items-center rounded-[10px] px-4 py-[9px] font-sans text-[13px] font-semibold text-white focus:outline-none focus-visible:ring-2 active:scale-[0.97]"
+              className="inline-flex min-h-[4.5rem] cursor-pointer items-center rounded-full px-8 font-sans text-[31.5px] font-semibold text-white transition-[transform,box-shadow,background] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] active:scale-[0.97] sm:px-9"
               style={{
                 background: 'var(--color-accent-inti)',
-                boxShadow: '0 1px 4px rgba(200, 16, 46, 0.25)',
-                transition: 'all 0.25s cubic-bezier(0.16, 1, 0.3, 1)',
+                boxShadow: '0 10px 28px color-mix(in oklab, var(--color-accent-inti) 24%, transparent)',
               }}
             >
               Sign in

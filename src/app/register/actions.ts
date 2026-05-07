@@ -2,18 +2,25 @@
 
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
 
 export async function completeRegistration(formData: FormData) {
-  const token = formData.get('token') as string
-  const displayName = (formData.get('display_name') as string).trim()
-  const password = formData.get('password') as string
+  const token = ((formData.get('token') as string | null) ?? '').trim()
+  const encodedToken = encodeURIComponent(token)
+  const displayName = ((formData.get('display_name') as string | null) ?? '').trim()
+  const password = (formData.get('password') as string | null) ?? ''
+
+  const rateLimit = await checkActionRateLimit('register', token)
+  if (rateLimit.limited) {
+    redirect(`/register?token=${encodedToken}&error=Too+many+registration+attempts`)
+  }
 
   if (!token || !displayName || !password) {
-    redirect(`/register?token=${token}&error=All+fields+are+required`)
+    redirect(`/register?token=${encodedToken}&error=All+fields+are+required`)
   }
 
   if (password.length < 8) {
-    redirect(`/register?token=${token}&error=Password+must+be+at+least+8+characters`)
+    redirect(`/register?token=${encodedToken}&error=Password+must+be+at+least+8+characters`)
   }
 
   const admin = createAdminClient()
@@ -40,7 +47,7 @@ export async function completeRegistration(formData: FormData) {
   })
 
   if (createErr || !created.user) {
-    redirect(`/register?token=${token}&error=${encodeURIComponent(createErr?.message ?? 'Failed to create account')}`)
+    redirect(`/register?token=${encodedToken}&error=${encodeURIComponent(createErr?.message ?? 'Failed to create account')}`)
   }
 
   const userId = created.user.id
