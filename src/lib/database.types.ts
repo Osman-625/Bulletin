@@ -51,6 +51,9 @@ export type Database = {
           author_id: string
           registration_link: string | null
           rejection_comment: string | null
+          scheduled_publish_at: string | null
+          pinned_until: string | null
+          view_count: number
           published_at: string | null
           expires_at: string | null
           archived_at: string | null
@@ -71,6 +74,9 @@ export type Database = {
           author_id: string
           registration_link?: string | null
           rejection_comment?: string | null
+          scheduled_publish_at?: string | null
+          pinned_until?: string | null
+          view_count?: number
           published_at?: string | null
           expires_at?: string | null
           archived_at?: string | null
@@ -91,6 +97,9 @@ export type Database = {
           author_id?: string
           registration_link?: string | null
           rejection_comment?: string | null
+          scheduled_publish_at?: string | null
+          pinned_until?: string | null
+          view_count?: number
           published_at?: string | null
           expires_at?: string | null
           archived_at?: string | null
@@ -201,6 +210,49 @@ export type Database = {
         }
         Relationships: [
           { foreignKeyName: 'invitations_invited_by_fkey'; columns: ['invited_by']; referencedRelation: 'users'; referencedColumns: ['id'] },
+        ]
+      }
+      notifications: {
+        Row: {
+          id: string
+          recipient_id: string
+          actor_id: string | null
+          announcement_id: string | null
+          type: 'announcement_submitted' | 'announcement_approved' | 'announcement_rejected'
+          title: string
+          body: string | null
+          href: string | null
+          read_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          recipient_id: string
+          actor_id?: string | null
+          announcement_id?: string | null
+          type: 'announcement_submitted' | 'announcement_approved' | 'announcement_rejected'
+          title: string
+          body?: string | null
+          href?: string | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          recipient_id?: string
+          actor_id?: string | null
+          announcement_id?: string | null
+          type?: 'announcement_submitted' | 'announcement_approved' | 'announcement_rejected'
+          title?: string
+          body?: string | null
+          href?: string | null
+          read_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          { foreignKeyName: 'notifications_recipient_id_fkey'; columns: ['recipient_id']; referencedRelation: 'users'; referencedColumns: ['id'] },
+          { foreignKeyName: 'notifications_actor_id_fkey'; columns: ['actor_id']; referencedRelation: 'users'; referencedColumns: ['id'] },
+          { foreignKeyName: 'notifications_announcement_id_fkey'; columns: ['announcement_id']; referencedRelation: 'announcements'; referencedColumns: ['id'] },
         ]
       }
       org_category_permissions: {
@@ -335,6 +387,10 @@ export type Database = {
       current_user_role: {
         Args: Record<string, never>
         Returns: Database['public']['Enums']['user_role']
+      }
+      increment_announcement_view: {
+        Args: { p_announcement_id: string }
+        Returns: void
       }
     }
     Enums: {

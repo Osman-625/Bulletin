@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { logAuditEvent } from '@/lib/audit'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { getDefaultAppPath } from '@/lib/auth/authz'
 import { ensureAuthUserProfile } from '@/lib/auth/sync-users'
@@ -45,12 +46,33 @@ export async function login(formData: FormData) {
     .single()
 
   if (!profile?.role) redirect('/login?error=profile_missing')
+  await logAuditEvent({
+    actorId: user.id,
+    action: 'auth.login',
+    targetType: 'session',
+    targetId: user.id,
+    metadata: {
+      email: user.email ?? email,
+      role: profile.role,
+    },
+  })
+
   if (profile?.force_password_change) redirect('/change-password')
   redirect(getDefaultAppPath(profile.role))
 }
 
 export async function logout() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    await logAuditEvent({
+      actorId: user.id,
+      action: 'auth.logout',
+      targetType: 'session',
+      targetId: user.id,
+      metadata: { email: user.email ?? null },
+    })
+  }
   await supabase.auth.signOut()
   redirect('/login')
 }

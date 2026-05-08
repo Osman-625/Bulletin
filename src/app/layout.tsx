@@ -1,23 +1,26 @@
 import type { Metadata } from 'next'
-import { DM_Sans, Geist_Mono, Playfair_Display } from 'next/font/google'
+import { Geist_Mono, Libre_Franklin, Newsreader } from 'next/font/google'
 import { Providers } from './providers'
 import './globals.css'
 
-const dmSans = DM_Sans({
+const libreFranklin = Libre_Franklin({
   variable: '--font-sans',
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600'],
+  weight: ['300', '400', '500', '600', '700'],
+  display: 'swap',
 })
 
 const geistMono = Geist_Mono({
   variable: '--font-mono',
   subsets: ['latin'],
+  display: 'swap',
 })
 
-const playfair = Playfair_Display({
-  variable: '--font-playfair',
+const newsreader = Newsreader({
+  variable: '--font-newsreader',
   subsets: ['latin'],
-  weight: ['400', '600', '700'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
@@ -36,7 +39,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSans.variable} ${geistMono.variable} ${playfair.variable} h-full antialiased`}
+      className={`${libreFranklin.variable} ${geistMono.variable} ${newsreader.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col" suppressHydrationWarning>

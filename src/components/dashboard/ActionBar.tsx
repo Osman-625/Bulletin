@@ -15,6 +15,8 @@ interface ActionBarProps {
   onUnpublish?: () => void
   isSaving: boolean
   isPublishing: boolean
+  saveLabel?: string
+  publishLabel?: string
 }
 
 export function ActionBar({
@@ -26,6 +28,8 @@ export function ActionBar({
   onUnpublish,
   isSaving,
   isPublishing,
+  saveLabel = 'Save Draft',
+  publishLabel = 'Submit for Review',
 }: ActionBarProps) {
   return (
     <div
@@ -95,7 +99,7 @@ export function ActionBar({
               )}
             >
               {isSaving && <Loader2 size={14} className="animate-spin" />}
-              Save Draft
+              {saveLabel}
             </button>
             <button
               type="button"
@@ -111,7 +115,7 @@ export function ActionBar({
               )}
             >
               {isPublishing && <Loader2 size={14} className="animate-spin" />}
-              Submit for Review
+              {publishLabel}
             </button>
           </>
         )}

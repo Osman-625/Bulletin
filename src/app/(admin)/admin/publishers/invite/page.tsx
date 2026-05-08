@@ -1,8 +1,9 @@
 import Link from 'next/link'
-import { ArrowLeft, Copy } from 'lucide-react'
+import { ArrowLeft, Check } from 'lucide-react'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { getAllOrganizations } from '@/lib/data'
 import { invitePublisher } from './actions'
+import { CopyInviteLink } from './CopyInviteLink'
 
 export const metadata = { title: 'Invite Publisher — Bulletin Admin' }
 
@@ -38,7 +39,7 @@ export default async function InvitePublisherPage({
       {inviteLink ? (
         <GlassCard hover={false} className="p-6 space-y-4">
           <div className="flex items-center gap-2 text-[var(--color-status-published-text)]">
-            <span className="text-xl">✓</span>
+            <Check size={18} aria-hidden="true" />
             <p className="font-semibold">Invite created for {email}</p>
           </div>
           <p className="text-sm text-[var(--color-text-secondary)]">
@@ -46,14 +47,7 @@ export default async function InvitePublisherPage({
           </p>
           <div className="flex items-center gap-2 p-3 rounded-xl bg-[var(--color-surface-elevated)] border border-[var(--color-border)]">
             <code className="flex-1 text-xs text-[var(--color-text-primary)] break-all font-mono">{inviteLink}</code>
-            <button
-              type="button"
-              aria-label="Copy link"
-              onClick={undefined}
-              className="shrink-0 p-2 rounded-lg hover:bg-[var(--color-surface-high)] transition-colors"
-            >
-              <Copy size={14} className="text-[var(--color-text-muted)]" />
-            </button>
+            <CopyInviteLink value={inviteLink} />
           </div>
           <Link
             href="/admin/publishers/invite"

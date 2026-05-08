@@ -1,6 +1,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { GlassCard } from '@/components/dashboard/GlassCard'
+import { logAuditEvent } from '@/lib/audit'
 import {
   canAccessSuperAdminArea,
   canManageUser,
@@ -38,16 +39,16 @@ async function getUsers() {
   return data ?? []
 }
 
-async function getTargetUser(targetId: string): Promise<ScopedUser> {
+async function getTargetUser(targetId: string): Promise<ScopedUser & { email: string; displayName: string }> {
   const supabase = await createServiceClient()
   const { data: user } = await supabase
     .from('users')
-    .select('id, role')
+    .select('id, email, display_name, role')
     .eq('id', targetId)
     .single()
 
   if (!user) throw new Error('User not found')
-  return { id: user.id, role: user.role as AppRole, orgIds: [] }
+  return { id: user.id, email: user.email, displayName: user.display_name, role: user.role as AppRole, orgIds: [] }
 }
 
 async function assertSuperAdminCanManage(targetId: string) {
@@ -104,6 +105,17 @@ async function createUser(formData: FormData) {
     { id: authData.user.id, email, display_name: displayName, role },
     { onConflict: 'id' }
   )
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'user.created',
+    targetType: 'user',
+    targetId: authData.user.id,
+    metadata: {
+      email,
+      display_name: displayName,
+      role,
+    },
+  })
 
   revalidatePath('/super-admin/users')
   redirect('/super-admin/users')
@@ -112,25 +124,49 @@ async function createUser(formData: FormData) {
 async function setRole(userId: string, newRole: string) {
   'use server'
 
-  const { access } = await assertSuperAdminCanManage(userId)
+  const { access, target } = await assertSuperAdminCanManage(userId)
   const assignableRoles = getAssignableRoles(access.role)
   const role = newRole as AppRole
   if (!assignableRoles.includes(role)) throw new Error('Cannot manage this user')
 
   const supabase = await createServiceClient()
   await supabase.from('users').update({ role }).eq('id', userId)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'user.role_changed',
+    targetType: 'user',
+    targetId: userId,
+    metadata: {
+      email: target.email,
+      display_name: target.displayName,
+      previous_role: target.role,
+      new_role: role,
+    },
+  })
   revalidatePath('/super-admin/users')
 }
 
 async function resetPassword(userId: string, formData: FormData) {
   'use server'
 
-  await assertSuperAdminCanManage(userId)
+  const { access, target } = await assertSuperAdminCanManage(userId)
   const supabase = await createServiceClient()
   const temp = formData.get('temp_password') as string
   if (!temp || temp.length < 8) redirect('/super-admin/users?msg=Password+must+be+at+least+8+characters.')
   await supabase.auth.admin.updateUserById(userId, { password: temp })
   await supabase.from('users').update({ force_password_change: true }).eq('id', userId)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'user.password_reset',
+    targetType: 'user',
+    targetId: userId,
+    metadata: {
+      email: target.email,
+      display_name: target.displayName,
+      role: target.role,
+      force_password_change: true,
+    },
+  })
   revalidatePath('/super-admin/users')
   redirect('/super-admin/users?msg=Password+updated.+User+will+be+prompted+to+change+it+on+next+login.')
 }
@@ -138,9 +174,20 @@ async function resetPassword(userId: string, formData: FormData) {
 async function deleteUser(userId: string) {
   'use server'
 
-  await assertSuperAdminCanManage(userId)
+  const { access, target } = await assertSuperAdminCanManage(userId)
   const supabase = await createServiceClient()
   await supabase.auth.admin.deleteUser(userId)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'user.deleted',
+    targetType: 'user',
+    targetId: userId,
+    metadata: {
+      email: target.email,
+      display_name: target.displayName,
+      previous_role: target.role,
+    },
+  })
   revalidatePath('/super-admin/users')
 }
 

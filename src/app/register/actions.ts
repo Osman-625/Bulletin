@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { logAuditEvent } from '@/lib/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
 
@@ -74,6 +75,22 @@ export async function completeRegistration(formData: FormData) {
 
   // Mark invitation as accepted
   await admin.from('invitations').update({ accepted_at: new Date().toISOString() }).eq('token', token)
+
+  await logAuditEvent({
+    actorId: userId,
+    action: 'invitation.accepted',
+    targetType: 'invitation',
+    targetId: invitation.id,
+    metadata: {
+      email: invitation.email,
+      role: invitation.role,
+      member_role: invitation.member_role,
+      org_ids: invitation.org_ids ?? [],
+      invited_by: invitation.invited_by,
+      new_user_id: userId,
+      display_name: displayName,
+    },
+  })
 
   redirect('/login?registered=1')
 }

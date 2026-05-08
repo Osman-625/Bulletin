@@ -1,56 +1,115 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { GlassCard } from '@/components/dashboard/GlassCard'
+import { logAuditEvent } from '@/lib/audit'
+import { canAccessOwnerArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
 import { createServiceClient } from '@/lib/supabase/server'
 
 export const metadata = { title: 'Categories — Bulletin Owner' }
 
+async function requireOwnerAccess() {
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+  if (!canAccessOwnerArea(access.role)) redirect(getDefaultAppPath(access.role))
+  return access
+}
+
 async function createCategory(formData: FormData) {
   'use server'
+  const access = await requireOwnerAccess()
   const supabase = await createServiceClient()
   const name = (formData.get('name') as string).trim()
   const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
   const color = formData.get('color') as string
-  const { error } = await supabase.from('categories').insert({ name, slug, color, is_active: true })
+  const { data: category, error } = await supabase.from('categories').insert({ name, slug, color, is_active: true }).select('id').single()
   if (error) redirect(`/owner/categories?error=${encodeURIComponent(error.message)}`)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'category.created',
+    targetType: 'category',
+    targetId: category.id,
+    metadata: { name, slug, color, is_active: true },
+  })
   revalidatePath('/owner/categories')
   redirect('/owner/categories')
 }
 
 async function updateCategory(id: string, formData: FormData) {
   'use server'
+  const access = await requireOwnerAccess()
   const supabase = await createServiceClient()
   const name = (formData.get('name') as string).trim()
   const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
   const color = formData.get('color') as string
   const { error } = await supabase.from('categories').update({ name, slug, color }).eq('id', id)
   if (error) redirect(`/owner/categories?error=${encodeURIComponent(error.message)}`)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'category.updated',
+    targetType: 'category',
+    targetId: id,
+    metadata: { name, slug, color },
+  })
   revalidatePath('/owner/categories')
   redirect('/owner/categories')
 }
 
 async function toggleCategory(id: string, isActive: boolean) {
   'use server'
+  const access = await requireOwnerAccess()
   const supabase = await createServiceClient()
   await supabase.from('categories').update({ is_active: isActive }).eq('id', id)
+  const { data: category } = await supabase.from('categories').select('name, slug').eq('id', id).single()
+  await logAuditEvent({
+    actorId: access.userId,
+    action: isActive ? 'category.activated' : 'category.deactivated',
+    targetType: 'category',
+    targetId: id,
+    metadata: {
+      name: category?.name ?? null,
+      slug: category?.slug ?? null,
+      is_active: isActive,
+    },
+  })
   revalidatePath('/owner/categories')
 }
 
 async function deleteCategory(id: string, force: boolean) {
   'use server'
+  const access = await requireOwnerAccess()
   const supabase = await createServiceClient()
+  const { data: category } = await supabase.from('categories').select('name, slug, color').eq('id', id).single()
+  let linkedCount = 0
   if (!force) {
     const { count } = await supabase
       .from('announcements')
       .select('*', { count: 'exact', head: true })
       .eq('category_id', id)
+    linkedCount = count ?? 0
     if ((count ?? 0) > 0) {
       redirect(`/owner/categories?error=${encodeURIComponent(`Category has ${count} linked announcement(s). Use force delete.`)}`)
     }
   } else {
+    const { count } = await supabase
+      .from('announcements')
+      .select('*', { count: 'exact', head: true })
+      .eq('category_id', id)
+    linkedCount = count ?? 0
     await supabase.from('announcements').update({ category_id: null }).eq('category_id', id)
   }
   await supabase.from('categories').delete().eq('id', id)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: force ? 'category.force_deleted' : 'category.deleted',
+    targetType: 'category',
+    targetId: id,
+    metadata: {
+      name: category?.name ?? null,
+      slug: category?.slug ?? null,
+      color: category?.color ?? null,
+      linked_announcements: linkedCount,
+    },
+  })
   revalidatePath('/owner/categories')
   redirect('/owner/categories')
 }

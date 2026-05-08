@@ -10,9 +10,24 @@ interface DashboardShellProps {
   role: string | null
   variant?: 'publisher' | 'admin' | 'super_admin' | 'owner'
   pendingReviewCount?: number
+  unreadNotificationCount?: number
 }
 
-export function DashboardShell({ children, displayName, role, variant = 'publisher', pendingReviewCount }: DashboardShellProps) {
+const NOTIFICATION_HREFS: Record<NonNullable<DashboardShellProps['variant']>, string> = {
+  publisher: '/dashboard/notifications',
+  admin: '/admin/notifications',
+  super_admin: '/super-admin/notifications',
+  owner: '/owner/notifications',
+}
+
+export function DashboardShell({
+  children,
+  displayName,
+  role,
+  variant = 'publisher',
+  pendingReviewCount,
+  unreadNotificationCount = 0,
+}: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
@@ -38,6 +53,8 @@ export function DashboardShell({ children, displayName, role, variant = 'publish
       <DashboardTopNav
         userName={displayName}
         onMenuClick={() => setMobileOpen(true)}
+        notificationCount={unreadNotificationCount}
+        notificationsHref={NOTIFICATION_HREFS[variant]}
       />
 
       <main className="pt-16 pl-0 md:pl-12 lg:pl-64 min-h-screen transition-[padding-left] duration-200">

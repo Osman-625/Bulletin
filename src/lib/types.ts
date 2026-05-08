@@ -8,6 +8,7 @@ export type DbOrganization = Tables<'organizations'>
 export type DbUser = Tables<'users'>
 export type DbInvitation = Tables<'invitations'>
 export type DbAuditLog = Tables<'audit_log'>
+export type DbNotification = Tables<'notifications'>
 
 export type DbAnnouncementReview = Tables<'announcement_reviews'>
 export type DbOrgCategoryPermission = Tables<'org_category_permissions'>

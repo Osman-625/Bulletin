@@ -1,45 +1,86 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { GlassCard } from '@/components/dashboard/GlassCard'
+import { logAuditEvent } from '@/lib/audit'
+import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
 
 export const metadata = { title: 'Categories — Bulletin Admin' }
 
+async function requireAdminAccess() {
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+  if (!canAccessAdminArea(access.role)) redirect(getDefaultAppPath(access.role))
+  return access
+}
+
 async function createCategory(formData: FormData) {
   'use server'
+  const access = await requireAdminAccess()
   const supabase = await createClient()
   const name = (formData.get('name') as string).trim()
   const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
   const color = formData.get('color') as string
-  const { error } = await supabase.from('categories').insert({ name, slug, color, is_active: true })
+  const { data: category, error } = await supabase.from('categories').insert({ name, slug, color, is_active: true }).select('id').single()
   if (error) redirect(`/admin/categories?error=${encodeURIComponent(error.message)}`)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'category.created',
+    targetType: 'category',
+    targetId: category.id,
+    metadata: { name, slug, color, is_active: true },
+  })
   revalidatePath('/admin/categories')
   redirect('/admin/categories')
 }
 
 async function updateCategory(id: string, formData: FormData) {
   'use server'
+  const access = await requireAdminAccess()
   const supabase = await createClient()
   const name = (formData.get('name') as string).trim()
   const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
   const color = formData.get('color') as string
   const { error } = await supabase.from('categories').update({ name, slug, color }).eq('id', id)
   if (error) redirect(`/admin/categories?error=${encodeURIComponent(error.message)}`)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'category.updated',
+    targetType: 'category',
+    targetId: id,
+    metadata: { name, slug, color },
+  })
   revalidatePath('/admin/categories')
   redirect('/admin/categories')
 }
 
 async function toggleCategory(id: string, isActive: boolean) {
   'use server'
+  const access = await requireAdminAccess()
   const supabase = await createClient()
   await supabase.from('categories').update({ is_active: isActive }).eq('id', id)
+  const service = await createServiceClient()
+  const { data: category } = await service.from('categories').select('name, slug').eq('id', id).single()
+  await logAuditEvent({
+    actorId: access.userId,
+    action: isActive ? 'category.activated' : 'category.deactivated',
+    targetType: 'category',
+    targetId: id,
+    metadata: {
+      name: category?.name ?? null,
+      slug: category?.slug ?? null,
+      is_active: isActive,
+    },
+  })
   revalidatePath('/admin/categories')
 }
 
 async function deleteCategory(id: string) {
   'use server'
+  const access = await requireAdminAccess()
   const supabase = await createServiceClient()
+  const { data: category } = await supabase.from('categories').select('name, slug, color').eq('id', id).single()
   const { count } = await supabase
     .from('announcements')
     .select('*', { count: 'exact', head: true })
@@ -48,6 +89,18 @@ async function deleteCategory(id: string) {
     redirect(`/admin/categories?error=${encodeURIComponent(`Cannot delete: category has ${count} linked announcement(s). Contact a Super Admin for force delete.`)}`)
   }
   await supabase.from('categories').delete().eq('id', id)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'category.deleted',
+    targetType: 'category',
+    targetId: id,
+    metadata: {
+      name: category?.name ?? null,
+      slug: category?.slug ?? null,
+      color: category?.color ?? null,
+      linked_announcements: count ?? 0,
+    },
+  })
   revalidatePath('/admin/categories')
   redirect('/admin/categories')
 }

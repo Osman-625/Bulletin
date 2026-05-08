@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import NextImage from 'next/image'
-import { AlertTriangle, ArrowLeft, Calendar, Link2, Trash2, Type, Upload, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Calendar, Clock, Link2, Pin, Trash2, Type, Upload, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ActionBar } from './ActionBar'
 import { GlassCard } from './GlassCard'
@@ -42,6 +42,10 @@ export type AnnouncementFormData = {
   banner_url: string | null
   registration_link: string | null
   expires_at: string | null
+  scheduled_publish_at: string | null
+  pinned_until: string | null
+  rejection_comment: string | null
+  view_count: number
   published_at: string | null
   urgency: AnnouncementUrgency
   display_font: AnnouncementDisplayFont
@@ -72,6 +76,25 @@ function isValidUrl(str: string): boolean {
   }
 }
 
+function toDateInputValue(iso: string | null | undefined): string {
+  return iso?.slice(0, 10) ?? ''
+}
+
+function toDateTimeLocalInputValue(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 16)
+}
+
+function isFutureDateTime(value: string): boolean {
+  if (!value) return false
+  const date = new Date(value)
+  return !Number.isNaN(date.getTime()) && date.getTime() > Date.now()
+}
+
 // ─── Component ───────────────────────────────────────────────
 
 export function AnnouncementForm({
@@ -93,7 +116,11 @@ export function AnnouncementForm({
   const [categoryId, setCategoryId] = useState(initialData.category_id ?? '')
   const [bannerUrl, setBannerUrl] = useState(initialData.banner_url ?? '')
   const [registrationLink, setRegistrationLink] = useState(initialData.registration_link ?? '')
-  const [expiresAt, setExpiresAt] = useState(initialData.expires_at?.slice(0, 10) ?? '')
+  const [expiresAt, setExpiresAt] = useState(toDateInputValue(initialData.expires_at))
+  const [scheduledPublishAt, setScheduledPublishAt] = useState(
+    toDateTimeLocalInputValue(initialData.scheduled_publish_at)
+  )
+  const [pinnedUntil, setPinnedUntil] = useState(toDateTimeLocalInputValue(initialData.pinned_until))
   const [status, setStatus] = useState<PostStatus>(initialData.status)
   const [urgency, setUrgency] = useState<AnnouncementUrgency>(initialData.urgency)
   const [displayFont, setDisplayFont] = useState<AnnouncementDisplayFont>(initialData.display_font)
@@ -116,7 +143,19 @@ export function AnnouncementForm({
   // Track dirty state
   useEffect(() => {
     dirtyRef.current = true
-  }, [title, body, categoryId, bannerUrl, registrationLink, expiresAt, urgency, displayFont, displaySize])
+  }, [
+    title,
+    body,
+    categoryId,
+    bannerUrl,
+    registrationLink,
+    expiresAt,
+    scheduledPublishAt,
+    pinnedUntil,
+    urgency,
+    displayFont,
+    displaySize,
+  ])
 
   // Auto-grow textarea
   useEffect(() => {
@@ -149,11 +188,25 @@ export function AnnouncementForm({
     if (bannerUrl) fd.set('banner_url', bannerUrl)
     if (registrationLink) fd.set('registration_link', registrationLink)
     if (expiresAt) fd.set('expires_at', new Date(expiresAt).toISOString())
+    if (scheduledPublishAt) fd.set('scheduled_publish_at', new Date(scheduledPublishAt).toISOString())
+    if (pinnedUntil) fd.set('pinned_until', new Date(pinnedUntil).toISOString())
     fd.set('urgency', urgency)
     fd.set('display_font', displayFont)
     fd.set('display_size', displaySize)
     return fd
-  }, [title, body, categoryId, bannerUrl, registrationLink, expiresAt, urgency, displayFont, displaySize])
+  }, [
+    title,
+    body,
+    categoryId,
+    bannerUrl,
+    registrationLink,
+    expiresAt,
+    scheduledPublishAt,
+    pinnedUntil,
+    urgency,
+    displayFont,
+    displaySize,
+  ])
 
   // ─── Handlers ────────────────────────────────────────────────
 
@@ -289,11 +342,18 @@ export function AnnouncementForm({
   const selectedCategory = categories.find((c) => c.id === categoryId)
   const selectedUrgency = URGENCY_META[urgency]
   const titleFontClass = getAnnouncementTitleFontClass(displayFont)
+  const isScheduled = isFutureDateTime(scheduledPublishAt)
+  const isPinned = isFutureDateTime(pinnedUntil)
 
   // ─── Render ──────────────────────────────────────────────────
 
   const isPublished = status === 'published'
-  const displayStatus = (status === 'expired' ? 'archived' : status) as 'draft' | 'published' | 'archived'
+  const displayStatus = (status === 'expired' ? 'archived' : status) as
+    | 'draft'
+    | 'submitted'
+    | 'published'
+    | 'rejected'
+    | 'archived'
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -345,6 +405,26 @@ export function AnnouncementForm({
 
       {/* Form content */}
       <div className="flex-1 max-w-[720px] w-full mx-auto px-6 pb-24 space-y-8">
+        {status === 'rejected' && initialData.rejection_comment && (
+          <div className="rounded-2xl border border-[var(--color-status-rejected-text)]/25 bg-[var(--color-status-rejected-bg)] p-4">
+            <div className="flex gap-3">
+              <AlertTriangle
+                size={18}
+                className="mt-0.5 flex-shrink-0 text-[var(--color-status-rejected-text)]"
+                aria-hidden="true"
+              />
+              <div>
+                <p className="text-sm font-semibold text-[var(--color-status-rejected-text)]">
+                  Changes requested
+                </p>
+                <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">
+                  {initialData.rejection_comment}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Title */}
         <div>
           <div className="flex items-end justify-between mb-1">
@@ -671,6 +751,71 @@ export function AnnouncementForm({
           )}
         </div>
 
+        {/* Publishing Controls */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label
+              htmlFor="scheduled-publish-at"
+              className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium mb-1 block"
+            >
+              Publish At <span className="normal-case tracking-normal">(optional)</span>
+            </label>
+            <div className="relative">
+              <Clock
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none"
+              />
+              <input
+                id="scheduled-publish-at"
+                type="datetime-local"
+                value={scheduledPublishAt}
+                onChange={(e) => setScheduledPublishAt(e.target.value)}
+                className={cn(
+                  'w-full pl-9 pr-4 py-3 text-sm rounded-xl',
+                  'bg-transparent text-[var(--color-text-primary)]',
+                  'border border-[var(--color-glass-border)]',
+                  'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:border-[var(--color-accent)]',
+                  'transition-all duration-200'
+                )}
+              />
+            </div>
+            <p className="mt-1.5 text-xs text-[var(--color-text-muted)]">
+              Leave blank to publish immediately after approval.
+            </p>
+          </div>
+
+          <div>
+            <label
+              htmlFor="pinned-until"
+              className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium mb-1 block"
+            >
+              Pin Until <span className="normal-case tracking-normal">(optional)</span>
+            </label>
+            <div className="relative">
+              <Pin
+                size={16}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none"
+              />
+              <input
+                id="pinned-until"
+                type="datetime-local"
+                value={pinnedUntil}
+                onChange={(e) => setPinnedUntil(e.target.value)}
+                className={cn(
+                  'w-full pl-9 pr-4 py-3 text-sm rounded-xl',
+                  'bg-transparent text-[var(--color-text-primary)]',
+                  'border border-[var(--color-glass-border)]',
+                  'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:border-[var(--color-accent)]',
+                  'transition-all duration-200'
+                )}
+              />
+            </div>
+            <p className="mt-1.5 text-xs text-[var(--color-text-muted)]">
+              Pinned posts stay first on the public feed.
+            </p>
+          </div>
+        </div>
+
         {/* Expires At */}
         <div>
           <label
@@ -717,6 +862,16 @@ export function AnnouncementForm({
                     style={{ color: selectedUrgency.tone, background: selectedUrgency.background }}
                   >
                     {selectedUrgency.label}
+                  </span>
+                )}
+                {isScheduled && (
+                  <span className="rounded-md bg-[var(--color-accent-surface)] px-2.5 py-1 text-[15px] font-semibold text-[var(--color-accent-inti)]">
+                    Scheduled
+                  </span>
+                )}
+                {isPinned && (
+                  <span className="rounded-md bg-[var(--color-status-published-bg)] px-2.5 py-1 text-[15px] font-semibold text-[var(--color-status-published-text)]">
+                    Pinned
                   </span>
                 )}
                 <span className="rounded-md bg-[var(--color-surface-elevated)] px-2.5 py-1 text-[15px] font-medium text-[var(--color-text-muted)]">
@@ -766,6 +921,8 @@ export function AnnouncementForm({
         onUnpublish={isPublished ? handleUnpublish : undefined}
         isSaving={isSaving}
         isPublishing={isPublishing}
+        saveLabel={status === 'draft' ? 'Save Draft' : 'Save Changes'}
+        publishLabel={isScheduled ? 'Submit Scheduled' : 'Submit for Review'}
       />
     </div>
   )

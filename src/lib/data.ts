@@ -22,11 +22,14 @@ const ANNOUNCEMENT_SELECT = `
 
 export async function getPublicAnnouncements(categorySlug?: string): Promise<AnnouncementWithRelations[]> {
   const supabase = await createClient()
+  const now = new Date().toISOString()
 
   let query = supabase
     .from('announcements')
     .select(ANNOUNCEMENT_SELECT)
     .eq('status', 'published')
+    .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${now}`)
+    .or(`expires_at.is.null,expires_at.gt.${now}`)
     .order('published_at', { ascending: false })
 
   if (categorySlug) {
@@ -43,11 +46,14 @@ export async function getPublicAnnouncements(categorySlug?: string): Promise<Ann
 
 export async function getAnnouncementById(id: string): Promise<AnnouncementWithRelations | null> {
   const supabase = await createClient()
+  const now = new Date().toISOString()
   const { data, error } = await supabase
     .from('announcements')
     .select(ANNOUNCEMENT_SELECT)
     .eq('id', id)
     .eq('status', 'published')
+    .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${now}`)
+    .or(`expires_at.is.null,expires_at.gt.${now}`)
     .single()
 
   if (error) return null

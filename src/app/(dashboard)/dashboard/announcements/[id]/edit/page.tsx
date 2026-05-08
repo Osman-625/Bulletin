@@ -42,7 +42,7 @@ export default async function EditAnnouncementPage({
     supabase
       .from('announcements')
       .select(
-        'id, title, body, status, category_id, banner_url, registration_link, expires_at, published_at, organization_id, urgency, display_font, display_size'
+        'id, title, body, status, category_id, banner_url, registration_link, expires_at, scheduled_publish_at, pinned_until, rejection_comment, view_count, published_at, organization_id, urgency, display_font, display_size'
       )
       .eq('id', id)
       .single(),
@@ -68,6 +68,10 @@ export default async function EditAnnouncementPage({
     banner_url: announcement.banner_url,
     registration_link: announcement.registration_link,
     expires_at: announcement.expires_at,
+    scheduled_publish_at: announcement.scheduled_publish_at,
+    pinned_until: announcement.pinned_until,
+    rejection_comment: announcement.rejection_comment,
+    view_count: announcement.view_count ?? 0,
     published_at: announcement.published_at,
     urgency: announcement.urgency ?? DEFAULT_URGENCY,
     display_font: announcement.display_font ?? DEFAULT_DISPLAY_FONT,

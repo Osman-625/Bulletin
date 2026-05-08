@@ -2,14 +2,17 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { logAuditEvent } from '@/lib/audit'
 import { createClient } from '@/lib/supabase/server'
 import { canManageAnnouncementForOrg } from '@/lib/announcements/access'
+import { readOptionalIsoDate } from '@/lib/announcements/form'
 import {
   normalizeAnnouncementDisplayFont,
   normalizeAnnouncementDisplaySize,
   normalizeAnnouncementUrgency,
 } from '@/lib/announcements/presentation'
 import { getCurrentAccessContext } from '@/lib/auth/authz'
+import { notifyAnnouncementSubmitted } from '@/lib/notifications'
 
 async function verifyAnnouncementAccess(supabase: Awaited<ReturnType<typeof createClient>>, announcementId: string) {
   const access = await getCurrentAccessContext()
@@ -17,7 +20,7 @@ async function verifyAnnouncementAccess(supabase: Awaited<ReturnType<typeof crea
 
   const { data: announcement } = await supabase
     .from('announcements')
-    .select('id, organization_id')
+    .select('id, organization_id, title, author_id, status, scheduled_publish_at')
     .eq('id', announcementId)
     .single()
 
@@ -26,7 +29,15 @@ async function verifyAnnouncementAccess(supabase: Awaited<ReturnType<typeof crea
     throw new Error('Unauthorized: announcement belongs to a different organization')
   }
 
-  return { organizationId: announcement.organization_id }
+  return {
+    actorId: access.userId,
+    actorRole: access.role,
+    organizationId: announcement.organization_id,
+    title: announcement.title,
+    authorId: announcement.author_id,
+    status: announcement.status,
+    scheduledPublishAt: announcement.scheduled_publish_at,
+  }
 }
 
 export async function updateAnnouncement(id: string, formData: FormData) {
@@ -38,7 +49,9 @@ export async function updateAnnouncement(id: string, formData: FormData) {
   const categoryId = formData.get('category_id') as string | null
   const bannerUrl = formData.get('banner_url') as string | null
   const registrationLink = formData.get('registration_link') as string | null
-  const expiresAt = formData.get('expires_at') as string | null
+  const expiresAt = readOptionalIsoDate(formData, 'expires_at')
+  const scheduledPublishAt = readOptionalIsoDate(formData, 'scheduled_publish_at')
+  const pinnedUntil = readOptionalIsoDate(formData, 'pinned_until')
   const urgency = normalizeAnnouncementUrgency(formData.get('urgency'))
   const displayFont = normalizeAnnouncementDisplayFont(formData.get('display_font'))
   const displaySize = normalizeAnnouncementDisplaySize(formData.get('display_size'))
@@ -54,7 +67,9 @@ export async function updateAnnouncement(id: string, formData: FormData) {
       display_size: displaySize,
       banner_url: bannerUrl || null,
       registration_link: registrationLink || null,
-      expires_at: expiresAt || null,
+      expires_at: expiresAt,
+      scheduled_publish_at: scheduledPublishAt,
+      pinned_until: pinnedUntil,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
@@ -69,20 +84,41 @@ export async function updateAnnouncement(id: string, formData: FormData) {
 
 export async function publishAnnouncement(id: string) {
   const supabase = await createClient()
-  await verifyAnnouncementAccess(supabase, id)
+  const announcement = await verifyAnnouncementAccess(supabase, id)
 
   const now = new Date().toISOString()
+  const scheduledPublishAt =
+    announcement.scheduledPublishAt &&
+    new Date(announcement.scheduledPublishAt).getTime() > Date.now()
+      ? announcement.scheduledPublishAt
+      : null
 
   const { error } = await supabase
     .from('announcements')
     .update({
       status: 'published',
-      published_at: now,
+      published_at: scheduledPublishAt ?? now,
+      scheduled_publish_at: scheduledPublishAt,
+      rejection_comment: null,
       updated_at: now,
     })
     .eq('id', id)
 
   if (error) throw new Error(error.message)
+
+  await logAuditEvent({
+    actorId: announcement.actorId,
+    action: scheduledPublishAt ? 'announcement.scheduled' : 'announcement.published',
+    targetType: 'announcement',
+    targetId: id,
+    metadata: {
+      title: announcement.title,
+      previous_status: announcement.status,
+      organization_id: announcement.organizationId,
+      published_at: scheduledPublishAt ?? now,
+      scheduled_publish_at: scheduledPublishAt,
+    },
+  })
 
   revalidatePath('/dashboard/announcements')
   revalidatePath(`/dashboard/announcements/${id}/edit`)
@@ -92,18 +128,31 @@ export async function publishAnnouncement(id: string) {
 
 export async function unpublishAnnouncement(id: string) {
   const supabase = await createClient()
-  await verifyAnnouncementAccess(supabase, id)
+  const announcement = await verifyAnnouncementAccess(supabase, id)
 
   const { error } = await supabase
     .from('announcements')
     .update({
       status: 'draft',
       published_at: null,
+      scheduled_publish_at: null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
 
   if (error) throw new Error(error.message)
+
+  await logAuditEvent({
+    actorId: announcement.actorId,
+    action: 'announcement.unpublished',
+    targetType: 'announcement',
+    targetId: id,
+    metadata: {
+      title: announcement.title,
+      previous_status: announcement.status,
+      organization_id: announcement.organizationId,
+    },
+  })
 
   revalidatePath('/dashboard/announcements')
   revalidatePath(`/dashboard/announcements/${id}/edit`)
@@ -113,24 +162,50 @@ export async function unpublishAnnouncement(id: string) {
 
 export async function submitForReview(id: string) {
   const supabase = await createClient()
-  await verifyAnnouncementAccess(supabase, id)
+  const announcement = await verifyAnnouncementAccess(supabase, id)
 
   const { error } = await supabase
     .from('announcements')
-    .update({ status: 'submitted', updated_at: new Date().toISOString() })
+    .update({
+      status: 'submitted',
+      rejection_comment: null,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', id)
 
   if (error) throw new Error(error.message)
 
+  await logAuditEvent({
+    actorId: announcement.actorId,
+    action: 'announcement.submitted',
+    targetType: 'announcement',
+    targetId: id,
+    metadata: {
+      title: announcement.title,
+      previous_status: announcement.status,
+      organization_id: announcement.organizationId,
+    },
+  })
+
   revalidatePath('/dashboard/announcements')
   revalidatePath(`/dashboard/announcements/${id}/edit`)
+
+  const access = await getCurrentAccessContext()
+  if (access && announcement.status !== 'submitted') {
+    await notifyAnnouncementSubmitted({
+      announcementId: id,
+      title: announcement.title,
+      organizationId: announcement.organizationId,
+      actorId: access.userId,
+    })
+  }
 
   return { success: true }
 }
 
 export async function deleteAnnouncement(id: string) {
   const supabase = await createClient()
-  await verifyAnnouncementAccess(supabase, id)
+  const announcement = await verifyAnnouncementAccess(supabase, id)
 
   const { error } = await supabase
     .from('announcements')
@@ -138,6 +213,18 @@ export async function deleteAnnouncement(id: string) {
     .eq('id', id)
 
   if (error) throw new Error(error.message)
+
+  await logAuditEvent({
+    actorId: announcement.actorId,
+    action: 'announcement.deleted',
+    targetType: 'announcement',
+    targetId: id,
+    metadata: {
+      title: announcement.title,
+      previous_status: announcement.status,
+      organization_id: announcement.organizationId,
+    },
+  })
 
   revalidatePath('/dashboard/announcements')
   redirect('/dashboard/announcements')

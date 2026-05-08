@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import { LockKeyhole, Mail } from 'lucide-react'
 import { login } from './actions'
 
 export const metadata = { title: 'Sign In' }
@@ -11,148 +12,95 @@ export default async function LoginPage({
   const { error } = await searchParams
 
   return (
-    <>
-      {/* Full-screen radial bloom (fixed, behind everything) */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 -z-10"
-        style={{
-          background:
-            'radial-gradient(ellipse 60% 50% at 35% 45%, rgba(200,16,46,0.06) 0%, transparent 100%)',
-        }}
-      />
+    <main className="relative w-full max-w-[22rem]">
+      <div className="animate-fade-up relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#181919]/95 px-6 py-8 shadow-[0_32px_80px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.07)]">
+        {/* Top edge highlight */}
+        <div className="absolute inset-x-0 top-0 h-px bg-white/[0.13]" aria-hidden="true" />
 
-      {/* Card — AuthLayout handles centering */}
-      <div
-        className="animate-fade-up w-full max-w-[420px] rounded-2xl border p-10"
-        style={{
-          background: 'var(--color-surface)',
-          borderColor: 'var(--color-border)',
-          boxShadow: '0 4px 40px rgba(0, 0, 0, 0.09)',
-        }}
-      >
-        {/* Masthead */}
-        <div className="mb-8">
-          <div className="mb-5 flex items-center gap-3">
+        {/* 100×100 logo badge */}
+        <div className="mb-6 flex flex-col items-center gap-4">
+          <div className="flex h-[100px] w-[100px] items-center justify-center rounded-2xl border border-white/10 bg-[#1e2023] shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_0_1px_rgba(200,16,46,0.12),0_8px_24px_rgba(0,0,0,0.4)]">
             <Image
               src="/bulletin_logo.png"
               alt="Bulletin"
-              width={48}
-              height={48}
-              className="h-12 w-12 shrink-0 object-contain"
+              width={60}
+              height={60}
+              className="h-[60px] w-[60px] object-contain"
               priority
             />
-            <div>
-              <p
-                className="text-[15px] font-bold uppercase tracking-[0.2em]"
-                style={{ color: 'var(--color-accent-inti)' }}
-              >
-                INTI International University
-              </p>
-              <p
-                className="font-display text-[33px] font-bold leading-none tracking-tight"
-                style={{ color: 'var(--color-text-primary)' }}
-              >
-                Bulletin
-              </p>
-            </div>
           </div>
 
-          {/* Rule */}
-          <div className="mb-5">
-            <div className="h-[2px] w-8 rounded-full" style={{ background: 'var(--color-accent-inti)' }} />
-            <div className="mt-1 h-px" style={{ background: 'var(--color-border)' }} />
+          <div className="text-center">
+            <h1 className="font-sans text-xl font-semibold tracking-[-0.02em] text-[#f3f6f8]">
+              Welcome back
+            </h1>
+            <p className="mt-1 text-xs text-[#5e686f]">
+              INTI International University
+            </p>
           </div>
-
-          <h1
-            className="font-display text-[42px] font-bold leading-[1.1] tracking-tight"
-            style={{ color: 'var(--color-text-primary)' }}
-          >
-            Publisher<br />sign-in
-          </h1>
-          <p className="mt-2 text-[19.5px]" style={{ color: 'var(--color-text-muted)' }}>
-            Authorized personnel only.
-          </p>
         </div>
 
-        {/* Error */}
         {error && (
           <div
-            className="animate-slide-in mb-5 rounded-[10px] border px-4 py-3 text-[19.5px]"
-            style={{
-              background: 'var(--color-accent-surface)',
-              borderColor: 'var(--color-accent-inti)',
-              color: 'var(--color-accent-inti)',
-            }}
+            className="mb-4 rounded-lg border border-[#C8102E]/25 bg-[#3d0a10]/60 px-3 py-2.5 text-xs text-[#ffb1ba]"
             role="alert"
+            aria-live="polite"
           >
-            Invalid email or password.
+            Invalid email or password. Please try again.
           </div>
         )}
 
-        {/* Form */}
-        <form action={login} className="flex flex-col gap-4">
-          <div>
-            <label
-              htmlFor="email"
-              className="mb-2 block text-[16.5px] font-medium uppercase tracking-[0.15em]"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              Email or username
-            </label>
+        <form action={login} className="flex flex-col gap-2.5">
+          <div className="relative">
+            <label htmlFor="email" className="sr-only">Email address</label>
+            <Mail
+              size={15}
+              strokeWidth={1.8}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#6b7480]"
+              aria-hidden="true"
+            />
             <input
               id="email"
               name="email"
               type="email"
               required
               autoComplete="email"
-              placeholder="Email or username"
-              className="input-inti w-full rounded-[10px] border px-4 py-2.5 text-[21px] transition-all duration-150 placeholder:opacity-40"
-              style={{
-                background: 'var(--color-surface-elevated)',
-                borderColor: 'var(--color-border)',
-                color: 'var(--color-text-primary)',
-              }}
+              placeholder="Email address"
+              className="h-10 w-full rounded-lg border border-white/[0.07] bg-[#101213] px-3 pl-9 text-sm text-[#eef3f7] outline-none transition-[border-color,box-shadow,background] duration-200 placeholder:text-[#636b72] focus:border-[#C8102E]/60 focus:bg-[#130a0b] focus:shadow-[0_0_0_3px_rgba(200,16,46,0.14)]"
             />
           </div>
 
-          <div>
-            <label
-              htmlFor="password"
-              className="mb-2 block text-[16.5px] font-medium uppercase tracking-[0.15em]"
-              style={{ color: 'var(--color-text-muted)' }}
-            >
-              Password
-            </label>
+          <div className="relative">
+            <label htmlFor="password" className="sr-only">Password</label>
+            <LockKeyhole
+              size={15}
+              strokeWidth={1.8}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#6b7480]"
+              aria-hidden="true"
+            />
             <input
               id="password"
               name="password"
               type="password"
               required
               autoComplete="current-password"
-              placeholder="••••••••"
-              className="input-inti w-full rounded-[10px] border px-4 py-2.5 text-[21px] transition-all duration-150 placeholder:opacity-40"
-              style={{
-                background: 'var(--color-surface-elevated)',
-                borderColor: 'var(--color-border)',
-                color: 'var(--color-text-primary)',
-              }}
+              placeholder="Password"
+              className="h-10 w-full rounded-lg border border-white/[0.07] bg-[#101213] px-3 pl-9 text-sm text-[#eef3f7] outline-none transition-[border-color,box-shadow,background] duration-200 placeholder:text-[#636b72] focus:border-[#C8102E]/60 focus:bg-[#130a0b] focus:shadow-[0_0_0_3px_rgba(200,16,46,0.14)]"
             />
           </div>
 
           <button
             type="submit"
-            className="mt-2 w-full cursor-pointer rounded-[10px] py-3 font-sans text-[21px] font-semibold text-white transition-all duration-200 hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-            style={{
-              background: 'var(--color-accent-inti)',
-              boxShadow: '0 2px 12px rgba(200, 16, 46, 0.28)',
-            }}
+            className="mt-1 h-10 w-full cursor-pointer rounded-lg bg-[#C8102E] text-sm font-semibold text-white shadow-[0_8px_24px_rgba(200,16,46,0.3),inset_0_1px_0_rgba(255,255,255,0.12)] transition-[transform,background,box-shadow] duration-200 hover:-translate-y-0.5 hover:bg-[#A80D24] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#ff8a97] active:translate-y-0 active:scale-[0.99]"
           >
             Sign in
           </button>
         </form>
 
+        <p className="mt-5 text-center text-[10px] text-[#3d454b]">
+          Authorized personnel only · Bulletin System
+        </p>
       </div>
-    </>
+    </main>
   )
 }

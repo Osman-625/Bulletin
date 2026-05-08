@@ -10,16 +10,17 @@ type Tab = 'all' | 'published' | 'drafts' | 'pending' | 'archived'
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'all', label: 'All', icon: FileText },
-  { id: 'published', label: 'Published', icon: CheckCircle2 },
+  { id: 'published', label: 'Live', icon: CheckCircle2 },
   { id: 'drafts', label: 'Drafts', icon: PenLine },
-  { id: 'pending', label: 'Pending / Rejected', icon: FileText },
-  { id: 'archived', label: 'Archived', icon: Archive },
+  { id: 'pending', label: 'Review', icon: FileText },
+  { id: 'archived', label: 'Archive', icon: Archive },
 ]
 
 const PAGE_SIZE = 10
 
 interface AnnouncementsClientProps {
   announcements: AnnouncementRowData[]
+  initialQuery?: string
 }
 
 function EmptyState({ tab }: { tab: Tab }) {
@@ -42,9 +43,9 @@ function EmptyState({ tab }: { tab: Tab }) {
   )
 }
 
-export function AnnouncementsClient({ announcements }: AnnouncementsClientProps) {
+export function AnnouncementsClient({ announcements, initialQuery = '' }: AnnouncementsClientProps) {
   const [activeTab, setActiveTab] = useState<Tab>('all')
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialQuery)
   const [page, setPage] = useState(1)
   const [animKey, setAnimKey] = useState(0)
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
@@ -79,7 +80,8 @@ export function AnnouncementsClient({ announcements }: AnnouncementsClientProps)
         (a) =>
           a.title.toLowerCase().includes(q) ||
           a.categories?.name.toLowerCase().includes(q) ||
-          a.organizations?.name.toLowerCase().includes(q)
+          a.organizations?.name.toLowerCase().includes(q) ||
+          a.rejection_comment?.toLowerCase().includes(q)
       )
     }
 
@@ -108,15 +110,15 @@ export function AnnouncementsClient({ announcements }: AnnouncementsClientProps)
   return (
     <div className="space-y-5">
       {/* Tab strip */}
-      <div className="relative border-b border-[var(--color-glass-border)]">
-        <div className="flex gap-0">
+      <div className="relative overflow-hidden border-b border-[var(--color-glass-border)]">
+        <div className="grid grid-cols-5 gap-0 pb-px sm:flex sm:overflow-x-auto sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:hidden">
           {TABS.map((tab, i) => (
             <button
               key={tab.id}
               ref={(el) => { tabRefs.current[i] = el }}
               onClick={() => changeTab(tab.id)}
               className={cn(
-                'flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors relative',
+                'relative flex min-w-0 items-center justify-center gap-1 py-3 text-[13px] font-medium transition-colors sm:shrink-0 sm:justify-start sm:gap-1.5 sm:px-4 sm:text-sm',
                 activeTab === tab.id
                   ? 'text-[var(--color-accent)]'
                   : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]'

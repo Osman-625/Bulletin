@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Eye, Plus } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { GlassCard } from '@/components/dashboard/GlassCard'
@@ -14,6 +14,7 @@ type RecentAnnouncement = {
   id: string
   title: string
   status: string
+  view_count: number
   updated_at: string
   categories: { name: string } | null
 }
@@ -30,18 +31,24 @@ function RecentRow({ announcement }: { announcement: RecentAnnouncement }) {
     <GlassCard hover={false} className="px-5 py-4 flex items-center gap-4">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <StatusBadge status={announcement.status as 'draft' | 'published' | 'archived'} />
+          <StatusBadge status={announcement.status as 'draft' | 'submitted' | 'published' | 'rejected' | 'expired' | 'archived'} />
           <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">
             {announcement.title}
           </span>
         </div>
-        <p className="text-xs text-[var(--color-text-muted)]">
-          {announcement.categories?.name ?? 'Uncategorized'}
+      <p className="text-xs text-[var(--color-text-muted)]">
+        {announcement.categories?.name ?? 'Uncategorized'}
+      </p>
+    </div>
+      <div className="shrink-0 text-right">
+        <p className="text-xs font-mono text-[var(--color-text-muted)]">
+          {new Date(announcement.updated_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
+        </p>
+        <p className="mt-1 inline-flex items-center justify-end gap-1 text-xs text-[var(--color-text-muted)]">
+          <Eye size={12} aria-hidden="true" />
+          {announcement.view_count.toLocaleString('en-MY')}
         </p>
       </div>
-      <p className="text-xs font-mono text-[var(--color-text-muted)] shrink-0">
-        {new Date(announcement.updated_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
-      </p>
     </GlassCard>
   )
 }
@@ -73,9 +80,10 @@ export default async function DashboardPage() {
   const supabase = await createClient()
 
   // 3. Stats + recent announcements (only if org exists)
-  let total = 0
   let inDraft = 0
   let publishedThisMonth = 0
+  let scheduled = 0
+  let totalViews = 0
   let recentAnnouncements: RecentAnnouncement[] = []
   const scopeToMembership = shouldScopeAnnouncementsToMembership(access)
   const hasAnnouncementScope = !scopeToMembership || access.orgIds.length > 0
@@ -84,7 +92,7 @@ export default async function DashboardPage() {
     // Fetch all rows for stats in one query
     let statsQuery = supabase
       .from('announcements')
-      .select('status, published_at')
+      .select('status, published_at, scheduled_publish_at, view_count')
 
     if (scopeToMembership) {
       statsQuery = statsQuery.in('organization_id', access.orgIds)
@@ -94,19 +102,30 @@ export default async function DashboardPage() {
 
     if (statsRows) {
       const now = new Date()
+      const nowMs = now.getTime()
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
 
-      total = statsRows.length
       inDraft = statsRows.filter((r) => r.status === 'draft').length
       publishedThisMonth = statsRows.filter(
-        (r) => r.status === 'published' && r.published_at != null && r.published_at >= startOfMonth
+        (r) =>
+          r.status === 'published' &&
+          r.published_at != null &&
+          r.published_at >= startOfMonth &&
+          (r.scheduled_publish_at == null || new Date(r.scheduled_publish_at).getTime() <= nowMs)
       ).length
+      scheduled = statsRows.filter(
+        (r) =>
+          r.status === 'published' &&
+          r.scheduled_publish_at != null &&
+          new Date(r.scheduled_publish_at).getTime() > nowMs
+      ).length
+      totalViews = statsRows.reduce((sum, row) => sum + (row.view_count ?? 0), 0)
     }
 
     // Fetch recent 5
     let recentQuery = supabase
       .from('announcements')
-      .select('id, title, status, updated_at, categories(name)')
+      .select('id, title, status, view_count, updated_at, categories(name)')
       .order('updated_at', { ascending: false })
       .limit(5)
 
@@ -135,23 +154,24 @@ export default async function DashboardPage() {
         <p className="max-w-2xl text-sm text-[var(--color-text-secondary)] sm:text-base">
           {isInheritedWorkspace
             ? 'Use the announcement creator tools alongside your higher-level workspace.'
-            : 'Manage INTI&apos;s announcements from here.'}
+            : "Manage INTI's announcements from here."}
         </p>
       </div>
 
       {/* Section 2 — Stats strip */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-[var(--color-border)]">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-0 sm:divide-x sm:divide-[var(--color-border)]">
         {[
           { label: 'Published this month', value: publishedThisMonth },
+          { label: 'Scheduled', value: scheduled },
+          { label: 'Total views', value: totalViews },
           { label: 'In draft', value: inDraft },
-          { label: 'Total all-time', value: total },
         ].map(({ label, value }) => (
           <div
             key={label}
             className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-6 sm:first:pl-0 sm:last:pr-0"
           >
-            <CountUp value={value} className="text-3xl font-bold font-mono text-[var(--color-accent)]" />
-            <p className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] mt-1">{label}</p>
+            <CountUp value={value} className="font-mono text-2xl font-bold text-[var(--color-accent)] sm:text-3xl" />
+            <p className="mt-1 text-[11px] uppercase tracking-widest text-[var(--color-text-muted)] sm:text-xs">{label}</p>
           </div>
         ))}
       </div>

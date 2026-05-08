@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AnnouncementForm } from '@/components/dashboard/AnnouncementForm'
-import { createAnnouncement, createAndPublishAnnouncement } from './actions'
+import { createAnnouncement, createAndSubmitAnnouncement } from './actions'
 import {
   DEFAULT_DISPLAY_FONT,
   DEFAULT_DISPLAY_SIZE,
@@ -32,6 +32,10 @@ export default async function NewAnnouncementPage() {
     banner_url: null,
     registration_link: null,
     expires_at: null,
+    scheduled_publish_at: null,
+    pinned_until: null,
+    rejection_comment: null,
+    view_count: 0,
     published_at: null,
     urgency: DEFAULT_URGENCY,
     display_font: DEFAULT_DISPLAY_FONT,
@@ -43,7 +47,7 @@ export default async function NewAnnouncementPage() {
       initialData={initialData}
       categories={categories ?? []}
       onSave={createAnnouncement}
-      onSaveAndPublish={createAndPublishAnnouncement}
+      onSaveAndPublish={createAndSubmitAnnouncement}
       isNew
     />
   )

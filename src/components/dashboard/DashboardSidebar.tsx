@@ -25,7 +25,7 @@ const publisherNav: NavItem[] = [
   { href: '/dashboard', label: 'Home', icon: Home, exact: true },
   { href: '/dashboard/announcements', label: 'Announcements', icon: Megaphone, exact: true },
   { href: '/dashboard/announcements/new', label: 'New Announcement', icon: Plus },
-  { href: '/', label: 'Public Feed', icon: Newspaper, exact: true },
+  { href: '/', label: 'Public Announcements', icon: Newspaper, exact: true },
 ]
 
 function adminNav(pendingCount: number): NavItem[] {
@@ -37,7 +37,7 @@ function adminNav(pendingCount: number): NavItem[] {
     { href: '/admin/categories', label: 'Categories', icon: Tag },
     { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { href: '/dashboard', label: 'Publisher Workspace', icon: Megaphone, exact: true },
-    { href: '/', label: 'Public Feed', icon: Newspaper, exact: true },
+    { href: '/', label: 'Public Announcements', icon: Newspaper, exact: true },
   ]
 }
 
@@ -49,7 +49,7 @@ const superAdminNav: NavItem[] = [
   { href: '/super-admin/categories', label: 'Categories', icon: Tag },
   { href: '/super-admin/users', label: 'Users', icon: UserCog },
   { href: '/super-admin/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/', label: 'Public Feed', icon: Newspaper, exact: true },
+  { href: '/', label: 'Public Announcements', icon: Newspaper, exact: true },
 ]
 
 const ownerNav: NavItem[] = [
@@ -61,7 +61,7 @@ const ownerNav: NavItem[] = [
   { href: '/owner/users', label: 'All Users', icon: Users },
   { href: '/owner/categories', label: 'Categories', icon: Tag },
   { href: '/owner/audit', label: 'Audit Log', icon: ScrollText },
-  { href: '/', label: 'Public Feed', icon: Newspaper, exact: true },
+  { href: '/', label: 'Public Announcements', icon: Newspaper, exact: true },
 ]
 
 function getIsActive(item: NavItem, pathname: string): boolean {
@@ -217,8 +217,10 @@ export function DashboardSidebar({
           'fixed inset-x-0 bottom-0 z-40 md:hidden',
           'bg-[var(--color-canvas)]/95 backdrop-blur-2xl',
           'border-t border-[var(--color-border)]',
-          'rounded-t-2xl transition-transform duration-300',
-          mobileOpen ? 'translate-y-0' : 'translate-y-full'
+          'rounded-t-2xl transition-[transform,opacity,visibility] duration-300',
+          mobileOpen
+            ? 'pointer-events-auto visible translate-y-0 opacity-100'
+            : 'pointer-events-none invisible translate-y-[calc(100%+1rem)] opacity-0'
         )}
         role="dialog"
         aria-modal="true"

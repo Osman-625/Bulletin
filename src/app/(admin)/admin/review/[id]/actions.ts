@@ -2,8 +2,10 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { logAuditEvent } from '@/lib/audit'
 import { createClient } from '@/lib/supabase/server'
 import { canAccessAdminArea, getCurrentAccessContext } from '@/lib/auth/authz'
+import { notifyAnnouncementReviewed } from '@/lib/notifications'
 
 export async function reviewAnnouncement(announcementId: string, formData: FormData) {
   const access = await getCurrentAccessContext()
@@ -15,7 +17,7 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
   const supabase = await createClient()
   const { data: announcement } = await supabase
     .from('announcements')
-    .select('organization_id, status')
+    .select('organization_id, status, author_id, title, scheduled_publish_at')
     .eq('id', announcementId)
     .single()
 
@@ -25,23 +27,58 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
   }
 
   if (action === 'approve') {
-    await supabase.from('announcements').update({
+    const now = new Date().toISOString()
+    const scheduledPublishAt =
+      announcement.scheduled_publish_at &&
+      new Date(announcement.scheduled_publish_at).getTime() > Date.now()
+        ? announcement.scheduled_publish_at
+        : null
+
+    const { error } = await supabase.from('announcements').update({
       status: 'published',
-      published_at: new Date().toISOString(),
+      published_at: scheduledPublishAt ?? now,
+      scheduled_publish_at: scheduledPublishAt,
       rejection_comment: null,
     }).eq('id', announcementId)
+    if (error) throw new Error(error.message)
   } else {
-    await supabase.from('announcements').update({
+    const { error } = await supabase.from('announcements').update({
       status: 'rejected',
       rejection_comment: comment ?? 'No reason provided.',
     }).eq('id', announcementId)
+    if (error) throw new Error(error.message)
   }
 
-  await supabase.from('announcement_reviews').insert({
+  const { error: reviewError } = await supabase.from('announcement_reviews').insert({
     announcement_id: announcementId,
     reviewer_id: access.userId,
     action: action === 'approve' ? 'approved' : 'rejected',
     comment,
+  })
+  if (reviewError) throw new Error(reviewError.message)
+
+  await notifyAnnouncementReviewed({
+    announcementId,
+    title: announcement.title,
+    authorId: announcement.author_id,
+    reviewerId: access.userId,
+    approved: action === 'approve',
+    scheduledPublishAt: announcement.scheduled_publish_at,
+    comment,
+  })
+
+  await logAuditEvent({
+    actorId: access.userId,
+    action: action === 'approve' ? 'review.approved' : 'review.rejected',
+    targetType: 'announcement',
+    targetId: announcementId,
+    metadata: {
+      title: announcement.title,
+      author_id: announcement.author_id,
+      organization_id: announcement.organization_id,
+      scheduled_publish_at: announcement.scheduled_publish_at,
+      comment,
+    },
   })
 
   revalidatePath('/admin/review')

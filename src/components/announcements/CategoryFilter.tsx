@@ -18,13 +18,17 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
   }
 
   return (
-    <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
+    <div
+      className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden"
+      role="group"
+      aria-label="Filter by category"
+    >
       {/* All */}
       <button
         type="button"
         data-category=""
         onClick={() => select('')}
-        className="tab-lift inline-flex min-h-9 cursor-pointer items-center rounded-[10px] border px-3.5 text-[1.340625rem] font-semibold focus:outline-none focus-visible:ring-2"
+        className="tab-lift inline-flex min-h-9 shrink-0 cursor-pointer items-center rounded-[10px] border px-3.5 text-sm font-semibold focus:outline-none focus-visible:ring-2"
         style={{
           ...(!active
             ? {
@@ -53,14 +57,14 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
             data-category={cat.slug}
             key={cat.id}
             onClick={() => select(cat.slug)}
-            className="tab-lift inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-[10px] border px-3.5 text-[1.340625rem] font-semibold focus:outline-none focus-visible:ring-2"
+            className="tab-lift inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-2 rounded-[10px] border px-3.5 text-sm font-semibold focus:outline-none focus-visible:ring-2"
             style={{
               ...(isActive
                 ? {
-                    background: color,
-                    borderColor: color,
-                    color: '#FFFFFF',
-                    boxShadow: `0 2px 10px ${color}40`,
+                    background: `color-mix(in oklab, ${color} 18%, var(--color-surface))`,
+                    borderColor: `color-mix(in oklab, ${color} 45%, var(--color-border))`,
+                    color: 'var(--color-text-primary)',
+                    boxShadow: `0 2px 10px color-mix(in oklab, ${color} 18%, transparent)`,
                   }
                 : {
                     background: 'var(--color-surface-elevated)',
@@ -72,7 +76,7 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
           >
             <span
               className="h-2 w-2 rounded-full flex-shrink-0"
-              style={{ background: isActive ? 'rgba(255,255,255,0.7)' : color }}
+              style={{ background: color }}
               aria-hidden="true"
             />
             {cat.name}

@@ -2,6 +2,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { logAuditEvent } from '@/lib/audit'
 import { createClient } from '@/lib/supabase/server'
 import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
 
@@ -30,9 +31,23 @@ export async function invitePublisher(formData: FormData) {
     org_ids: orgIds,
     invited_by: access.userId,
     expires_at: expiresAt.toISOString(),
-  }).select('token').single()
+  }).select('id, token').single()
 
   if (error) redirect(`/admin/publishers/invite?error=${encodeURIComponent(error.message)}`)
+
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'invitation.created',
+    targetType: 'invitation',
+    targetId: data.id,
+    metadata: {
+      email,
+      role: 'publisher',
+      member_role: memberRole,
+      org_ids: orgIds,
+      expires_at: expiresAt.toISOString(),
+    },
+  })
 
   redirect(`/admin/publishers/invite?token=${data.token}&email=${encodeURIComponent(email)}`)
 }

@@ -11,13 +11,33 @@ import type { DbAnnouncement } from '@/lib/types'
 
 export const metadata = { title: 'Announcements — Bulletin' }
 
-type QueryRow = Pick<DbAnnouncement, 'id' | 'title' | 'status' | 'urgency' | 'banner_url' | 'published_at' | 'expires_at' | 'archived_at' | 'updated_at'> & {
+type QueryRow = Pick<
+  DbAnnouncement,
+  | 'id'
+  | 'title'
+  | 'status'
+  | 'urgency'
+  | 'banner_url'
+  | 'published_at'
+  | 'scheduled_publish_at'
+  | 'pinned_until'
+  | 'rejection_comment'
+  | 'view_count'
+  | 'expires_at'
+  | 'archived_at'
+  | 'updated_at'
+> & {
   categories: { id: string; name: string; color: string | null } | null
   organizations: { id: string; name: string } | null
   author: { display_name: string } | null
 }
 
-export default async function AnnouncementsPage() {
+export default async function AnnouncementsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ search?: string }>
+}) {
+  const { search } = await searchParams
   const access = await getCurrentAccessContext()
   if (!access) redirect('/login')
 
@@ -27,7 +47,7 @@ export default async function AnnouncementsPage() {
   let announcements: AnnouncementRowData[] = []
   let totalPublished = 0
   let pendingDrafts = 0
-  let expiringSoon = 0
+  let scheduled = 0
   let archived = 0
 
   let query = supabase
@@ -39,6 +59,10 @@ export default async function AnnouncementsPage() {
       urgency,
       banner_url,
       published_at,
+      scheduled_publish_at,
+      pinned_until,
+      rejection_comment,
+      view_count,
       expires_at,
       archived_at,
       updated_at,
@@ -60,6 +84,7 @@ export default async function AnnouncementsPage() {
 
   if (rows) {
     const rawRows = rows as unknown as QueryRow[]
+    const nowMs = new Date().getTime()
     announcements = rawRows.map((r) => ({
       id: r.id,
       title: r.title,
@@ -67,42 +92,55 @@ export default async function AnnouncementsPage() {
       urgency: r.urgency,
       banner_url: r.banner_url,
       published_at: r.published_at,
+      scheduled_publish_at: r.scheduled_publish_at,
+      pinned_until: r.pinned_until,
+      rejection_comment: r.rejection_comment,
+      view_count: r.view_count ?? 0,
       updated_at: r.updated_at,
       categories: r.categories,
       organizations: r.organizations,
       author: r.author,
     }))
 
-    totalPublished = rawRows.filter((r) => r.status === 'published').length
+    totalPublished = rawRows.filter(
+      (r) =>
+        r.status === 'published' &&
+        (r.scheduled_publish_at === null || new Date(r.scheduled_publish_at).getTime() <= nowMs)
+    ).length
     pendingDrafts = rawRows.filter((r) => r.status === 'draft').length
-    expiringSoon = rawRows.filter((r) => r.expires_at !== null && r.status === 'published').length
+    scheduled = rawRows.filter(
+      (r) =>
+        r.status === 'published' &&
+        r.scheduled_publish_at !== null &&
+        new Date(r.scheduled_publish_at).getTime() > nowMs
+    ).length
     archived = rawRows.filter((r) => r.status === 'archived').length
   }
 
   const stats = [
-    { label: 'Total Published', value: totalPublished },
+    { label: 'Live Published', value: totalPublished },
     { label: 'Pending Drafts', value: pendingDrafts },
-    { label: 'Expiring Soon', value: expiringSoon },
+    { label: 'Scheduled', value: scheduled },
     { label: 'Archived', value: archived },
   ]
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
       {/* Page header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-4xl font-bold text-[var(--color-text-primary)] tracking-tight">
             Announcements
           </h1>
           <p className="text-[var(--color-text-secondary)] mt-1">
             {scopeToMembership
-              ? 'Manage your organization&apos;s updates.'
+              ? "Manage your organization's updates."
               : 'Manage announcements across approved organizations.'}
           </p>
         </div>
         <Link
           href="/dashboard/announcements/new"
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white text-sm font-semibold transition-colors shrink-0"
+          className="flex w-full shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)] sm:w-auto"
         >
           <Plus size={16} />
           New Announcement
@@ -122,7 +160,7 @@ export default async function AnnouncementsPage() {
       </div>
 
       {/* Client component handles tabs, search, list, pagination */}
-      <AnnouncementsClient announcements={announcements} />
+      <AnnouncementsClient announcements={announcements} initialQuery={search?.trim() ?? ''} />
     </div>
   )
 }

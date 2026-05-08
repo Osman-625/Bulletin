@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { GlassCard } from '@/components/dashboard/GlassCard'
+import { logAuditEvent } from '@/lib/audit'
 import {
   canAccessAdminArea,
   canManageUser,
@@ -27,11 +28,11 @@ const LEVEL_COLOR: Record<string, string> = {
 
 const EDITABLE_ROLES: AppRole[] = ['publisher']
 
-async function getTargetUser(targetId: string): Promise<ScopedUser> {
+async function getTargetUser(targetId: string): Promise<ScopedUser & { email: string; displayName: string }> {
   const supabase = await createServiceClient()
   const { data: target } = await supabase
     .from('users')
-    .select('id, role, organization_members ( organization_id )')
+    .select('id, email, display_name, role, organization_members ( organization_id )')
     .eq('id', targetId)
     .single()
 
@@ -39,6 +40,8 @@ async function getTargetUser(targetId: string): Promise<ScopedUser> {
 
   return {
     id: target.id,
+    email: target.email,
+    displayName: target.display_name,
     role: target.role as AppRole,
     orgIds: (target.organization_members ?? []).map((membership) => membership.organization_id),
   }
@@ -66,20 +69,31 @@ async function assertAdminCanManage(targetId: string) {
 async function setRole(userId: string, newRole: string) {
   'use server'
 
-  const { target } = await assertAdminCanManage(userId)
+  const { access, target } = await assertAdminCanManage(userId)
   if (!EDITABLE_ROLES.includes(newRole as AppRole) || target.role !== 'publisher') {
     throw new Error('Insufficient privilege')
   }
 
   const supabase = await createServiceClient()
   await supabase.from('users').update({ role: newRole as AppRole }).eq('id', userId)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'user.role_confirmed',
+    targetType: 'user',
+    targetId: userId,
+    metadata: {
+      email: target.email,
+      display_name: target.displayName,
+      role: newRole,
+    },
+  })
   revalidatePath('/admin/users')
 }
 
 async function resetPassword(userId: string, formData: FormData) {
   'use server'
 
-  const { target } = await assertAdminCanManage(userId)
+  const { access, target } = await assertAdminCanManage(userId)
   if (target.role !== 'publisher') throw new Error('Insufficient privilege')
 
   const supabase = await createServiceClient()
@@ -87,6 +101,18 @@ async function resetPassword(userId: string, formData: FormData) {
   if (!temp || temp.length < 8) redirect('/admin/users?msg=Password+must+be+at+least+8+characters.')
   await supabase.auth.admin.updateUserById(userId, { password: temp })
   await supabase.from('users').update({ force_password_change: true }).eq('id', userId)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'user.password_reset',
+    targetType: 'user',
+    targetId: userId,
+    metadata: {
+      email: target.email,
+      display_name: target.displayName,
+      role: target.role,
+      force_password_change: true,
+    },
+  })
   revalidatePath('/admin/users')
   redirect('/admin/users?msg=Password+updated.+User+will+be+prompted+to+change+it+on+next+login.')
 }
@@ -94,11 +120,23 @@ async function resetPassword(userId: string, formData: FormData) {
 async function deleteUser(userId: string) {
   'use server'
 
-  const { target } = await assertAdminCanManage(userId)
+  const { access, target } = await assertAdminCanManage(userId)
   if (target.role !== 'publisher') throw new Error('Insufficient privilege')
 
   const supabase = await createServiceClient()
   await supabase.auth.admin.deleteUser(userId)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'user.deleted',
+    targetType: 'user',
+    targetId: userId,
+    metadata: {
+      email: target.email,
+      display_name: target.displayName,
+      previous_role: target.role,
+      org_ids: target.orgIds,
+    },
+  })
   revalidatePath('/admin/users')
 }
 

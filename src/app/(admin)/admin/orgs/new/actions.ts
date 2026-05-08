@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
+import { logAuditEvent } from '@/lib/audit'
 import { createClient } from '@/lib/supabase/server'
 
 export async function createOrganization(formData: FormData) {
@@ -14,7 +15,7 @@ export async function createOrganization(formData: FormData) {
   const description = (formData.get('description') as string | null)?.trim() || null
   const org_type = formData.get('org_type') as string
 
-  const { error } = await supabase.from('organizations').insert({
+  const { data: organization, error } = await supabase.from('organizations').insert({
     name,
     slug,
     description,
@@ -23,9 +24,22 @@ export async function createOrganization(formData: FormData) {
     owner_id: user.id,
     approved_by: user.id,
     approved_at: new Date().toISOString(),
-  })
+  }).select('id').single()
 
   if (error) redirect(`/admin/orgs/new?error=${encodeURIComponent(error.message)}`)
+
+  await logAuditEvent({
+    actorId: user.id,
+    action: 'organization.created',
+    targetType: 'organization',
+    targetId: organization.id,
+    metadata: {
+      name,
+      slug,
+      org_type,
+      status: 'approved',
+    },
+  })
 
   revalidatePath('/admin/orgs')
   redirect('/admin/orgs')

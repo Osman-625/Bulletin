@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Edit2, MoreVertical, FileImage } from 'lucide-react'
+import { Clock, Edit2, Eye, MoreVertical, FileImage, Pin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { GlassCard } from './GlassCard'
 import { StatusBadge } from './StatusBadge'
@@ -20,6 +20,10 @@ export type AnnouncementRowData = {
   urgency: AnnouncementUrgency
   banner_url: string | null
   published_at: string | null
+  scheduled_publish_at: string | null
+  pinned_until: string | null
+  rejection_comment: string | null
+  view_count: number
   updated_at: string
   categories: { id: string; name: string; color: string | null } | null
   organizations: { id: string; name: string } | null
@@ -36,6 +40,18 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
   const isDraft = announcement.status === 'draft'
   const urgency = normalizeAnnouncementUrgency(announcement.urgency)
   const urgencyMeta = URGENCY_META[urgency]
+  const nowMs = new Date().getTime()
+  const scheduledDate = announcement.scheduled_publish_at ? new Date(announcement.scheduled_publish_at) : null
+  const pinnedUntil = announcement.pinned_until ? new Date(announcement.pinned_until) : null
+  const isScheduled =
+    announcement.status === 'published' &&
+    scheduledDate !== null &&
+    !Number.isNaN(scheduledDate.getTime()) &&
+    scheduledDate.getTime() > nowMs
+  const isPinned =
+    pinnedUntil !== null &&
+    !Number.isNaN(pinnedUntil.getTime()) &&
+    pinnedUntil.getTime() > nowMs
 
   function handleRowClick(e: React.MouseEvent) {
     // Prevent navigation if clicking action buttons
@@ -49,13 +65,10 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
     router.push(`/dashboard/announcements/${announcement.id}/edit`)
   }
 
-  const dateLabel = announcement.published_at
-    ? new Date(announcement.published_at).toLocaleDateString('en-MY', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      })
-    : new Date(announcement.updated_at).toLocaleDateString('en-MY', {
+  const dateSource = isScheduled && announcement.scheduled_publish_at
+    ? announcement.scheduled_publish_at
+    : announcement.published_at ?? announcement.updated_at
+  const dateLabel = new Date(dateSource).toLocaleDateString('en-MY', {
         day: 'numeric',
         month: 'short',
         year: 'numeric',
@@ -109,6 +122,18 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
                 {urgencyMeta.label}
               </span>
             )}
+            {isScheduled && (
+              <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[15px] font-bold uppercase tracking-wider text-[var(--color-accent-inti)] bg-[var(--color-accent-surface)]">
+                <Clock size={12} aria-hidden="true" />
+                Scheduled
+              </span>
+            )}
+            {isPinned && (
+              <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[15px] font-bold uppercase tracking-wider text-[var(--color-status-published-text)] bg-[var(--color-status-published-bg)]">
+                <Pin size={12} aria-hidden="true" />
+                Pinned
+              </span>
+            )}
             <span className="text-lg font-semibold text-[var(--color-text-primary)] truncate leading-tight">
               {announcement.title}
             </span>
@@ -140,17 +165,28 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
               </>
             )}
           </div>
+          {announcement.status === 'rejected' && announcement.rejection_comment && (
+            <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--color-status-rejected-text)]">
+              Admin note: {announcement.rejection_comment}
+            </p>
+          )}
         </div>
 
         {/* Right — date + author */}
         <div className="text-right shrink-0">
           <p className="text-sm font-mono text-[var(--color-text-muted)]">{dateLabel}</p>
           <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            {isDraft
+            {isScheduled
+              ? 'Scheduled'
+              : isDraft
               ? 'Draft'
               : announcement.author
               ? `Published by ${announcement.author.display_name}`
               : 'Published'}
+          </p>
+          <p className="mt-1 inline-flex items-center justify-end gap-1 text-xs text-[var(--color-text-muted)]">
+            <Eye size={12} aria-hidden="true" />
+            {announcement.view_count.toLocaleString('en-MY')}
           </p>
         </div>
 

@@ -1,6 +1,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { GlassCard } from '@/components/dashboard/GlassCard'
+import { logAuditEvent } from '@/lib/audit'
 import { createServiceClient } from '@/lib/supabase/server'
 import {
   canAccessOwnerArea,
@@ -59,6 +60,17 @@ async function createUser(formData: FormData) {
     { id: authData.user.id, email, display_name: displayName, role },
     { onConflict: 'id' }
   )
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'user.created',
+    targetType: 'user',
+    targetId: authData.user.id,
+    metadata: {
+      email,
+      display_name: displayName,
+      role,
+    },
+  })
   revalidatePath('/owner/users')
   redirect('/owner/users')
 }
@@ -75,12 +87,24 @@ async function setRole(userId: string, newRole: string) {
   const supabase = await createServiceClient()
   const { data: target } = await supabase
     .from('users')
-    .select('id, role')
+    .select('id, email, display_name, role')
     .eq('id', userId)
     .single()
   if (!target) return
   if (!canManageUser({ id: access.userId, role: access.role, orgIds: access.orgIds }, { id: target.id, role: target.role as AppRole, orgIds: [] })) return
   await supabase.from('users').update({ role }).eq('id', userId)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'user.role_changed',
+    targetType: 'user',
+    targetId: userId,
+    metadata: {
+      email: target.email,
+      display_name: target.display_name,
+      previous_role: target.role,
+      new_role: role,
+    },
+  })
   revalidatePath('/owner/users')
 }
 
@@ -94,7 +118,7 @@ async function resetPassword(userId: string, formData: FormData) {
   const supabase = await createServiceClient()
   const { data: target } = await supabase
     .from('users')
-    .select('id, role')
+    .select('id, email, display_name, role')
     .eq('id', userId)
     .single()
   if (!target) return
@@ -103,6 +127,18 @@ async function resetPassword(userId: string, formData: FormData) {
   if (!temp || temp.length < 8) redirect('/owner/users?msg=Password+must+be+at+least+8+characters.')
   await supabase.auth.admin.updateUserById(userId, { password: temp })
   await supabase.from('users').update({ force_password_change: true }).eq('id', userId)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'user.password_reset',
+    targetType: 'user',
+    targetId: userId,
+    metadata: {
+      email: target.email,
+      display_name: target.display_name,
+      role: target.role,
+      force_password_change: true,
+    },
+  })
   revalidatePath('/owner/users')
   redirect('/owner/users?msg=Password+updated.+User+will+be+prompted+to+change+it+on+next+login.')
 }
@@ -117,12 +153,23 @@ async function deleteUser(userId: string) {
   const supabase = await createServiceClient()
   const { data: target } = await supabase
     .from('users')
-    .select('id, role')
+    .select('id, email, display_name, role')
     .eq('id', userId)
     .single()
   if (!target) return
   if (!canManageUser({ id: access.userId, role: access.role, orgIds: access.orgIds }, { id: target.id, role: target.role as AppRole, orgIds: [] })) return
   await supabase.auth.admin.deleteUser(userId)
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'user.deleted',
+    targetType: 'user',
+    targetId: userId,
+    metadata: {
+      email: target.email,
+      display_name: target.display_name,
+      previous_role: target.role,
+    },
+  })
   revalidatePath('/owner/users')
 }
 

@@ -60,6 +60,34 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
                 {new Date(announcement.updated_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             </div>
+            {announcement.scheduled_publish_at && (
+              <div>
+                <p className="text-[var(--color-text-muted)] text-xs uppercase tracking-wider mb-1">Scheduled</p>
+                <p className="text-[var(--color-text-primary)] font-medium">
+                  {new Date(announcement.scheduled_publish_at).toLocaleString('en-MY', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}
+                </p>
+              </div>
+            )}
+            {announcement.pinned_until && (
+              <div>
+                <p className="text-[var(--color-text-muted)] text-xs uppercase tracking-wider mb-1">Pinned Until</p>
+                <p className="text-[var(--color-text-primary)] font-medium">
+                  {new Date(announcement.pinned_until).toLocaleString('en-MY', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })}
+                </p>
+              </div>
+            )}
             {announcement.expires_at && (
               <div>
                 <p className="text-[var(--color-text-muted)] text-xs uppercase tracking-wider mb-1">Expires</p>

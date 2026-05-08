@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { logAuditEvent } from '@/lib/audit'
 import { createClient } from '@/lib/supabase/server'
 import { canAccessSuperAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
 
@@ -26,9 +27,23 @@ export async function inviteAdmin(formData: FormData) {
     org_ids: [],
     invited_by: access.userId,
     expires_at: expiresAt.toISOString(),
-  }).select('token').single()
+  }).select('id, token').single()
 
   if (error) redirect(`/super-admin/admins/invite?error=${encodeURIComponent(error.message)}`)
+
+  await logAuditEvent({
+    actorId: access.userId,
+    action: 'invitation.created',
+    targetType: 'invitation',
+    targetId: data.id,
+    metadata: {
+      email,
+      role,
+      member_role: 'admin',
+      org_ids: [],
+      expires_at: expiresAt.toISOString(),
+    },
+  })
 
   redirect(`/super-admin/admins/invite?token=${data.token}&email=${encodeURIComponent(email)}`)
 }

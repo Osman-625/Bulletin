@@ -46,27 +46,27 @@ export const DISPLAY_SIZE_LABELS: Record<AnnouncementDisplaySize, string> = {
 }
 
 export const CARD_TITLE_SIZES: Record<AnnouncementDisplaySize, string> = {
-  compact: '2.175rem',
-  standard: '2.475rem',
-  large: '3rem',
+  compact: '1.5rem',
+  standard: '1.75rem',
+  large: '2rem',
 }
 
 export const FEATURED_TITLE_SIZES: Record<AnnouncementDisplaySize, string> = {
-  compact: 'clamp(3rem, 4.05vw, 4.5rem)',
-  standard: 'clamp(3.525rem, 4.8vw, 5.625rem)',
-  large: 'clamp(4.2rem, 5.7vw, 6.75rem)',
+  compact: '2rem',
+  standard: '2.5rem',
+  large: '3rem',
 }
 
 export const DETAIL_TITLE_SIZES: Record<AnnouncementDisplaySize, string> = {
-  compact: 'clamp(2.90625rem, 7.5vw, 4.40625rem)',
-  standard: 'clamp(3.375rem, 9.375vw, 5.625rem)',
-  large: 'clamp(4.03125rem, 10.5vw, 6.84375rem)',
+  compact: '2.5rem',
+  standard: '3rem',
+  large: '3.5rem',
 }
 
 export const DETAIL_BODY_SIZES: Record<AnnouncementDisplaySize, string> = {
-  compact: '1.65rem',
-  standard: '1.753125rem',
-  large: '1.959375rem',
+  compact: '1rem',
+  standard: '1.125rem',
+  large: '1.25rem',
 }
 
 function normalizeOption<T extends readonly string[]>(
@@ -100,10 +100,21 @@ export function getAnnouncementTitleFontClass(font: AnnouncementDisplayFont) {
   return font === 'clean' ? 'font-sans' : 'font-display'
 }
 
+export function isAnnouncementPinned(announcement: { pinned_until?: string | null }, now = Date.now()) {
+  if (!announcement.pinned_until) return false
+  const pinnedUntil = new Date(announcement.pinned_until).getTime()
+  return !Number.isNaN(pinnedUntil) && pinnedUntil > now
+}
+
 export function sortAnnouncementsForFeed<
-  T extends { urgency?: string | null; published_at?: string | null },
+  T extends { urgency?: string | null; published_at?: string | null; pinned_until?: string | null },
 >(announcements: T[]): T[] {
+  const now = Date.now()
+
   return [...announcements].sort((a, b) => {
+    const pinnedDiff = Number(isAnnouncementPinned(b, now)) - Number(isAnnouncementPinned(a, now))
+    if (pinnedDiff !== 0) return pinnedDiff
+
     const urgencyDiff =
       URGENCY_META[normalizeAnnouncementUrgency(b.urgency)].rank -
       URGENCY_META[normalizeAnnouncementUrgency(a.urgency)].rank

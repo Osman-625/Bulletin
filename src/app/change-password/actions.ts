@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { logAuditEvent } from '@/lib/audit'
 import { createClient } from '@/lib/supabase/server'
 import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
 
@@ -29,6 +30,13 @@ export async function changePassword(formData: FormData) {
 
   // Clear the force_password_change flag
   await supabase.from('users').update({ force_password_change: false }).eq('id', user.id)
+  await logAuditEvent({
+    actorId: user.id,
+    action: 'user.password_changed',
+    targetType: 'user',
+    targetId: user.id,
+    metadata: { email: user.email ?? null },
+  })
 
   // Redirect to the appropriate dashboard
   const { data: profile } = await supabase

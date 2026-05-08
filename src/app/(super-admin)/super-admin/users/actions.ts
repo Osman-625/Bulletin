@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { logAuditEvent } from '@/lib/audit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
@@ -21,6 +22,11 @@ export async function resetUserPassword(formData: FormData) {
   }
 
   const adminClient = createAdminClient()
+  const { data: targetProfile } = await adminClient
+    .from('users')
+    .select('email, display_name, role')
+    .eq('id', targetUserId)
+    .single()
 
   const { error: authError } = await adminClient.auth.admin.updateUserById(targetUserId, {
     password: tempPassword,
@@ -32,6 +38,19 @@ export async function resetUserPassword(formData: FormData) {
     .from('users')
     .update({ force_password_change: true })
     .eq('id', targetUserId)
+
+  await logAuditEvent({
+    actorId: user.id,
+    action: 'user.password_reset',
+    targetType: 'user',
+    targetId: targetUserId,
+    metadata: {
+      email: targetProfile?.email ?? null,
+      display_name: targetProfile?.display_name ?? null,
+      role: targetProfile?.role ?? null,
+      force_password_change: true,
+    },
+  })
 
   revalidatePath('/super-admin/users')
   redirect('/super-admin/users?success=Password+reset+successfully')
