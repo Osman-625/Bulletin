@@ -42,16 +42,22 @@ export default async function PublicFeedPage({
     <div className="min-h-[100dvh]">
       <main className="w-full px-4 py-6 sm:px-6 sm:py-10 lg:px-10 lg:py-12 xl:px-12">
         <div className="mx-auto flex w-full max-w-[90rem] flex-col gap-7 lg:gap-10">
-          <section className="animate-fade-up grid gap-7 border-b border-[var(--color-border)] pb-7 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-end lg:pb-10">
+          <section className="animate-fade-up grid gap-7 border-b border-[var(--color-border)] pb-7 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-end lg:pb-10">
             <div className="max-w-[48rem]">
-              <div className="mb-5 flex items-center gap-3">
+              {/* Pulsing live indicator + INTI label */}
+              <div className="mb-5 flex items-center gap-2.5">
+                <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
+                  <span
+                    className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-50"
+                    style={{ background: 'var(--color-accent-inti)' }}
+                  />
+                  <span
+                    className="relative inline-flex h-2 w-2 rounded-full"
+                    style={{ background: 'var(--color-accent-inti)' }}
+                  />
+                </span>
                 <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ background: 'var(--color-accent-inti)' }}
-                  aria-hidden="true"
-                />
-                <span
-                  className="text-xs font-semibold uppercase"
+                  className="text-xs font-semibold tracking-widest uppercase"
                   style={{ color: 'var(--color-accent-inti)' }}
                 >
                   INTI International University
@@ -69,31 +75,74 @@ export default async function PublicFeedPage({
               </h1>
 
               <p
-                className="mt-5 max-w-[34rem] text-base leading-relaxed sm:mt-6 sm:text-xl"
+                className="mt-5 max-w-[32rem] text-base leading-relaxed sm:mt-6 sm:text-lg"
                 style={{ color: 'var(--color-text-muted)' }}
               >
                 Official updates, events, deadlines, and student opportunities from INTI
                 International University.
               </p>
+
+              {/* Mobile-only inline stats */}
+              <div className="mt-6 flex items-center gap-5 lg:hidden">
+                <div>
+                  <span className="font-mono text-2xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                    {announcements.length}
+                  </span>
+                  <span className="ml-2 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
+                    Live posts
+                  </span>
+                </div>
+                <span className="h-4 w-px shrink-0" style={{ background: 'var(--color-border)' }} />
+                <div>
+                  <span className="font-mono text-2xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>
+                    {categories.length}
+                  </span>
+                  <span className="ml-2 text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>
+                    Topics
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <div className="hidden border-t border-[var(--color-border)] pt-5 lg:block">
-              <p className="text-sm font-medium text-[var(--color-text-muted)]">{today}</p>
-              <div className="mt-5 grid grid-cols-2 gap-x-8 gap-y-4">
+            {/* Desktop stats panel — vertical with left-border rule */}
+            <div className="hidden flex-col justify-end gap-5 lg:flex">
+              <p
+                className="text-[11px] font-semibold uppercase tracking-widest"
+                style={{ color: 'var(--color-text-muted)' }}
+              >
+                {today}
+              </p>
+              <div
+                className="flex flex-col gap-5 border-l-2 pl-5"
+                style={{ borderColor: 'var(--color-border)' }}
+              >
                 <div>
-                  <p className="font-mono text-3xl font-semibold text-[var(--color-text-primary)]">
+                  <p
+                    className="font-mono text-5xl font-semibold leading-none"
+                    style={{ color: 'var(--color-text-primary)' }}
+                  >
                     {announcements.length}
                   </p>
-                  <p className="mt-1 text-xs text-[var(--color-text-muted)] uppercase">
+                  <p
+                    className="mt-2 text-[11px] font-semibold uppercase tracking-widest"
+                    style={{ color: 'var(--color-text-muted)' }}
+                  >
                     Live posts
                   </p>
                 </div>
+                <div className="h-px w-8" style={{ background: 'var(--color-border)' }} />
                 <div>
-                  <p className="font-mono text-3xl font-semibold text-[var(--color-text-primary)]">
+                  <p
+                    className="font-mono text-5xl font-semibold leading-none"
+                    style={{ color: 'var(--color-text-primary)' }}
+                  >
                     {categories.length}
                   </p>
-                  <p className="mt-1 text-xs text-[var(--color-text-muted)] uppercase">
-                    Categories
+                  <p
+                    className="mt-2 text-[11px] font-semibold uppercase tracking-widest"
+                    style={{ color: 'var(--color-text-muted)' }}
+                  >
+                    Topics
                   </p>
                 </div>
               </div>
