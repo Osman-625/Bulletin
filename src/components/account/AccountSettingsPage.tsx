@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ArrowUpRight, KeyRound, Palette, UserRound } from 'lucide-react'
-import { ThemeToggle } from '@/components/dashboard/ThemeToggle'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { updateAccountPassword, updateDisplayName } from '@/lib/account/actions'
 import { getDefaultAppPath, type AccessContext } from '@/lib/auth/authz'

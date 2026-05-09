@@ -302,15 +302,6 @@ export async function getVisibleUsersForAdmin() {
 
 // ─── Super Admin ──────────────────────────────────────────────
 
-export async function getAllUsers() {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('users')
-    .select('*')
-    .order('created_at', { ascending: false })
-  return data ?? []
-}
-
 export async function getAllAdmins() {
   const supabase = await createClient()
   const { data } = await supabase
@@ -318,12 +309,6 @@ export async function getAllAdmins() {
     .select('*')
     .in('role', ['admin', 'super_admin'])
     .order('created_at', { ascending: false })
-  return data ?? []
-}
-
-export async function getAllCategoriesAdmin() {
-  const supabase = await createClient()
-  const { data } = await supabase.from('categories').select('*').order('name')
   return data ?? []
 }
 

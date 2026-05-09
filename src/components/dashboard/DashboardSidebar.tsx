@@ -23,7 +23,7 @@ import {
   ArrowUpRight,
   Activity,
 } from 'lucide-react'
-import { ThemeToggle } from './ThemeToggle'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { logout } from '@/app/(auth)/login/actions'
 import { cn } from '@/lib/utils'
 
