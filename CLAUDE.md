@@ -1,3 +1,15 @@
+## Commands
+
+```bash
+npm run dev          # dev server
+npm run build        # production build
+npm test             # vitest unit suite
+npm run test:e2e     # playwright E2E
+npm run lint         # eslint
+npm run format       # prettier --write .
+npx tsc --noEmit     # type check
+```
+
 @AGENTS.md
 
 ## graphify
