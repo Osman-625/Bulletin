@@ -13,7 +13,7 @@ test.describe('Public feed', () => {
   test('search filters cards by title', async ({ page }) => {
     await page.goto('/')
     const firstCard = page.locator('[data-testid="announcement-card"]').first()
-    const hasCards = await firstCard.count() > 0
+    const hasCards = (await firstCard.count()) > 0
     test.skip(!hasCards, 'No published announcements in DB — run seed script first')
 
     await expect(firstCard).toBeVisible()
@@ -25,6 +25,7 @@ test.describe('Public feed', () => {
     await page.getByRole('button', { name: /^search$/i }).click()
     await expect(page).toHaveURL(new RegExp(`q=${encodeURIComponent(keyword)}`, 'i'))
     const cards = page.locator('[data-testid="announcement-card"]')
+    await expect(cards.first()).toBeVisible()
     const count = await cards.count()
     expect(count).toBeGreaterThan(0)
   })
@@ -38,7 +39,7 @@ test.describe('Public feed', () => {
   test('clear button removes q param and restores feed', async ({ page }) => {
     await page.goto('/?q=test')
     const clearLink = page.getByRole('link', { name: /clear/i })
-    if (await clearLink.count() === 0) return // no results to clear
+    if ((await clearLink.count()) === 0) return // no results to clear
     await clearLink.click()
     await expect(page).not.toHaveURL(/q=/)
   })
@@ -46,7 +47,7 @@ test.describe('Public feed', () => {
   test('category filter combined with search shows intersection', async ({ page }) => {
     await page.goto('/')
     const filterBtn = page.locator('button[data-category]:not([data-category=""])').first()
-    const hasCategories = await filterBtn.count() > 0
+    const hasCategories = (await filterBtn.count()) > 0
     test.skip(!hasCategories, 'No active categories in DB — run seed script first')
 
     await expect(filterBtn).toBeVisible()

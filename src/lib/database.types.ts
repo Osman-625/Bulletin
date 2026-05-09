@@ -32,8 +32,18 @@ export type Database = {
           created_at?: string
         }
         Relationships: [
-          { foreignKeyName: 'announcement_reviews_announcement_id_fkey'; columns: ['announcement_id']; referencedRelation: 'announcements'; referencedColumns: ['id'] },
-          { foreignKeyName: 'announcement_reviews_reviewer_id_fkey'; columns: ['reviewer_id']; referencedRelation: 'users'; referencedColumns: ['id'] },
+          {
+            foreignKeyName: 'announcement_reviews_announcement_id_fkey'
+            columns: ['announcement_id']
+            referencedRelation: 'announcements'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'announcement_reviews_reviewer_id_fkey'
+            columns: ['reviewer_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
         ]
       }
       announcements: {
@@ -107,9 +117,24 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          { foreignKeyName: 'announcements_category_id_fkey'; columns: ['category_id']; referencedRelation: 'categories'; referencedColumns: ['id'] },
-          { foreignKeyName: 'announcements_organization_id_fkey'; columns: ['organization_id']; referencedRelation: 'organizations'; referencedColumns: ['id'] },
-          { foreignKeyName: 'announcements_author_id_fkey'; columns: ['author_id']; referencedRelation: 'users'; referencedColumns: ['id'] },
+          {
+            foreignKeyName: 'announcements_category_id_fkey'
+            columns: ['category_id']
+            referencedRelation: 'categories'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'announcements_organization_id_fkey'
+            columns: ['organization_id']
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'announcements_author_id_fkey'
+            columns: ['author_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
         ]
       }
       audit_log: {
@@ -141,7 +166,12 @@ export type Database = {
           created_at?: string
         }
         Relationships: [
-          { foreignKeyName: 'audit_log_actor_id_fkey'; columns: ['actor_id']; referencedRelation: 'users'; referencedColumns: ['id'] },
+          {
+            foreignKeyName: 'audit_log_actor_id_fkey'
+            columns: ['actor_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
         ]
       }
       categories: {
@@ -209,7 +239,12 @@ export type Database = {
           created_at?: string
         }
         Relationships: [
-          { foreignKeyName: 'invitations_invited_by_fkey'; columns: ['invited_by']; referencedRelation: 'users'; referencedColumns: ['id'] },
+          {
+            foreignKeyName: 'invitations_invited_by_fkey'
+            columns: ['invited_by']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
         ]
       }
       notifications: {
@@ -218,7 +253,11 @@ export type Database = {
           recipient_id: string
           actor_id: string | null
           announcement_id: string | null
-          type: 'announcement_submitted' | 'announcement_approved' | 'announcement_rejected'
+          type:
+            | 'announcement_submitted'
+            | 'announcement_approved'
+            | 'announcement_rejected'
+            | 'password_reset_requested'
           title: string
           body: string | null
           href: string | null
@@ -230,7 +269,11 @@ export type Database = {
           recipient_id: string
           actor_id?: string | null
           announcement_id?: string | null
-          type: 'announcement_submitted' | 'announcement_approved' | 'announcement_rejected'
+          type:
+            | 'announcement_submitted'
+            | 'announcement_approved'
+            | 'announcement_rejected'
+            | 'password_reset_requested'
           title: string
           body?: string | null
           href?: string | null
@@ -242,7 +285,11 @@ export type Database = {
           recipient_id?: string
           actor_id?: string | null
           announcement_id?: string | null
-          type?: 'announcement_submitted' | 'announcement_approved' | 'announcement_rejected'
+          type?:
+            | 'announcement_submitted'
+            | 'announcement_approved'
+            | 'announcement_rejected'
+            | 'password_reset_requested'
           title?: string
           body?: string | null
           href?: string | null
@@ -250,9 +297,70 @@ export type Database = {
           created_at?: string
         }
         Relationships: [
-          { foreignKeyName: 'notifications_recipient_id_fkey'; columns: ['recipient_id']; referencedRelation: 'users'; referencedColumns: ['id'] },
-          { foreignKeyName: 'notifications_actor_id_fkey'; columns: ['actor_id']; referencedRelation: 'users'; referencedColumns: ['id'] },
-          { foreignKeyName: 'notifications_announcement_id_fkey'; columns: ['announcement_id']; referencedRelation: 'announcements'; referencedColumns: ['id'] },
+          {
+            foreignKeyName: 'notifications_recipient_id_fkey'
+            columns: ['recipient_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'notifications_actor_id_fkey'
+            columns: ['actor_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'notifications_announcement_id_fkey'
+            columns: ['announcement_id']
+            referencedRelation: 'announcements'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      password_reset_requests: {
+        Row: {
+          id: string
+          user_id: string
+          email: string
+          status: string
+          fulfilled_by: string | null
+          fulfilled_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          email: string
+          status?: string
+          fulfilled_by?: string | null
+          fulfilled_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          email?: string
+          status?: string
+          fulfilled_by?: string | null
+          fulfilled_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'password_reset_requests_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'password_reset_requests_fulfilled_by_fkey'
+            columns: ['fulfilled_by']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
         ]
       }
       org_category_permissions: {
@@ -275,8 +383,18 @@ export type Database = {
           created_at?: string
         }
         Relationships: [
-          { foreignKeyName: 'org_cat_perms_org_id_fkey'; columns: ['org_id']; referencedRelation: 'organizations'; referencedColumns: ['id'] },
-          { foreignKeyName: 'org_cat_perms_category_id_fkey'; columns: ['category_id']; referencedRelation: 'categories'; referencedColumns: ['id'] },
+          {
+            foreignKeyName: 'org_cat_perms_org_id_fkey'
+            columns: ['org_id']
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'org_cat_perms_category_id_fkey'
+            columns: ['category_id']
+            referencedRelation: 'categories'
+            referencedColumns: ['id']
+          },
         ]
       }
       organization_members: {
@@ -296,8 +414,18 @@ export type Database = {
           member_role?: Database['public']['Enums']['org_member_role']
         }
         Relationships: [
-          { foreignKeyName: 'organization_members_organization_id_fkey'; columns: ['organization_id']; referencedRelation: 'organizations'; referencedColumns: ['id'] },
-          { foreignKeyName: 'organization_members_user_id_fkey'; columns: ['user_id']; referencedRelation: 'users'; referencedColumns: ['id'] },
+          {
+            foreignKeyName: 'organization_members_organization_id_fkey'
+            columns: ['organization_id']
+            referencedRelation: 'organizations'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'organization_members_user_id_fkey'
+            columns: ['user_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
         ]
       }
       organizations: {
@@ -344,8 +472,18 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          { foreignKeyName: 'organizations_owner_id_fkey'; columns: ['owner_id']; referencedRelation: 'users'; referencedColumns: ['id'] },
-          { foreignKeyName: 'organizations_approved_by_fkey'; columns: ['approved_by']; referencedRelation: 'users'; referencedColumns: ['id'] },
+          {
+            foreignKeyName: 'organizations_owner_id_fkey'
+            columns: ['owner_id']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'organizations_approved_by_fkey'
+            columns: ['approved_by']
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
         ]
       }
       users: {
@@ -407,5 +545,6 @@ export type Database = {
   }
 }
 
-export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row']
+export type Tables<T extends keyof Database['public']['Tables']> =
+  Database['public']['Tables'][T]['Row']
 export type Enums<T extends keyof Database['public']['Enums']> = Database['public']['Enums'][T]

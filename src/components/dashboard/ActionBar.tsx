@@ -37,7 +37,7 @@ export function ActionBar({
         'sticky bottom-0 z-20',
         'bg-[var(--color-surface)]/95 backdrop-blur-sm',
         'border-t border-[var(--color-border)]',
-        'py-3 px-6 flex items-center justify-between'
+        'flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6'
       )}
     >
       {/* Left: autosave indicator + status badge */}
@@ -47,7 +47,7 @@ export function ActionBar({
       </div>
 
       {/* Right: action buttons */}
-      <div className="flex items-center gap-2">
+      <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
         {isPublished ? (
           <>
             {onUnpublish && (
@@ -56,11 +56,11 @@ export function ActionBar({
                 onClick={onUnpublish}
                 disabled={isPublishing}
                 className={cn(
-                  'px-4 py-2 rounded-xl text-sm font-medium transition-all duration-150',
+                  'min-h-11 rounded-xl px-4 text-sm font-medium transition-all duration-150',
                   'border border-[var(--color-destructive)]/30 text-[var(--color-destructive)]',
                   'hover:bg-[var(--color-destructive)]/10',
                   'active:scale-[0.98]',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                  'disabled:cursor-not-allowed disabled:opacity-50'
                 )}
               >
                 Unpublish
@@ -71,11 +71,11 @@ export function ActionBar({
               onClick={onSaveDraft}
               disabled={isSaving}
               className={cn(
-                'px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-150',
+                'min-h-11 rounded-xl px-5 text-sm font-semibold transition-all duration-150',
                 'bg-[var(--color-accent)] text-white',
                 'hover:bg-[var(--color-accent-hover)]',
                 'active:scale-[0.98]',
-                'disabled:opacity-50 disabled:cursor-not-allowed',
+                'disabled:cursor-not-allowed disabled:opacity-50',
                 'flex items-center gap-2'
               )}
             >
@@ -90,11 +90,11 @@ export function ActionBar({
               onClick={onSaveDraft}
               disabled={isSaving}
               className={cn(
-                'px-4 py-2 rounded-xl text-sm font-medium transition-all duration-150',
+                'min-h-11 rounded-xl px-4 text-sm font-medium transition-all duration-150',
                 'border border-[var(--color-glass-border)] text-[var(--color-text-secondary)]',
                 'hover:bg-[var(--color-surface-elevated)]',
                 'active:scale-[0.98]',
-                'disabled:opacity-50 disabled:cursor-not-allowed',
+                'disabled:cursor-not-allowed disabled:opacity-50',
                 'flex items-center gap-2'
               )}
             >
@@ -106,11 +106,11 @@ export function ActionBar({
               onClick={onPublish}
               disabled={isPublishing}
               className={cn(
-                'px-5 py-2 rounded-xl text-sm font-semibold transition-all duration-150',
+                'min-h-11 rounded-xl px-5 text-sm font-semibold transition-all duration-150',
                 'bg-[var(--color-accent)] text-white',
                 'hover:bg-[var(--color-accent-hover)]',
                 'active:scale-[0.98]',
-                'disabled:opacity-50 disabled:cursor-not-allowed',
+                'disabled:cursor-not-allowed disabled:opacity-50',
                 'flex items-center gap-2'
               )}
             >

@@ -15,6 +15,14 @@ function formatNotificationTime(iso: string) {
 }
 
 function notificationTone(type: DbNotification['type']) {
+  if (type === 'password_reset_requested') {
+    return {
+      label: 'Password reset',
+      color: 'var(--color-status-submitted-text)',
+      background: 'var(--color-status-submitted-bg)',
+    }
+  }
+
   if (type === 'announcement_rejected') {
     return {
       label: 'Changes requested',
@@ -58,7 +66,7 @@ export async function NotificationsPanel() {
           <form action={markAllNotificationsRead}>
             <button
               type="submit"
-              className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
             >
               <CheckCheck size={16} aria-hidden="true" />
               Mark all read
@@ -84,11 +92,7 @@ export async function NotificationsPanel() {
             const isUnread = !notification.read_at
 
             return (
-              <GlassCard
-                key={notification.id}
-                hover={false}
-                className="p-5"
-              >
+              <GlassCard key={notification.id} hover={false} className="p-5">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                   <div className="flex min-w-0 flex-1 gap-3">
                     <span
@@ -104,7 +108,7 @@ export async function NotificationsPanel() {
                         >
                           {tone.label}
                         </span>
-                        <span className="text-xs font-mono text-[var(--color-text-muted)]">
+                        <span className="font-mono text-xs text-[var(--color-text-muted)]">
                           {formatNotificationTime(notification.created_at)}
                         </span>
                       </div>
@@ -123,7 +127,7 @@ export async function NotificationsPanel() {
                     {notification.href && (
                       <Link
                         href={notification.href}
-                        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-[var(--color-accent-inti)] px-3 text-sm font-semibold text-white transition-transform active:scale-[0.98]"
+                        className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[var(--color-accent-inti)] px-3 text-sm font-semibold text-white transition-transform active:scale-[0.98]"
                       >
                         Open
                         <ExternalLink size={14} aria-hidden="true" />
@@ -133,7 +137,7 @@ export async function NotificationsPanel() {
                       <form action={markNotificationRead.bind(null, notification.id)}>
                         <button
                           type="submit"
-                          className="inline-flex min-h-9 items-center rounded-lg border border-[var(--color-border)] px-3 text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+                          className="inline-flex min-h-11 items-center rounded-lg border border-[var(--color-border)] px-3 text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
                         >
                           Mark read
                         </button>

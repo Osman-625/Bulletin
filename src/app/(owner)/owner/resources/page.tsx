@@ -1,0 +1,377 @@
+import Link from 'next/link'
+import {
+  Activity,
+  ArrowUpRight,
+  Database,
+  Eye,
+  HardDrive,
+  LockKeyhole,
+  Server,
+  ShieldCheck,
+} from 'lucide-react'
+import { CountUp } from '@/components/dashboard/CountUp'
+import { GlassCard } from '@/components/dashboard/GlassCard'
+import { createServiceClient } from '@/lib/supabase/server'
+import {
+  type ExternalResourceCard,
+  type OwnerResourceOverview,
+  getOwnerResourceOverview,
+} from '@/lib/owner/resources'
+
+export const metadata = { title: 'Resources — Bulletin Owner' }
+
+const toneClasses: Record<NonNullable<ExternalResourceCard['metrics'][number]['tone']>, string> = {
+  neutral: 'text-[var(--color-text-primary)]',
+  good: 'text-[var(--color-status-published-text)]',
+  warn: 'text-[var(--color-gold)]',
+  bad: 'text-[var(--color-status-rejected-text)]',
+}
+
+const resourceStatusStyles: Record<ExternalResourceCard['status'], string> = {
+  ready: 'bg-[var(--color-status-published-bg)] text-[var(--color-status-published-text)]',
+  attention: 'bg-[rgba(212,148,31,0.12)] text-[var(--color-gold)]',
+  not_configured: 'bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)]',
+  error: 'bg-[var(--color-status-rejected-bg)] text-[var(--color-status-rejected-text)]',
+}
+
+export default async function OwnerResourcesPage() {
+  const supabase = await createServiceClient()
+  const overview = await getOwnerResourceOverview(supabase)
+
+  return (
+    <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 sm:py-8">
+      <header className="flex flex-col gap-4 border-b border-[var(--color-border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[var(--color-accent-surface)] px-3 py-1 text-xs font-semibold tracking-[0.14em] text-[var(--color-accent-inti)] uppercase">
+            <ShieldCheck size={13} aria-hidden="true" />
+            Owner only · Read-only
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
+            Resources
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-text-secondary)]">
+            Platform health, announcement view counters, storage footprint, and optional Vercel and
+            Supabase resource signals.
+          </p>
+        </div>
+        <Link
+          href="/owner/analytics"
+          className="inline-flex min-h-11 w-fit items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+        >
+          Back to analytics
+          <ArrowUpRight size={14} aria-hidden="true" />
+        </Link>
+      </header>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          icon={Eye}
+          label="Total Views"
+          value={overview.totalViews}
+          helper="All tracked announcement detail views"
+        />
+        <MetricCard
+          icon={Activity}
+          label="Published Views"
+          value={overview.publishedViews}
+          helper={`${overview.averageViews.toLocaleString('en-MY')} average per published post`}
+        />
+        <MetricCard
+          icon={HardDrive}
+          label="Banner Storage"
+          value={overview.bannerFiles}
+          helper={`${formatBytes(overview.bannerStorageBytes)} in banner-images`}
+          tone={overview.bannerStorageStatus === 'ready' ? 'accent' : 'warn'}
+        />
+        <MetricCard
+          icon={LockKeyhole}
+          label="Password Resets"
+          value={overview.pendingPasswordResets}
+          helper="Pending reset requests"
+          tone={overview.pendingPasswordResets > 0 ? 'warn' : 'accent'}
+        />
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-2">
+        <ExternalResourcePanel icon={Server} resource={overview.external.vercel} />
+        <ExternalResourcePanel icon={Database} resource={overview.external.supabase} />
+      </section>
+
+      <section className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        <TopAnnouncements overview={overview} />
+        <OperationsPanel overview={overview} />
+      </section>
+
+      <section className="grid gap-8 lg:grid-cols-2">
+        <DistributionPanel
+          title="Views by Category"
+          rows={overview.viewsByCategory.map((row) => ({
+            name: row.name,
+            value: row.views,
+            color: row.color,
+          }))}
+        />
+        <DistributionPanel
+          title="Views by Organization"
+          rows={overview.viewsByOrganization.map((row) => ({
+            name: row.name,
+            value: row.views,
+          }))}
+        />
+      </section>
+    </div>
+  )
+}
+
+function MetricCard({
+  icon: Icon,
+  label,
+  value,
+  helper,
+  tone = 'accent',
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>
+  label: string
+  value: number
+  helper: string
+  tone?: 'accent' | 'warn'
+}) {
+  return (
+    <GlassCard hover={false} className="p-5">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <p className="text-xs font-semibold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
+          {label}
+        </p>
+        <span
+          className={
+            tone === 'warn' ? 'text-[var(--color-gold)]' : 'text-[var(--color-accent-inti)]'
+          }
+        >
+          <Icon size={17} aria-hidden="true" />
+        </span>
+      </div>
+      <CountUp
+        value={value}
+        className="font-mono text-4xl font-bold text-[var(--color-text-primary)]"
+      />
+      <p className="mt-2 text-xs leading-5 text-[var(--color-text-muted)]">{helper}</p>
+    </GlassCard>
+  )
+}
+
+function ExternalResourcePanel({
+  icon: Icon,
+  resource,
+}: {
+  icon: React.ComponentType<{ size?: number; className?: string }>
+  resource: ExternalResourceCard
+}) {
+  return (
+    <GlassCard hover={false} className="p-5">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-surface-elevated)] text-[var(--color-accent-inti)]">
+            <Icon size={18} aria-hidden="true" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
+              {resource.name}
+            </h2>
+            <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
+              {resource.summary}
+            </p>
+          </div>
+        </div>
+        <span
+          className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-bold tracking-[0.08em] uppercase ${resourceStatusStyles[resource.status]}`}
+        >
+          {resource.status.replace('_', ' ')}
+        </span>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        {resource.metrics.map((metric) => (
+          <div
+            key={`${resource.name}-${metric.label}`}
+            className="rounded-xl bg-[var(--color-surface-elevated)] px-3 py-3"
+          >
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
+              {metric.label}
+            </p>
+            <p
+              className={`mt-1 truncate text-sm font-semibold ${toneClasses[metric.tone ?? 'neutral']}`}
+              title={metric.value}
+            >
+              {metric.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {resource.href && (
+        <Link
+          href={resource.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+        >
+          Open dashboard
+          <ArrowUpRight size={14} aria-hidden="true" />
+        </Link>
+      )}
+    </GlassCard>
+  )
+}
+
+function TopAnnouncements({ overview }: { overview: OwnerResourceOverview }) {
+  return (
+    <section>
+      <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">
+        Top Viewed Announcements
+      </h2>
+      <div className="space-y-2">
+        {overview.topAnnouncements.length === 0 ? (
+          <GlassCard hover={false} className="p-6 text-sm text-[var(--color-text-muted)]">
+            No tracked views yet.
+          </GlassCard>
+        ) : (
+          overview.topAnnouncements.map((announcement, index) => (
+            <GlassCard
+              key={announcement.id}
+              hover={false}
+              className="flex items-center gap-4 px-4 py-3"
+            >
+              <span className="w-6 shrink-0 font-mono text-sm text-[var(--color-text-muted)]">
+                {index + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
+                  {announcement.title}
+                </p>
+                <p className="mt-1 truncate text-xs text-[var(--color-text-muted)]">
+                  {announcement.organizations?.name ?? 'Unknown organization'}
+                  {announcement.categories?.name ? ` · ${announcement.categories.name}` : ''}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-mono text-sm font-bold text-[var(--color-text-primary)]">
+                  {(announcement.view_count ?? 0).toLocaleString('en-MY')}
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)]">views</p>
+              </div>
+            </GlassCard>
+          ))
+        )}
+      </div>
+    </section>
+  )
+}
+
+function OperationsPanel({ overview }: { overview: OwnerResourceOverview }) {
+  const rows = [
+    {
+      label: 'Setup route',
+      value: overview.setupRouteEnabled ? 'Enabled' : 'Disabled',
+      tone: overview.setupRouteEnabled ? 'bad' : 'good',
+    },
+    {
+      label: 'Banner bucket',
+      value:
+        overview.bannerStorageStatus === 'ready'
+          ? 'Readable'
+          : overview.bannerStorageStatus === 'missing'
+            ? 'Missing'
+            : 'Check storage',
+      tone: overview.bannerStorageStatus === 'ready' ? 'good' : 'warn',
+    },
+    {
+      label: 'Registration posts',
+      value: overview.postsWithRegistration.toLocaleString('en-MY'),
+      tone: 'neutral',
+    },
+    {
+      label: 'Resource mode',
+      value: 'Read-only',
+      tone: 'good',
+    },
+  ] as const
+
+  return (
+    <section>
+      <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">
+        Operational Guardrails
+      </h2>
+      <GlassCard hover={false} className="p-5">
+        <div className="space-y-3">
+          {rows.map((row) => (
+            <div
+              key={row.label}
+              className="flex items-center justify-between gap-4 border-b border-[var(--color-border)] pb-3 last:border-0 last:pb-0"
+            >
+              <p className="text-sm text-[var(--color-text-secondary)]">{row.label}</p>
+              <p className={`text-sm font-semibold ${toneClasses[row.tone]}`}>{row.value}</p>
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+    </section>
+  )
+}
+
+function DistributionPanel({
+  title,
+  rows,
+}: {
+  title: string
+  rows: Array<{ name: string; value: number; color?: string }>
+}) {
+  const max = Math.max(...rows.map((row) => row.value), 1)
+
+  return (
+    <section>
+      <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">{title}</h2>
+      <GlassCard hover={false} className="p-5">
+        {rows.length === 0 ? (
+          <p className="text-sm text-[var(--color-text-muted)]">No view data yet.</p>
+        ) : (
+          <div className="space-y-4">
+            {rows.map((row) => (
+              <div key={row.name}>
+                <div className="mb-1.5 flex items-center justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-2">
+                    {row.color && (
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ background: row.color }}
+                        aria-hidden="true"
+                      />
+                    )}
+                    <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                      {row.name}
+                    </p>
+                  </div>
+                  <p className="font-mono text-sm font-semibold text-[var(--color-text-primary)]">
+                    {row.value.toLocaleString('en-MY')}
+                  </p>
+                </div>
+                <div className="h-1.5 rounded-full bg-[var(--color-surface-elevated)]">
+                  <div
+                    className="h-1.5 rounded-full bg-[var(--color-accent-inti)]"
+                    style={{ width: `${Math.round((row.value / max) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </GlassCard>
+    </section>
+  )
+}
+
+function formatBytes(bytes: number) {
+  if (bytes <= 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB']
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1)
+  return `${(bytes / 1024 ** index).toFixed(index === 0 ? 0 : 1)} ${units[index]}`
+}

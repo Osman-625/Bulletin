@@ -13,6 +13,7 @@ import {
 } from '@/lib/auth/authz'
 import { syncAuthUsersToProfiles } from '@/lib/auth/sync-users'
 import { createServiceClient } from '@/lib/supabase/server'
+import { PasswordResetRequestButton } from './PasswordResetRequestButton'
 
 export const metadata = { title: 'Users - Bulletin Super Admin' }
 
@@ -39,7 +40,20 @@ async function getUsers() {
   return data ?? []
 }
 
-async function getTargetUser(targetId: string): Promise<ScopedUser & { email: string; displayName: string }> {
+async function getPendingPasswordResetRequests() {
+  const supabase = await createServiceClient()
+  const { data } = await supabase
+    .from('password_reset_requests')
+    .select('id, user_id, email, created_at, users ( display_name, email, role )')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+
+  return data ?? []
+}
+
+async function getTargetUser(
+  targetId: string
+): Promise<ScopedUser & { email: string; displayName: string }> {
   const supabase = await createServiceClient()
   const { data: user } = await supabase
     .from('users')
@@ -48,7 +62,13 @@ async function getTargetUser(targetId: string): Promise<ScopedUser & { email: st
     .single()
 
   if (!user) throw new Error('User not found')
-  return { id: user.id, email: user.email, displayName: user.display_name, role: user.role as AppRole, orgIds: [] }
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.display_name,
+    role: user.role as AppRole,
+    orgIds: [],
+  }
 }
 
 async function assertSuperAdminCanManage(targetId: string) {
@@ -94,17 +114,19 @@ async function createUser(formData: FormData) {
     email,
     password,
     email_confirm: true,
-    user_metadata: { display_name: displayName },
+    user_metadata: { display_name: displayName, role },
   })
 
   if (error || !authData.user) {
     redirect(`/super-admin/users?add=true&err=${encodeURIComponent(error?.message ?? 'Failed')}`)
   }
 
-  await supabase.from('users').upsert(
-    { id: authData.user.id, email, display_name: displayName, role },
-    { onConflict: 'id' }
-  )
+  await supabase
+    .from('users')
+    .upsert(
+      { id: authData.user.id, email, display_name: displayName, role, force_password_change: true },
+      { onConflict: 'id' }
+    )
   await logAuditEvent({
     actorId: access.userId,
     action: 'user.created',
@@ -114,6 +136,7 @@ async function createUser(formData: FormData) {
       email,
       display_name: displayName,
       role,
+      force_password_change: true,
     },
   })
 
@@ -152,7 +175,8 @@ async function resetPassword(userId: string, formData: FormData) {
   const { access, target } = await assertSuperAdminCanManage(userId)
   const supabase = await createServiceClient()
   const temp = formData.get('temp_password') as string
-  if (!temp || temp.length < 8) redirect('/super-admin/users?msg=Password+must+be+at+least+8+characters.')
+  if (!temp || temp.length < 8)
+    redirect('/super-admin/users?msg=Password+must+be+at+least+8+characters.')
   await supabase.auth.admin.updateUserById(userId, { password: temp })
   await supabase.from('users').update({ force_password_change: true }).eq('id', userId)
   await logAuditEvent({
@@ -168,7 +192,9 @@ async function resetPassword(userId: string, formData: FormData) {
     },
   })
   revalidatePath('/super-admin/users')
-  redirect('/super-admin/users?msg=Password+updated.+User+will+be+prompted+to+change+it+on+next+login.')
+  redirect(
+    '/super-admin/users?msg=Password+updated.+User+will+be+prompted+to+change+it+on+next+login.'
+  )
 }
 
 async function deleteUser(userId: string) {
@@ -194,9 +220,25 @@ async function deleteUser(userId: string) {
 export default async function SuperAdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ role?: string; msg?: string; edit?: string; confirm?: string; add?: string; err?: string }>
+  searchParams: Promise<{
+    role?: string
+    msg?: string
+    edit?: string
+    confirm?: string
+    add?: string
+    err?: string
+    reset_request?: string
+  }>
 }) {
-  const { role: filterRole, msg, edit, confirm, add, err } = await searchParams
+  const {
+    role: filterRole,
+    msg,
+    edit,
+    confirm,
+    add,
+    err,
+    reset_request: highlightedResetRequest,
+  } = await searchParams
   const isAdding = add === 'true'
   const access = await getCurrentAccessContext()
   if (!access) redirect('/login')
@@ -217,6 +259,7 @@ export default async function SuperAdminUsersPage({
   }
 
   const allUsers = await getUsers()
+  const pendingResetRequests = await getPendingPasswordResetRequests()
   const roleCounts = allUsers.reduce<Record<string, number>>((acc, user) => {
     acc[user.role as string] = (acc[user.role as string] ?? 0) + 1
     return acc
@@ -226,17 +269,19 @@ export default async function SuperAdminUsersPage({
   const separator = base.includes('?') ? '&' : '?'
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-[var(--color-text-primary)] tracking-tight">Users</h1>
-          <p className="text-[var(--color-text-secondary)] mt-1">
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
+            Users
+          </h1>
+          <p className="mt-1 text-[var(--color-text-secondary)]">
             {users.length} users{filterRole ? ` - ${ROLE_LABELS[filterRole] ?? filterRole}` : ''}
           </p>
         </div>
         <a
           href={isAdding ? '/super-admin/users' : '/super-admin/users?add=true'}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors shrink-0 ${
+          className={`shrink-0 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
             isAdding
               ? 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]'
               : 'bg-[var(--color-accent)] text-white hover:opacity-90'
@@ -248,9 +293,9 @@ export default async function SuperAdminUsersPage({
 
       {isAdding && (
         <GlassCard hover={false} className="p-6">
-          <p className="text-sm font-semibold text-[var(--color-text-primary)] mb-4">New User</p>
+          <p className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">New User</p>
           {err && (
-            <p className="text-xs text-[var(--color-status-rejected-text)] mb-3">
+            <p className="mb-3 text-xs text-[var(--color-status-rejected-text)]">
               {err === 'missing_fields'
                 ? 'All fields are required.'
                 : err === 'invalid_role'
@@ -259,43 +304,49 @@ export default async function SuperAdminUsersPage({
             </p>
           )}
           <form action={createUser} className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Username *</label>
+                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                  Username *
+                </label>
                 <input
                   name="display_name"
                   required
                   placeholder="john_doe"
-                  className="w-full px-3 py-2 rounded-lg text-sm bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] border border-[var(--color-border)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
+                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
                   Email <span className="opacity-50">(optional)</span>
                 </label>
                 <input
                   name="email"
                   type="email"
                   placeholder="user@inti.edu.my"
-                  className="w-full px-3 py-2 rounded-lg text-sm bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] border border-[var(--color-border)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Password *</label>
+                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                  Temporary password *
+                </label>
                 <input
                   name="password"
                   type="password"
                   required
-                  placeholder="Temp password"
-                  className="w-full px-3 py-2 rounded-lg text-sm bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] border border-[var(--color-border)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                  placeholder="Must be changed on login"
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">Role *</label>
+                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
+                  Role *
+                </label>
                 <select
                   name="role"
                   required
-                  className="w-full px-3 py-2 rounded-lg text-sm bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] border border-[var(--color-border)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
                 >
                   {assignableRoles.map((role) => (
                     <option key={role} value={role}>
@@ -307,18 +358,80 @@ export default async function SuperAdminUsersPage({
             </div>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl text-xs font-bold bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
+              className="rounded-xl bg-[var(--color-accent)] px-5 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90"
             >
               Create User
             </button>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              The user must replace this temporary password the first time they sign in.
+            </p>
           </form>
         </GlassCard>
       )}
 
       {msg && (
-        <div className="px-4 py-3 rounded-xl bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)] text-sm font-mono">
+        <div className="rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-3 font-mono text-sm text-[var(--color-status-submitted-text)]">
           {msg}
         </div>
+      )}
+
+      {pendingResetRequests.length > 0 && (
+        <GlassCard hover={false} className="p-5">
+          <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                Password reset requests
+              </p>
+              <p className="text-xs text-[var(--color-text-secondary)]">
+                Issue a temporary password. The user will be forced to replace it on login.
+              </p>
+            </div>
+            <span className="font-mono text-xs text-[var(--color-text-muted)]">
+              {pendingResetRequests.length} pending
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {pendingResetRequests.map((request) => {
+              const requestedUser = Array.isArray(request.users) ? request.users[0] : request.users
+              const isHighlighted = highlightedResetRequest === request.id
+
+              return (
+                <div
+                  key={request.id}
+                  className={`flex flex-col gap-3 rounded-xl border bg-[var(--color-surface)] p-4 sm:flex-row sm:items-center sm:justify-between ${
+                    isHighlighted
+                      ? 'border-[var(--color-accent-inti)]'
+                      : 'border-[var(--color-border)]'
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                        {requestedUser?.display_name ?? request.email}
+                      </p>
+                      {requestedUser?.role && (
+                        <span className="rounded-md bg-[var(--color-surface-elevated)] px-2 py-0.5 text-[11px] font-bold tracking-wider text-[var(--color-text-muted)] uppercase">
+                          {ROLE_LABELS[requestedUser.role] ?? requestedUser.role}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
+                      {requestedUser?.email ?? request.email} - requested{' '}
+                      {new Date(request.created_at).toLocaleString('en-MY', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                      })}
+                    </p>
+                  </div>
+                  <PasswordResetRequestButton requestId={request.id} />
+                </div>
+              )
+            })}
+          </div>
+        </GlassCard>
       )}
 
       <div className="flex flex-wrap gap-2">
@@ -332,7 +445,7 @@ export default async function SuperAdminUsersPage({
           <a
             key={key}
             href={key ? `/super-admin/users?role=${key}` : '/super-admin/users'}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               filterRole === key || (!filterRole && !key)
                 ? 'bg-[var(--color-accent)] text-white'
                 : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
@@ -366,40 +479,42 @@ export default async function SuperAdminUsersPage({
                     : ''
               }
             >
-              <div className="px-5 py-4 flex items-center gap-4">
-                <div className="h-9 w-9 rounded-full bg-[var(--color-surface-elevated)] flex items-center justify-center shrink-0">
+              <div className="flex items-center gap-4 px-5 py-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-elevated)]">
                   <span className="text-sm font-bold text-[var(--color-text-secondary)]">
                     {user.display_name.charAt(0).toUpperCase()}
                   </span>
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">{user.display_name}</p>
-                    <span className="text-[15px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                      {user.display_name}
+                    </p>
+                    <span className="rounded bg-[var(--color-surface-elevated)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-text-muted)] uppercase">
                       {ROLE_LABELS[role] ?? role}
                     </span>
                     <span
-                      className="text-[15px] font-mono font-bold px-1.5 py-0.5 rounded bg-[var(--color-surface-elevated)]"
+                      className="rounded bg-[var(--color-surface-elevated)] px-1.5 py-0.5 font-mono text-[15px] font-bold"
                       style={{ color: LEVEL_COLOR[role] ?? 'var(--color-text-muted)' }}
                     >
                       L{role === 'super_admin' ? 1 : role === 'admin' ? 2 : 3}
                     </span>
                     {user.id === access.userId && (
-                      <span className="text-[15px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-accent-surface)] text-[var(--color-accent)]">
+                      <span className="rounded bg-[var(--color-accent-surface)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-accent)] uppercase">
                         You
                       </span>
                     )}
                     {user.force_password_change && (
-                      <span className="text-[15px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)]">
+                      <span className="rounded bg-[var(--color-status-submitted-bg)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-status-submitted-text)] uppercase">
                         Must change pw
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{user.email}</p>
+                  <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{user.email}</p>
                 </div>
 
-                <p className="text-xs font-mono text-[var(--color-text-muted)] shrink-0 hidden sm:block">
+                <p className="hidden shrink-0 font-mono text-xs text-[var(--color-text-muted)] sm:block">
                   {new Date(user.created_at).toLocaleDateString('en-MY', {
                     day: 'numeric',
                     month: 'short',
@@ -408,16 +523,16 @@ export default async function SuperAdminUsersPage({
                 </p>
 
                 {canManage && !isEditing && !isConfirming && (
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex shrink-0 gap-2">
                     <a
                       href={`${base}${separator}edit=${user.id}`}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                      className="rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
                     >
                       Edit
                     </a>
                     <a
                       href={`${base}${separator}confirm=${user.id}`}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--color-status-rejected-bg)] text-[var(--color-status-rejected-text)] hover:opacity-80 transition-opacity"
+                      className="rounded-lg bg-[var(--color-status-rejected-bg)] px-3 py-1.5 text-xs font-medium text-[var(--color-status-rejected-text)] transition-opacity hover:opacity-80"
                     >
                       Delete
                     </a>
@@ -427,7 +542,7 @@ export default async function SuperAdminUsersPage({
                 {(isEditing || isConfirming) && (
                   <a
                     href={base}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors shrink-0"
+                    className="shrink-0 rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
                   >
                     Cancel
                   </a>
@@ -435,39 +550,52 @@ export default async function SuperAdminUsersPage({
               </div>
 
               {isEditing && canManage && (
-                <div className="px-5 pb-4 pt-3 border-t border-[var(--color-border)] space-y-4">
-                  <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Assign Role</p>
+                <div className="space-y-4 border-t border-[var(--color-border)] px-5 pt-3 pb-4">
+                  <p className="text-xs font-medium tracking-wider text-[var(--color-text-secondary)] uppercase">
+                    Assign Role
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {assignableRoles.map((assignableRole) => (
-                      <form key={assignableRole} action={setRole.bind(null, user.id, assignableRole)}>
+                      <form
+                        key={assignableRole}
+                        action={setRole.bind(null, user.id, assignableRole)}
+                      >
                         <button
                           type="submit"
-                          className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${
+                          className={`rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
                             role === assignableRole
                               ? 'bg-[var(--color-accent)] text-white'
                               : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-surface)] hover:text-[var(--color-accent)]'
                           }`}
                         >
                           {ROLE_LABELS[assignableRole]}{' '}
-                          <span className="opacity-50 font-mono">
-                            L{assignableRole === 'super_admin' ? 1 : assignableRole === 'admin' ? 2 : 3}
+                          <span className="font-mono opacity-50">
+                            L
+                            {assignableRole === 'super_admin'
+                              ? 1
+                              : assignableRole === 'admin'
+                                ? 2
+                                : 3}
                           </span>
                         </button>
                       </form>
                     ))}
                   </div>
-                  <form action={resetPassword.bind(null, user.id)} className="flex gap-2 items-center">
+                  <form
+                    action={resetPassword.bind(null, user.id)}
+                    className="flex items-center gap-2"
+                  >
                     <input
                       name="temp_password"
                       type="password"
                       required
                       minLength={8}
                       placeholder="New temp password"
-                      className="px-3 py-2 rounded-lg text-sm bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] border border-[var(--color-border)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] w-48"
+                      className="w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
                     />
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)] hover:opacity-80 transition-opacity shrink-0"
+                      className="shrink-0 rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-2 text-xs font-semibold text-[var(--color-status-submitted-text)] transition-opacity hover:opacity-80"
                     >
                       Set Password
                     </button>
@@ -476,17 +604,18 @@ export default async function SuperAdminUsersPage({
               )}
 
               {isConfirming && canManage && (
-                <div className="px-5 pb-4 pt-3 border-t border-[var(--color-border)] space-y-3">
+                <div className="space-y-3 border-t border-[var(--color-border)] px-5 pt-3 pb-4">
                   <p className="text-sm font-semibold text-[var(--color-status-rejected-text)]">
                     Delete {user.display_name}?
                   </p>
                   <p className="text-xs text-[var(--color-text-secondary)]">
-                    This permanently removes their account and all associated data. This cannot be undone.
+                    This permanently removes their account and all associated data. This cannot be
+                    undone.
                   </p>
                   <form action={deleteUser.bind(null, user.id)}>
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--color-status-rejected-text)] text-white hover:opacity-80 transition-opacity"
+                      className="rounded-xl bg-[var(--color-status-rejected-text)] px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-80"
                     >
                       Yes, delete permanently
                     </button>

@@ -3,7 +3,6 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { DbCategory } from '@/lib/types'
 
-
 export default function CategoryFilter({ categories }: { categories: DbCategory[] }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -28,7 +27,7 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
         type="button"
         data-category=""
         onClick={() => select('')}
-        className="tab-lift inline-flex min-h-9 shrink-0 cursor-pointer items-center rounded-[10px] border px-3.5 text-sm font-semibold focus:outline-none focus-visible:ring-2"
+        className="tab-lift inline-flex min-h-11 shrink-0 cursor-pointer items-center rounded-[10px] border px-3.5 text-sm font-semibold focus:outline-none focus-visible:ring-2"
         style={{
           ...(!active
             ? {
@@ -57,7 +56,7 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
             data-category={cat.slug}
             key={cat.id}
             onClick={() => select(cat.slug)}
-            className="tab-lift inline-flex min-h-9 shrink-0 cursor-pointer items-center gap-2 rounded-[10px] border px-3.5 text-sm font-semibold focus:outline-none focus-visible:ring-2"
+            className="tab-lift inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-[10px] border px-3.5 text-sm font-semibold focus:outline-none focus-visible:ring-2"
             style={{
               ...(isActive
                 ? {
@@ -75,7 +74,7 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
             aria-pressed={isActive}
           >
             <span
-              className="h-2 w-2 rounded-full flex-shrink-0"
+              className="h-2 w-2 flex-shrink-0 rounded-full"
               style={{ background: color }}
               aria-hidden="true"
             />

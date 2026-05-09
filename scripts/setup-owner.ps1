@@ -16,6 +16,10 @@ if (-not $Secret) {
     exit 1
 }
 
+if ($env:ENABLE_SETUP_ROUTE -ne '1') {
+    Write-Warning "ENABLE_SETUP_ROUTE is not 1 in this shell. Make sure the running app environment has ENABLE_SETUP_ROUTE=1 before bootstrapping."
+}
+
 Write-Host "Bootstrapping owner account at $Url ..."
 
 try {
@@ -36,7 +40,7 @@ try {
     Write-Host "Next steps:"
     Write-Host "  1. Log in at $Url/login"
     Write-Host "  2. Change your password when prompted"
-    Write-Host "  3. Remove SETUP_SECRET from your environment (and delete /api/setup if desired)"
+    Write-Host "  3. Set ENABLE_SETUP_ROUTE=0 or remove it from your environment"
 }
 catch {
     $status = $_.Exception.Response.StatusCode.value__
@@ -44,6 +48,8 @@ catch {
         Write-Host "Setup already complete — owner account exists." -ForegroundColor Yellow
     } elseif ($status -eq 403) {
         Write-Error "Forbidden — check that SETUP_SECRET matches the deployed value."
+    } elseif ($status -eq 404) {
+        Write-Error "Setup route is disabled — set ENABLE_SETUP_ROUTE=1 in the running app environment, then try again."
     } else {
         Write-Error "Request failed: $_"
     }

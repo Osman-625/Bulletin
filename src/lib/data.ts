@@ -20,13 +20,31 @@ const ANNOUNCEMENT_SELECT = `
   organizations ( id, name, slug, logo_url )
 ` as const
 
-export async function getPublicAnnouncements(categorySlug?: string): Promise<AnnouncementWithRelations[]> {
+const ANNOUNCEMENT_SELECT_WITH_CATEGORY_FILTER = `
+  *,
+  categories!inner ( id, name, slug, color ),
+  organizations ( id, name, slug, logo_url )
+` as const
+
+function normalizePublicSearchQuery(query?: string): string {
+  return (query ?? '')
+    .trim()
+    .replace(/[%,()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .slice(0, 80)
+}
+
+export async function getPublicAnnouncements(
+  categorySlug?: string,
+  searchQuery?: string
+): Promise<AnnouncementWithRelations[]> {
   const supabase = await createClient()
   const now = new Date().toISOString()
+  const search = normalizePublicSearchQuery(searchQuery)
 
   let query = supabase
     .from('announcements')
-    .select(ANNOUNCEMENT_SELECT)
+    .select(categorySlug ? ANNOUNCEMENT_SELECT_WITH_CATEGORY_FILTER : ANNOUNCEMENT_SELECT)
     .eq('status', 'published')
     .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${now}`)
     .or(`expires_at.is.null,expires_at.gt.${now}`)
@@ -34,6 +52,10 @@ export async function getPublicAnnouncements(categorySlug?: string): Promise<Ann
 
   if (categorySlug) {
     query = query.eq('categories.slug', categorySlug)
+  }
+
+  if (search) {
+    query = query.or(`title.ilike.%${search}%,body.ilike.%${search}%`)
   }
 
   const { data, error } = await query
@@ -109,11 +131,7 @@ export async function getAnnouncementForReview(id: string): Promise<Announcement
   if (!access || !canAccessAdminArea(access.role)) return null
 
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('announcements')
-    .select(REVIEW_SELECT)
-    .eq('id', id)
-    .single()
+  const { data } = await supabase.from('announcements').select(REVIEW_SELECT).eq('id', id).single()
 
   if (!data) return null
   if (access.role === 'admin' && !access.orgIds.includes(data.organization_id)) return null
@@ -158,7 +176,9 @@ export async function getAllPublishers(): Promise<PublisherWithOrgs[]> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('users')
-    .select('*, organization_members ( organization_id, member_role, organizations ( name, slug ) )')
+    .select(
+      '*, organization_members ( organization_id, member_role, organizations ( name, slug ) )'
+    )
     .eq('role', 'publisher')
     .order('created_at', { ascending: false })
 
@@ -188,13 +208,19 @@ export async function getAdminStats() {
   const supabase = await createClient()
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
 
-  let pendingReviewQuery = supabase.from('announcements').select('*', { count: 'exact', head: true }).eq('status', 'submitted')
+  let pendingReviewQuery = supabase
+    .from('announcements')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'submitted')
   let publishedThisMonthQuery = supabase
-      .from('announcements')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'published')
-      .gte('published_at', monthStart)
-  let totalOrgsQuery = supabase.from('organizations').select('*', { count: 'exact', head: true }).eq('status', 'approved')
+    .from('announcements')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'published')
+    .gte('published_at', monthStart)
+  let totalOrgsQuery = supabase
+    .from('organizations')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'approved')
 
   if (access.role === 'admin') {
     if (access.orgIds.length === 0) {
@@ -211,7 +237,12 @@ export async function getAdminStats() {
     totalOrgsQuery = totalOrgsQuery.in('id', access.orgIds)
   }
 
-  const [{ count: pendingReview }, { count: publishedThisMonth }, { count: totalOrgs }, { data: publishers }] = await Promise.all([
+  const [
+    { count: pendingReview },
+    { count: publishedThisMonth },
+    { count: totalOrgs },
+    { data: publishers },
+  ] = await Promise.all([
     pendingReviewQuery,
     publishedThisMonthQuery,
     totalOrgsQuery,
@@ -221,11 +252,14 @@ export async function getAdminStats() {
       .eq('role', 'publisher'),
   ])
 
-  const totalPublishers = access.role === 'admin'
-    ? (publishers ?? []).filter((publisher) =>
-        (publisher.organization_members ?? []).some((membership) => access.orgIds.includes(membership.organization_id))
-      ).length
-    : publishers?.length ?? 0
+  const totalPublishers =
+    access.role === 'admin'
+      ? (publishers ?? []).filter((publisher) =>
+          (publisher.organization_members ?? []).some((membership) =>
+            access.orgIds.includes(membership.organization_id)
+          )
+        ).length
+      : (publishers?.length ?? 0)
 
   return {
     pendingReview: pendingReview ?? 0,
@@ -259,7 +293,9 @@ export async function getVisibleUsersForAdmin() {
     canViewUser(actor, {
       id: user.id,
       role: user.role,
-      orgIds: (user.organization_members ?? []).map((membership: { organization_id: string }) => membership.organization_id),
+      orgIds: (user.organization_members ?? []).map(
+        (membership: { organization_id: string }) => membership.organization_id
+      ),
     })
   )
 }
@@ -287,10 +323,7 @@ export async function getAllAdmins() {
 
 export async function getAllCategoriesAdmin() {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('categories')
-    .select('*')
-    .order('name')
+  const { data } = await supabase.from('categories').select('*').order('name')
   return data ?? []
 }
 
@@ -304,8 +337,14 @@ export async function getPlatformStats() {
     { count: totalUsers },
   ] = await Promise.all([
     supabase.from('announcements').select('*', { count: 'exact', head: true }),
-    supabase.from('announcements').select('*', { count: 'exact', head: true }).eq('status', 'published'),
-    supabase.from('announcements').select('*', { count: 'exact', head: true }).eq('status', 'submitted'),
+    supabase
+      .from('announcements')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'published'),
+    supabase
+      .from('announcements')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'submitted'),
     supabase.from('organizations').select('*', { count: 'exact', head: true }),
     supabase.from('users').select('*', { count: 'exact', head: true }),
   ])

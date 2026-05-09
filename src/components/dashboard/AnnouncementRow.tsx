@@ -41,7 +41,9 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
   const urgency = normalizeAnnouncementUrgency(announcement.urgency)
   const urgencyMeta = URGENCY_META[urgency]
   const nowMs = new Date().getTime()
-  const scheduledDate = announcement.scheduled_publish_at ? new Date(announcement.scheduled_publish_at) : null
+  const scheduledDate = announcement.scheduled_publish_at
+    ? new Date(announcement.scheduled_publish_at)
+    : null
   const pinnedUntil = announcement.pinned_until ? new Date(announcement.pinned_until) : null
   const isScheduled =
     announcement.status === 'published' &&
@@ -49,9 +51,7 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
     !Number.isNaN(scheduledDate.getTime()) &&
     scheduledDate.getTime() > nowMs
   const isPinned =
-    pinnedUntil !== null &&
-    !Number.isNaN(pinnedUntil.getTime()) &&
-    pinnedUntil.getTime() > nowMs
+    pinnedUntil !== null && !Number.isNaN(pinnedUntil.getTime()) && pinnedUntil.getTime() > nowMs
 
   function handleRowClick(e: React.MouseEvent) {
     // Prevent navigation if clicking action buttons
@@ -65,152 +65,169 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
     router.push(`/dashboard/announcements/${announcement.id}/edit`)
   }
 
-  const dateSource = isScheduled && announcement.scheduled_publish_at
-    ? announcement.scheduled_publish_at
-    : announcement.published_at ?? announcement.updated_at
+  const dateSource =
+    isScheduled && announcement.scheduled_publish_at
+      ? announcement.scheduled_publish_at
+      : (announcement.published_at ?? announcement.updated_at)
   const dateLabel = new Date(dateSource).toLocaleDateString('en-MY', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      })
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 
   return (
     <div style={style}>
-    <GlassCard
-      hover
-      className={cn(
-        'cursor-pointer',
-        isDraft && 'opacity-70 border-dashed'
-      )}
-    >
-      <div
-        className="flex items-center gap-5 p-5"
-        onClick={handleRowClick}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && router.push(`/dashboard/announcements/${announcement.id}/edit`)}
-      >
-        {/* Thumbnail */}
-        <div className="w-16 h-16 rounded-xl overflow-hidden border border-[var(--color-glass-border)] shrink-0 bg-[var(--color-surface-elevated)] flex items-center justify-center">
-          {announcement.banner_url ? (
-            <Image
-              src={announcement.banner_url}
-              alt={announcement.title}
-              width={64}
-              height={64}
-              className="h-full w-full object-contain"
-            />
-          ) : (
-            <FileImage
-              size={20}
-              className="text-[var(--color-text-muted)]"
-            />
-          )}
-        </div>
-
-        {/* Middle — title + meta */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            {(() => {
-              return <StatusBadge status={announcement.status as 'draft' | 'submitted' | 'published' | 'rejected' | 'expired' | 'archived'} />
-            })()}
-            {urgency !== 'normal' && (
-              <span
-                className="rounded px-2 py-0.5 text-[15px] font-bold uppercase tracking-wider"
-                style={{ color: urgencyMeta.tone, background: urgencyMeta.background }}
-              >
-                {urgencyMeta.label}
-              </span>
-            )}
-            {isScheduled && (
-              <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[15px] font-bold uppercase tracking-wider text-[var(--color-accent-inti)] bg-[var(--color-accent-surface)]">
-                <Clock size={12} aria-hidden="true" />
-                Scheduled
-              </span>
-            )}
-            {isPinned && (
-              <span className="inline-flex items-center gap-1 rounded px-2 py-0.5 text-[15px] font-bold uppercase tracking-wider text-[var(--color-status-published-text)] bg-[var(--color-status-published-bg)]">
-                <Pin size={12} aria-hidden="true" />
-                Pinned
-              </span>
-            )}
-            <span className="text-lg font-semibold text-[var(--color-text-primary)] truncate leading-tight">
-              {announcement.title}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
-            {announcement.categories ? (
-              <>
-                <span
-                  className="inline-block w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: announcement.categories.color ?? 'var(--color-accent)' }}
-                />
-                <span>{announcement.categories.name}</span>
-                {announcement.organizations && (
-                  <>
-                    <span className="text-[var(--color-text-muted)]">·</span>
-                    <span className="text-[var(--color-text-muted)]">{announcement.organizations.name}</span>
-                  </>
-                )}
-              </>
+      <GlassCard hover className={cn('cursor-pointer', isDraft && 'border-dashed opacity-70')}>
+        <div
+          className="flex items-center gap-5 p-5"
+          onClick={handleRowClick}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              router.push(`/dashboard/announcements/${announcement.id}/edit`)
+            }
+          }}
+        >
+          {/* Thumbnail */}
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--color-glass-border)] bg-[var(--color-surface-elevated)]">
+            {announcement.banner_url ? (
+              <Image
+                src={announcement.banner_url}
+                alt={announcement.title}
+                width={64}
+                height={64}
+                className="h-full w-full object-contain"
+              />
             ) : (
-              <>
-                <span className="text-[var(--color-text-muted)]">Uncategorized</span>
-                {announcement.organizations && (
-                  <>
-                    <span className="text-[var(--color-text-muted)]">·</span>
-                    <span className="text-[var(--color-text-muted)]">{announcement.organizations.name}</span>
-                  </>
-                )}
-              </>
+              <FileImage size={20} className="text-[var(--color-text-muted)]" />
             )}
           </div>
-          {announcement.status === 'rejected' && announcement.rejection_comment && (
-            <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--color-status-rejected-text)]">
-              Admin note: {announcement.rejection_comment}
+
+          {/* Middle — title + meta */}
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 flex items-center gap-2">
+              {(() => {
+                return (
+                  <StatusBadge
+                    status={
+                      announcement.status as
+                        | 'draft'
+                        | 'submitted'
+                        | 'published'
+                        | 'rejected'
+                        | 'expired'
+                        | 'archived'
+                    }
+                  />
+                )
+              })()}
+              {urgency !== 'normal' && (
+                <span
+                  className="rounded px-2 py-0.5 text-[15px] font-bold tracking-wider uppercase"
+                  style={{ color: urgencyMeta.tone, background: urgencyMeta.background }}
+                >
+                  {urgencyMeta.label}
+                </span>
+              )}
+              {isScheduled && (
+                <span className="inline-flex items-center gap-1 rounded bg-[var(--color-accent-surface)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-accent-inti)] uppercase">
+                  <Clock size={12} aria-hidden="true" />
+                  Scheduled
+                </span>
+              )}
+              {isPinned && (
+                <span className="inline-flex items-center gap-1 rounded bg-[var(--color-status-published-bg)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-status-published-text)] uppercase">
+                  <Pin size={12} aria-hidden="true" />
+                  Pinned
+                </span>
+              )}
+              <span className="truncate text-lg leading-tight font-semibold text-[var(--color-text-primary)]">
+                {announcement.title}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
+              {announcement.categories ? (
+                <>
+                  <span
+                    className="inline-block h-2 w-2 shrink-0 rounded-full"
+                    style={{
+                      backgroundColor: announcement.categories.color ?? 'var(--color-accent)',
+                    }}
+                  />
+                  <span>{announcement.categories.name}</span>
+                  {announcement.organizations && (
+                    <>
+                      <span className="text-[var(--color-text-muted)]">·</span>
+                      <span className="text-[var(--color-text-muted)]">
+                        {announcement.organizations.name}
+                      </span>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <span className="text-[var(--color-text-muted)]">Uncategorized</span>
+                  {announcement.organizations && (
+                    <>
+                      <span className="text-[var(--color-text-muted)]">·</span>
+                      <span className="text-[var(--color-text-muted)]">
+                        {announcement.organizations.name}
+                      </span>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+            {announcement.status === 'rejected' && announcement.rejection_comment && (
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--color-status-rejected-text)]">
+                Admin note: {announcement.rejection_comment}
+              </p>
+            )}
+          </div>
+
+          {/* Right — date + author */}
+          <div className="shrink-0 text-right">
+            <p className="font-mono text-sm text-[var(--color-text-muted)]">{dateLabel}</p>
+            <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
+              {isScheduled
+                ? 'Scheduled'
+                : isDraft
+                  ? 'Draft'
+                  : announcement.author
+                    ? `Published by ${announcement.author.display_name}`
+                    : 'Published'}
             </p>
-          )}
-        </div>
+            <p className="mt-1 inline-flex items-center justify-end gap-1 text-xs text-[var(--color-text-muted)]">
+              <Eye size={12} aria-hidden="true" />
+              {announcement.view_count.toLocaleString('en-MY')}
+            </p>
+          </div>
 
-        {/* Right — date + author */}
-        <div className="text-right shrink-0">
-          <p className="text-sm font-mono text-[var(--color-text-muted)]">{dateLabel}</p>
-          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
-            {isScheduled
-              ? 'Scheduled'
-              : isDraft
-              ? 'Draft'
-              : announcement.author
-              ? `Published by ${announcement.author.display_name}`
-              : 'Published'}
-          </p>
-          <p className="mt-1 inline-flex items-center justify-end gap-1 text-xs text-[var(--color-text-muted)]">
-            <Eye size={12} aria-hidden="true" />
-            {announcement.view_count.toLocaleString('en-MY')}
-          </p>
+          {/* Actions */}
+          <div className="flex shrink-0 items-center gap-1" data-action="true">
+            <button
+              type="button"
+              data-action="true"
+              onClick={handleEditClick}
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-accent-surface)] hover:text-[var(--color-accent)]"
+              aria-label="Edit announcement"
+            >
+              <Edit2 size={16} />
+            </button>
+            <button
+              type="button"
+              data-action="true"
+              onClick={(e) => e.stopPropagation()}
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)]"
+              aria-label="More options"
+            >
+              <MoreVertical size={16} />
+            </button>
+          </div>
         </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1 shrink-0" data-action="true">
-          <button
-            data-action="true"
-            onClick={handleEditClick}
-            className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-accent)] hover:bg-[var(--color-accent-surface)] transition-colors"
-            aria-label="Edit announcement"
-          >
-            <Edit2 size={16} />
-          </button>
-          <button
-            data-action="true"
-            onClick={(e) => e.stopPropagation()}
-            className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-elevated)] transition-colors"
-            aria-label="More options"
-          >
-            <MoreVertical size={16} />
-          </button>
-        </div>
-      </div>
-    </GlassCard>
+      </GlassCard>
     </div>
   )
 }

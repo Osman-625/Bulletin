@@ -13,6 +13,7 @@ import {
   normalizeAnnouncementDisplaySize,
   normalizeAnnouncementUrgency,
 } from '@/lib/announcements/presentation'
+import { toSafeHttpUrl } from '@/lib/announcements/urls'
 import type { Metadata } from 'next'
 import BackButton from '@/components/announcements/BackButton'
 import { ViewTracker } from './ViewTracker'
@@ -44,17 +45,21 @@ function categoryBadgeStyle(color: string): CSSProperties {
   }
 }
 
-export default async function AnnouncementPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
+export default async function AnnouncementPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const announcement = await getAnnouncementById(id)
   if (!announcement) notFound()
 
-  const { title, body, banner_url, published_at, expires_at, registration_link, categories, organizations } =
-    announcement
+  const {
+    title,
+    body,
+    banner_url,
+    published_at,
+    expires_at,
+    registration_link,
+    categories,
+    organizations,
+  } = announcement
 
   const catColor = categories?.color ?? '#C8102E'
   const urgency = normalizeAnnouncementUrgency(announcement.urgency)
@@ -62,6 +67,7 @@ export default async function AnnouncementPage({
   const displaySize = normalizeAnnouncementDisplaySize(announcement.display_size)
   const urgencyMeta = URGENCY_META[urgency]
   const titleFontClass = getAnnouncementTitleFontClass(displayFont)
+  const registrationHref = toSafeHttpUrl(registration_link)
 
   return (
     <div className="min-h-[100dvh]">
@@ -100,12 +106,16 @@ export default async function AnnouncementPage({
                 className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.06em]"
                 style={categoryBadgeStyle(catColor)}
               >
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: catColor }} aria-hidden="true" />
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{ background: catColor }}
+                  aria-hidden="true"
+                />
                 {categories.name}
               </span>
             )}
             {organizations?.name && (
-              <span className="text-xs font-semibold uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
+              <span className="text-xs font-semibold tracking-[0.1em] text-[var(--color-text-muted)] uppercase">
                 {organizations.name}
               </span>
             )}
@@ -117,7 +127,7 @@ export default async function AnnouncementPage({
           </div>
 
           <h1
-            className={cn(titleFontClass, 'font-bold leading-[1.08] tracking-tight')}
+            className={cn(titleFontClass, 'leading-[1.08] font-bold tracking-tight')}
             style={{
               fontSize: DETAIL_TITLE_SIZES[displaySize],
               color: 'var(--color-text-primary)',
@@ -157,7 +167,9 @@ export default async function AnnouncementPage({
                 ),
                 p: ({ children }) => <p className="mb-4">{children}</p>,
                 ul: ({ children }) => <ul className="mb-4 list-disc space-y-1 pl-5">{children}</ul>,
-                ol: ({ children }) => <ol className="mb-4 list-decimal space-y-1 pl-5">{children}</ol>,
+                ol: ({ children }) => (
+                  <ol className="mb-4 list-decimal space-y-1 pl-5">{children}</ol>
+                ),
                 strong: ({ children }) => (
                   <strong className="font-semibold" style={{ color: 'var(--color-text-primary)' }}>
                     {children}
@@ -169,10 +181,10 @@ export default async function AnnouncementPage({
             </ReactMarkdown>
           </div>
 
-          {registration_link && (
+          {registrationHref && (
             <div className="mt-10 border-t pt-8" style={{ borderColor: 'var(--color-border)' }}>
               <a
-                href={registration_link}
+                href={registrationHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex cursor-pointer items-center rounded-[10px] bg-[var(--color-accent-inti)] px-8 py-3.5 font-sans text-base font-semibold text-white transition-all duration-200 hover:scale-[1.01] hover:opacity-90 focus:outline-none focus-visible:ring-2"

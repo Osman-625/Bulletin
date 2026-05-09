@@ -3,7 +3,18 @@
 import { useState, useEffect, useRef, useCallback, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import NextImage from 'next/image'
-import { AlertTriangle, ArrowLeft, Calendar, Clock, Link2, Pin, Trash2, Type, Upload, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  Clock,
+  Link2,
+  Pin,
+  Trash2,
+  Type,
+  Upload,
+  X,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ActionBar } from './ActionBar'
 import { GlassCard } from './GlassCard'
@@ -69,8 +80,8 @@ const TITLE_MAX = 120
 
 function isValidUrl(str: string): boolean {
   try {
-    new URL(str)
-    return true
+    const url = new URL(str)
+    return url.protocol === 'http:' || url.protocol === 'https:'
   } catch {
     return false
   }
@@ -120,7 +131,9 @@ export function AnnouncementForm({
   const [scheduledPublishAt, setScheduledPublishAt] = useState(
     toDateTimeLocalInputValue(initialData.scheduled_publish_at)
   )
-  const [pinnedUntil, setPinnedUntil] = useState(toDateTimeLocalInputValue(initialData.pinned_until))
+  const [pinnedUntil, setPinnedUntil] = useState(
+    toDateTimeLocalInputValue(initialData.pinned_until)
+  )
   const [status, setStatus] = useState<PostStatus>(initialData.status)
   const [urgency, setUrgency] = useState<AnnouncementUrgency>(initialData.urgency)
   const [displayFont, setDisplayFont] = useState<AnnouncementDisplayFont>(initialData.display_font)
@@ -188,7 +201,8 @@ export function AnnouncementForm({
     if (bannerUrl) fd.set('banner_url', bannerUrl)
     if (registrationLink) fd.set('registration_link', registrationLink)
     if (expiresAt) fd.set('expires_at', new Date(expiresAt).toISOString())
-    if (scheduledPublishAt) fd.set('scheduled_publish_at', new Date(scheduledPublishAt).toISOString())
+    if (scheduledPublishAt)
+      fd.set('scheduled_publish_at', new Date(scheduledPublishAt).toISOString())
     if (pinnedUntil) fd.set('pinned_until', new Date(pinnedUntil).toISOString())
     fd.set('urgency', urgency)
     fd.set('display_font', displayFont)
@@ -270,7 +284,7 @@ export function AnnouncementForm({
 
   function handleUrlBlur() {
     if (registrationLink && !isValidUrl(registrationLink)) {
-      setUrlError('Please enter a valid URL (e.g. https://forms.google.com/...)')
+      setUrlError('Please enter a valid http or https URL (e.g. https://forms.google.com/...)')
     } else {
       setUrlError('')
     }
@@ -286,14 +300,14 @@ export function AnnouncementForm({
       const path = `${crypto.randomUUID()}.${ext}`
 
       const { error: uploadError } = await supabase.storage
-        .from('announcement-banners')
+        .from('banner-images')
         .upload(path, file, { upsert: true })
 
       if (uploadError) throw uploadError
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('announcement-banners')
-        .getPublicUrl(path)
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('banner-images').getPublicUrl(path)
 
       setBannerUrl(publicUrl)
     } catch (err) {
@@ -324,21 +338,6 @@ export function AnnouncementForm({
     setBannerUrl('')
   }
 
-  // ─── Category select state ──────────────────────────────────
-
-  const [catOpen, setCatOpen] = useState(false)
-  const catRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (catRef.current && !catRef.current.contains(e.target as Node)) {
-        setCatOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   const selectedCategory = categories.find((c) => c.id === categoryId)
   const selectedUrgency = URGENCY_META[urgency]
   const titleFontClass = getAnnouncementTitleFontClass(displayFont)
@@ -356,13 +355,13 @@ export function AnnouncementForm({
     | 'archived'
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="flex min-h-screen flex-col">
       {/* Top bar with back button + delete */}
-      <div className="flex items-center justify-between px-6 py-4 max-w-[720px] w-full mx-auto">
+      <div className="mx-auto flex w-full max-w-[720px] items-center justify-between px-6 py-4">
         <button
           type="button"
           onClick={() => router.push('/dashboard/announcements')}
-          className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+          className="flex min-h-11 items-center gap-2 rounded-lg text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
         >
           <ArrowLeft size={16} />
           Back to announcements
@@ -377,14 +376,14 @@ export function AnnouncementForm({
                   type="button"
                   onClick={handleDelete}
                   disabled={isPending}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-destructive)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className="min-h-11 rounded-lg bg-[var(--color-destructive)] px-3 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
                   {isPending ? 'Deleting…' : 'Confirm'}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--color-glass-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-elevated)] transition-colors"
+                  className="min-h-11 rounded-lg border border-[var(--color-glass-border)] px-3 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-elevated)]"
                 >
                   Cancel
                 </button>
@@ -393,7 +392,7 @@ export function AnnouncementForm({
               <button
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
-                className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-destructive)] transition-colors"
+                className="flex min-h-11 items-center gap-1.5 rounded-lg text-xs text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-destructive)]"
               >
                 <Trash2 size={14} />
                 Delete
@@ -404,7 +403,7 @@ export function AnnouncementForm({
       </div>
 
       {/* Form content */}
-      <div className="flex-1 max-w-[720px] w-full mx-auto px-6 pb-24 space-y-8">
+      <div className="mx-auto w-full max-w-[720px] flex-1 space-y-8 px-6 pb-24">
         {status === 'rejected' && initialData.rejection_comment && (
           <div className="rounded-2xl border border-[var(--color-status-rejected-text)]/25 bg-[var(--color-status-rejected-bg)] p-4">
             <div className="flex gap-3">
@@ -427,14 +426,14 @@ export function AnnouncementForm({
 
         {/* Title */}
         <div>
-          <div className="flex items-end justify-between mb-1">
+          <div className="mb-1 flex items-end justify-between">
             <label
               htmlFor="announcement-title"
-              className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium"
+              className="text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
             >
               Title
             </label>
-            <span className="text-[15px] font-mono text-[var(--color-text-muted)]">
+            <span className="font-mono text-[15px] text-[var(--color-text-muted)]">
               {title.length}/{TITLE_MAX}
             </span>
           </div>
@@ -445,11 +444,11 @@ export function AnnouncementForm({
             onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX))}
             placeholder="Announcement title"
             className={cn(
-              'w-full text-xl font-semibold py-3',
+              'w-full py-3 text-xl font-semibold',
               'bg-transparent text-[var(--color-text-primary)]',
               'placeholder:text-[var(--color-text-muted)]',
               'border-0 border-b border-[var(--color-glass-border)]',
-              'focus:outline-none focus:border-[var(--color-accent)]',
+              'focus:border-[var(--color-accent)] focus:outline-none',
               'transition-colors duration-200'
             )}
           />
@@ -459,7 +458,7 @@ export function AnnouncementForm({
         <div>
           <label
             htmlFor="announcement-body"
-            className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium mb-1 block"
+            className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
           >
             Body
           </label>
@@ -471,11 +470,11 @@ export function AnnouncementForm({
             placeholder="Write the announcement body…"
             rows={6}
             className={cn(
-              'w-full text-base leading-relaxed py-3 resize-none',
+              'w-full resize-none py-3 text-base leading-relaxed',
               'bg-transparent text-[var(--color-text-primary)]',
               'placeholder:text-[var(--color-text-muted)]',
               'border-0 border-b border-[var(--color-glass-border)]',
-              'focus:outline-none focus:border-[var(--color-accent)]',
+              'focus:border-[var(--color-accent)] focus:outline-none',
               'transition-colors duration-200'
             )}
           />
@@ -483,87 +482,51 @@ export function AnnouncementForm({
 
         {/* Category */}
         <div>
-          <label className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium mb-2 block">
+          <label
+            htmlFor="announcement-category"
+            className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
+          >
             Category
           </label>
-          <div ref={catRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setCatOpen(!catOpen)}
+          <div className="relative">
+            {selectedCategory && (
+              <span
+                className="pointer-events-none absolute top-1/2 left-4 z-10 h-2.5 w-2.5 -translate-y-1/2 rounded-full"
+                style={{ backgroundColor: selectedCategory.color ?? 'var(--color-accent)' }}
+                aria-hidden="true"
+              />
+            )}
+            <select
+              id="announcement-category"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
               className={cn(
-                'w-full flex items-center gap-2 px-4 py-3 rounded-xl text-sm text-left',
-                'border border-[var(--color-glass-border)]',
-                'bg-[var(--color-glass-bg)] backdrop-blur-sm',
-                'hover:border-[var(--color-accent)]/40',
-                'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30',
-                'transition-all duration-200'
+                'min-h-12 w-full rounded-xl border px-4 py-3 text-sm',
+                selectedCategory ? 'pl-9' : 'pl-4',
+                'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-primary)] backdrop-blur-sm',
+                'transition-all duration-200 outline-none',
+                'hover:border-[var(--color-accent)]/40 focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/30'
               )}
             >
-              {selectedCategory ? (
-                <>
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: selectedCategory.color ?? 'var(--color-accent)' }}
-                  />
-                  <span className="text-[var(--color-text-primary)]">{selectedCategory.name}</span>
-                </>
-              ) : (
-                <span className="text-[var(--color-text-muted)]">Select a category…</span>
-              )}
-            </button>
-
-            {catOpen && (
-              <div
-                className={cn(
-                  'absolute top-full left-0 right-0 mt-1 z-30',
-                  'rounded-xl border border-[var(--color-glass-border)]',
-                  'bg-[var(--color-surface)] shadow-lg',
-                  'overflow-hidden',
-                  'animate-in fade-in slide-in-from-top-1 duration-150'
-                )}
-              >
-                {/* "None" option */}
-                <button
-                  type="button"
-                  onClick={() => { setCategoryId(''); setCatOpen(false) }}
-                  className={cn(
-                    'w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left',
-                    'hover:bg-[var(--color-surface-elevated)] transition-colors',
-                    !categoryId && 'bg-[var(--color-accent-surface)]'
-                  )}
-                >
-                  <span className="w-2.5 h-2.5 rounded-full bg-[var(--color-text-muted)]/30 shrink-0" />
-                  <span className="text-[var(--color-text-secondary)]">None</span>
-                </button>
-                {categories.map((cat, i) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => { setCategoryId(cat.id); setCatOpen(false) }}
-                    className={cn(
-                      'w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left',
-                      'hover:bg-[var(--color-surface-elevated)] transition-colors',
-                      categoryId === cat.id && 'bg-[var(--color-accent-surface)]'
-                    )}
-                    style={{ animationDelay: `${i * 30}ms` }}
-                  >
-                    <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: cat.color ?? 'var(--color-accent)' }}
-                    />
-                    <span className="text-[var(--color-text-primary)]">{cat.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+              <option value="">None</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
         {/* Urgency */}
         <div>
           <div className="mb-2 flex items-center gap-2">
-            <AlertTriangle size={14} className="text-[var(--color-text-muted)]" aria-hidden="true" />
-            <label className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium">
+            <AlertTriangle
+              size={14}
+              className="text-[var(--color-text-muted)]"
+              aria-hidden="true"
+            />
+            <label className="text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
               Urgency
             </label>
           </div>
@@ -579,7 +542,7 @@ export function AnnouncementForm({
                   onClick={() => setUrgency(option)}
                   className={cn(
                     'min-h-11 rounded-xl border px-3 text-sm font-semibold transition-all duration-200',
-                    'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30',
+                    'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
                     active
                       ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)] text-[var(--color-text-primary)]'
                       : 'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40'
@@ -597,7 +560,7 @@ export function AnnouncementForm({
           <div>
             <div className="mb-2 flex items-center gap-2">
               <Type size={14} className="text-[var(--color-text-muted)]" aria-hidden="true" />
-              <label className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium">
+              <label className="text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
                 Font
               </label>
             </div>
@@ -612,7 +575,7 @@ export function AnnouncementForm({
                     onClick={() => setDisplayFont(option)}
                     className={cn(
                       'min-h-11 rounded-xl border px-3 text-sm font-semibold transition-all duration-200',
-                      'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30',
+                      'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
                       active
                         ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)] text-[var(--color-text-primary)]'
                         : 'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40'
@@ -628,7 +591,7 @@ export function AnnouncementForm({
           </div>
 
           <div>
-            <label className="mb-2 block text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium">
+            <label className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
               Text Size
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -642,7 +605,7 @@ export function AnnouncementForm({
                     onClick={() => setDisplaySize(option)}
                     className={cn(
                       'min-h-11 rounded-xl border px-2 text-sm font-semibold transition-all duration-200',
-                      'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30',
+                      'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
                       active
                         ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)] text-[var(--color-text-primary)]'
                         : 'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40'
@@ -658,58 +621,66 @@ export function AnnouncementForm({
 
         {/* Banner Image Upload */}
         <div>
-          <label className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium mb-2 block">
+          <label className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
             Banner Image
           </label>
 
           {bannerUrl ? (
-            <div className="relative rounded-xl overflow-hidden border border-[var(--color-glass-border)]">
+            <div className="relative overflow-hidden rounded-xl border border-[var(--color-glass-border)]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={bannerUrl}
-                alt="Banner preview"
-                className="h-48 w-full object-contain"
-              />
+              <img src={bannerUrl} alt="Banner preview" className="h-48 w-full object-contain" />
               <button
                 type="button"
                 onClick={removeBanner}
-                className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/50 backdrop-blur-sm text-white text-xs font-medium hover:bg-black/70 transition-colors"
+                className="absolute top-3 right-3 flex min-h-11 items-center gap-1.5 rounded-lg bg-black/50 px-3 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-black/70"
               >
                 <X size={12} />
                 Remove
               </button>
             </div>
           ) : (
-            <div
+            <button
+              type="button"
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={() => setIsDragOver(false)}
               onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
               className={cn(
-                'flex flex-col items-center justify-center gap-3 py-12 rounded-xl cursor-pointer',
+                'flex w-full flex-col items-center justify-center gap-3 rounded-xl py-12 text-center',
                 'border-2 border-dashed transition-all duration-200',
+                'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
+                isUploading && 'cursor-wait opacity-80',
                 isDragOver
                   ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)]'
                   : 'border-[var(--color-glass-border)] hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-surface-elevated)]'
               )}
             >
-              <Upload size={24} className={cn('text-[var(--color-text-muted)]', isDragOver && 'text-[var(--color-accent)]')} />
+              <Upload
+                size={24}
+                className={cn(
+                  'text-[var(--color-text-muted)]',
+                  isDragOver && 'text-[var(--color-accent)]'
+                )}
+              />
               <div className="text-center">
                 <p className="text-sm text-[var(--color-text-secondary)]">
                   {isUploading ? 'Uploading…' : 'Drop an image here or click to upload'}
                 </p>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                   JPG, PNG, or WebP — max 5MB
                 </p>
               </div>
-            </div>
+            </button>
           )}
 
           <input
+            id="banner-image-upload"
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
             onChange={handleFileChange}
+            aria-label="Upload banner image"
             className="hidden"
           />
         </div>
@@ -718,37 +689,38 @@ export function AnnouncementForm({
         <div>
           <label
             htmlFor="registration-link"
-            className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium mb-1 block"
+            className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
           >
-            Registration Link <span className="normal-case tracking-normal">(optional)</span>
+            Registration Link <span className="tracking-normal normal-case">(optional)</span>
           </label>
           <div className="relative">
             <Link2
               size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none"
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
             />
             <input
               id="registration-link"
               type="url"
               value={registrationLink}
-              onChange={(e) => { setRegistrationLink(e.target.value); setUrlError('') }}
+              onChange={(e) => {
+                setRegistrationLink(e.target.value)
+                setUrlError('')
+              }}
               onBlur={handleUrlBlur}
               placeholder="https://forms.google.com/..."
               className={cn(
-                'w-full pl-9 pr-4 py-3 text-sm rounded-xl',
+                'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
                 'bg-transparent text-[var(--color-text-primary)]',
                 'placeholder:text-[var(--color-text-muted)]',
                 'border transition-all duration-200',
                 urlError
                   ? 'border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30'
                   : 'border-[var(--color-glass-border)] focus:border-[var(--color-accent)]',
-                'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30'
+                'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none'
               )}
             />
           </div>
-          {urlError && (
-            <p className="text-xs text-[var(--color-destructive)] mt-1.5">{urlError}</p>
-          )}
+          {urlError && <p className="mt-1.5 text-xs text-[var(--color-destructive)]">{urlError}</p>}
         </div>
 
         {/* Publishing Controls */}
@@ -756,14 +728,14 @@ export function AnnouncementForm({
           <div>
             <label
               htmlFor="scheduled-publish-at"
-              className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium mb-1 block"
+              className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
             >
-              Publish At <span className="normal-case tracking-normal">(optional)</span>
+              Publish At <span className="tracking-normal normal-case">(optional)</span>
             </label>
             <div className="relative">
               <Clock
                 size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none"
+                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
               />
               <input
                 id="scheduled-publish-at"
@@ -771,10 +743,10 @@ export function AnnouncementForm({
                 value={scheduledPublishAt}
                 onChange={(e) => setScheduledPublishAt(e.target.value)}
                 className={cn(
-                  'w-full pl-9 pr-4 py-3 text-sm rounded-xl',
+                  'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
                   'bg-transparent text-[var(--color-text-primary)]',
                   'border border-[var(--color-glass-border)]',
-                  'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:border-[var(--color-accent)]',
+                  'focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
                   'transition-all duration-200'
                 )}
               />
@@ -787,14 +759,14 @@ export function AnnouncementForm({
           <div>
             <label
               htmlFor="pinned-until"
-              className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium mb-1 block"
+              className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
             >
-              Pin Until <span className="normal-case tracking-normal">(optional)</span>
+              Pin Until <span className="tracking-normal normal-case">(optional)</span>
             </label>
             <div className="relative">
               <Pin
                 size={16}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none"
+                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
               />
               <input
                 id="pinned-until"
@@ -802,10 +774,10 @@ export function AnnouncementForm({
                 value={pinnedUntil}
                 onChange={(e) => setPinnedUntil(e.target.value)}
                 className={cn(
-                  'w-full pl-9 pr-4 py-3 text-sm rounded-xl',
+                  'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
                   'bg-transparent text-[var(--color-text-primary)]',
                   'border border-[var(--color-glass-border)]',
-                  'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:border-[var(--color-accent)]',
+                  'focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
                   'transition-all duration-200'
                 )}
               />
@@ -820,14 +792,14 @@ export function AnnouncementForm({
         <div>
           <label
             htmlFor="expires-at"
-            className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium mb-1 block"
+            className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
           >
-            Expiry Date <span className="normal-case tracking-normal">(optional)</span>
+            Expiry Date <span className="tracking-normal normal-case">(optional)</span>
           </label>
           <div className="relative">
             <Calendar
               size={16}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none"
+              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
             />
             <input
               id="expires-at"
@@ -835,10 +807,10 @@ export function AnnouncementForm({
               value={expiresAt}
               onChange={(e) => setExpiresAt(e.target.value)}
               className={cn(
-                'w-full pl-9 pr-4 py-3 text-sm rounded-xl',
+                'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
                 'bg-transparent text-[var(--color-text-primary)]',
                 'border border-[var(--color-glass-border)]',
-                'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:border-[var(--color-accent)]',
+                'focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
                 'transition-all duration-200'
               )}
             />
@@ -847,14 +819,21 @@ export function AnnouncementForm({
 
         {/* Live Preview */}
         <div>
-          <p className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] font-medium mb-3">
+          <p className="mb-3 text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
             Preview
           </p>
           <GlassCard hover={false} className="overflow-hidden">
             {bannerUrl && (
-              <NextImage src={bannerUrl} alt="Preview banner" width={600} height={144} className="h-36 w-full object-contain" unoptimized />
+              <NextImage
+                src={bannerUrl}
+                alt="Preview banner"
+                width={600}
+                height={144}
+                className="h-36 w-full object-contain"
+                unoptimized
+              />
             )}
-            <div className="p-5 space-y-2">
+            <div className="space-y-2 p-5">
               <div className="flex flex-wrap items-center gap-2">
                 {urgency !== 'normal' && (
                   <span
@@ -881,28 +860,31 @@ export function AnnouncementForm({
               {selectedCategory && (
                 <div className="flex items-center gap-2">
                   <span
-                    className="w-2 h-2 rounded-full"
+                    className="h-2 w-2 rounded-full"
                     style={{ backgroundColor: selectedCategory.color ?? 'var(--color-accent)' }}
                   />
-                  <span className="text-[13.5px] uppercase tracking-[0.2em] text-[var(--color-text-muted)] font-medium">
+                  <span className="text-[13.5px] font-medium tracking-[0.2em] text-[var(--color-text-muted)] uppercase">
                     {selectedCategory.name}
                   </span>
                 </div>
               )}
               <h3
-                className={cn(titleFontClass, 'font-semibold text-[var(--color-text-primary)] leading-tight')}
+                className={cn(
+                  titleFontClass,
+                  'leading-tight font-semibold text-[var(--color-text-primary)]'
+                )}
                 style={{ fontSize: CARD_TITLE_SIZES[displaySize] }}
               >
                 {title || 'Untitled Announcement'}
               </h3>
               <p
-                className="text-[var(--color-text-secondary)] line-clamp-3 leading-relaxed"
+                className="line-clamp-3 leading-relaxed text-[var(--color-text-secondary)]"
                 style={{ fontSize: DETAIL_BODY_SIZES[displaySize] }}
               >
                 {body || 'Announcement body will appear here…'}
               </p>
               {registrationLink && !urlError && (
-                <span className="inline-block text-[15px] font-medium uppercase tracking-wider text-[var(--color-accent)]">
+                <span className="inline-block text-[15px] font-medium tracking-wider text-[var(--color-accent)] uppercase">
                   Register Here →
                 </span>
               )}

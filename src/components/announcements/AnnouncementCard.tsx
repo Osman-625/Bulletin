@@ -12,6 +12,7 @@ import {
   normalizeAnnouncementDisplaySize,
   normalizeAnnouncementUrgency,
 } from '@/lib/announcements/presentation'
+import { toSafeHttpUrl } from '@/lib/announcements/urls'
 import type { AnnouncementWithRelations } from '@/lib/types'
 
 function stripMarkdown(md: string): string {
@@ -67,14 +68,7 @@ function PosterImage({
   priority?: boolean
 }) {
   return (
-    <Image
-      src={src}
-      alt={alt}
-      fill
-      className="object-contain"
-      sizes={sizes}
-      priority={priority}
-    />
+    <Image src={src} alt={alt} fill className="object-contain" sizes={sizes} priority={priority} />
   )
 }
 
@@ -96,8 +90,15 @@ export default function AnnouncementCard({
 // ── Standard (2-col grid) ──────────────────────────────────────────────────────
 function StandardCard({ announcement }: { announcement: AnnouncementWithRelations }) {
   const {
-    id, title, body, banner_url, published_at, expires_at,
-    registration_link, categories, organizations,
+    id,
+    title,
+    body,
+    banner_url,
+    published_at,
+    expires_at,
+    registration_link,
+    categories,
+    organizations,
   } = announcement
 
   const catColor = categories?.color ?? '#C8102E'
@@ -108,6 +109,7 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
   const urgencyMeta = URGENCY_META[urgency]
   const titleFontClass = getAnnouncementTitleFontClass(displayFont)
   const pinned = isAnnouncementPinned(announcement)
+  const registrationHref = toSafeHttpUrl(registration_link)
 
   return (
     <Link
@@ -126,11 +128,7 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
           className="relative aspect-[16/10] overflow-hidden sm:aspect-[2/3]"
           style={{ background: 'var(--color-surface-elevated)' }}
         >
-          <PosterImage
-            src={banner_url}
-            alt={title}
-            sizes="(max-width: 640px) 100vw, 50vw"
-          />
+          <PosterImage src={banner_url} alt={title} sizes="(max-width: 640px) 100vw, 50vw" />
         </div>
       )}
 
@@ -148,7 +146,10 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
           {pinned && (
             <span
               className="rounded-md px-3 py-1.5 text-sm font-semibold"
-              style={{ color: 'var(--color-status-published-text)', background: 'var(--color-status-published-bg)' }}
+              style={{
+                color: 'var(--color-status-published-text)',
+                background: 'var(--color-status-published-bg)',
+              }}
             >
               Pinned
             </span>
@@ -158,14 +159,21 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
               className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-semibold"
               style={categoryBadgeStyle(catColor)}
             >
-              <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: catColor }} aria-hidden="true" />
+              <span
+                className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                style={{ background: catColor }}
+                aria-hidden="true"
+              />
               {categories.name}
             </span>
           )}
-          {registration_link && !expiring && (
+          {registrationHref && !expiring && (
             <span
               className="rounded-md px-3 py-1.5 text-sm font-semibold"
-              style={{ color: 'var(--color-accent-inti)', background: 'var(--color-accent-surface)' }}
+              style={{
+                color: 'var(--color-accent-inti)',
+                background: 'var(--color-accent-surface)',
+              }}
             >
               Registration open
             </span>
@@ -182,7 +190,7 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
 
         {/* Title */}
         <h2
-          className={cn(titleFontClass, 'font-semibold leading-[1.18]')}
+          className={cn(titleFontClass, 'leading-[1.18] font-semibold')}
           style={{ fontSize: CARD_TITLE_SIZES[displaySize], color: 'var(--color-text-primary)' }}
         >
           {title}
@@ -201,7 +209,10 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
           className="flex items-center justify-between gap-2 border-t pt-3"
           style={{ borderColor: 'var(--color-border)' }}
         >
-          <span className="truncate text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
+          <span
+            className="truncate text-sm font-medium"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
             {organizations?.name}
           </span>
           {published_at && (
@@ -218,8 +229,15 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
 // ── Featured (full-width horizontal) ──────────────────────────────────────────
 function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelations }) {
   const {
-    id, title, body, banner_url, published_at, expires_at,
-    registration_link, categories, organizations,
+    id,
+    title,
+    body,
+    banner_url,
+    published_at,
+    expires_at,
+    registration_link,
+    categories,
+    organizations,
   } = announcement
 
   const catColor = categories?.color ?? '#C8102E'
@@ -230,6 +248,7 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
   const urgencyMeta = URGENCY_META[urgency]
   const titleFontClass = getAnnouncementTitleFontClass(displayFont)
   const pinned = isAnnouncementPinned(announcement)
+  const registrationHref = toSafeHttpUrl(registration_link)
 
   return (
     <Link
@@ -257,7 +276,10 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
           {pinned && (
             <span
               className="rounded-md px-3 py-1.5 text-sm font-semibold"
-              style={{ color: 'var(--color-status-published-text)', background: 'var(--color-status-published-bg)' }}
+              style={{
+                color: 'var(--color-status-published-text)',
+                background: 'var(--color-status-published-bg)',
+              }}
             >
               Pinned
             </span>
@@ -267,14 +289,21 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
               className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-semibold"
               style={categoryBadgeStyle(catColor)}
             >
-              <span className="h-1.5 w-1.5 rounded-full flex-shrink-0" style={{ background: catColor }} aria-hidden="true" />
+              <span
+                className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                style={{ background: catColor }}
+                aria-hidden="true"
+              />
               {categories.name}
             </span>
           )}
-          {registration_link && !expiring && (
+          {registrationHref && !expiring && (
             <span
               className="rounded-md px-3 py-1.5 text-sm font-semibold"
-              style={{ color: 'var(--color-accent-inti)', background: 'var(--color-accent-surface)' }}
+              style={{
+                color: 'var(--color-accent-inti)',
+                background: 'var(--color-accent-surface)',
+              }}
             >
               Registration open
             </span>
@@ -291,8 +320,11 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
 
         {/* Title — larger for featured */}
         <h2
-          className={cn(titleFontClass, 'mb-4 font-semibold leading-[1.08]')}
-          style={{ fontSize: FEATURED_TITLE_SIZES[displaySize], color: 'var(--color-text-primary)' }}
+          className={cn(titleFontClass, 'mb-4 leading-[1.08] font-semibold')}
+          style={{
+            fontSize: FEATURED_TITLE_SIZES[displaySize],
+            color: 'var(--color-text-primary)',
+          }}
         >
           {title}
         </h2>
@@ -310,7 +342,10 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
           className="flex items-center justify-between gap-2 border-t pt-4"
           style={{ borderColor: 'var(--color-border)' }}
         >
-          <span className="truncate text-sm font-medium" style={{ color: 'var(--color-text-muted)' }}>
+          <span
+            className="truncate text-sm font-medium"
+            style={{ color: 'var(--color-text-muted)' }}
+          >
             {organizations?.name}
           </span>
           {published_at && (
@@ -337,7 +372,7 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
           // No banner: typographic placeholder using category initial
           <div className="flex h-full items-center justify-center">
             <span
-              className="font-display select-none text-7xl font-bold leading-none opacity-[0.18] sm:text-8xl lg:text-9xl"
+              className="font-display text-7xl leading-none font-bold opacity-[0.18] select-none sm:text-8xl lg:text-9xl"
               style={{ color: catColor }}
             >
               {categories?.name?.[0] ?? organizations?.name?.[0] ?? 'B'}

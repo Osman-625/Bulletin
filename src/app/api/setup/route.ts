@@ -3,8 +3,12 @@ import { checkRateLimit, rateLimitKey } from '@/lib/security/rate-limit'
 import { NextResponse } from 'next/server'
 
 // One-time owner bootstrap — requires SETUP_SECRET header.
-// Delete this route once the owner account is created.
+// Keep disabled except during the explicit bootstrap window.
 export async function POST(request: Request) {
+  if (process.env.ENABLE_SETUP_ROUTE !== '1') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test') {
     const rateLimit = checkRateLimit(rateLimitKey('setup', request.headers), {
       limit: 5,
@@ -70,7 +74,10 @@ export async function POST(request: Request) {
   })
 
   if (authError || !authData.user) {
-    return NextResponse.json({ error: authError?.message ?? 'Failed to create user' }, { status: 500 })
+    return NextResponse.json(
+      { error: authError?.message ?? 'Failed to create user' },
+      { status: 500 }
+    )
   }
 
   await supabase

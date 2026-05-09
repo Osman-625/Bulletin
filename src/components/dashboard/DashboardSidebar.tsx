@@ -4,10 +4,24 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Home, Megaphone, Plus, LogOut,
-  LayoutDashboard, ClipboardList, Building2, Users, BarChart3,
-  ShieldCheck, Tag, UserCog, Crown, ScrollText,
+  Home,
+  Megaphone,
+  Plus,
+  LogOut,
+  LayoutDashboard,
+  ClipboardList,
+  Building2,
+  Users,
+  BarChart3,
+  ShieldCheck,
+  Tag,
+  UserCog,
+  Crown,
+  ScrollText,
   Newspaper,
+  Settings,
+  ArrowUpRight,
+  Activity,
 } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
 import { logout } from '@/app/(auth)/login/actions'
@@ -25,17 +39,24 @@ const publisherNav: NavItem[] = [
   { href: '/dashboard', label: 'Home', icon: Home, exact: true },
   { href: '/dashboard/announcements', label: 'Announcements', icon: Megaphone, exact: true },
   { href: '/dashboard/announcements/new', label: 'New Announcement', icon: Plus },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
   { href: '/', label: 'Public Announcements', icon: Newspaper, exact: true },
 ]
 
 function adminNav(pendingCount: number): NavItem[] {
   return [
     { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true },
-    { href: '/admin/review', label: 'Review Queue', icon: ClipboardList, badge: pendingCount || undefined },
+    {
+      href: '/admin/review',
+      label: 'Review Queue',
+      icon: ClipboardList,
+      badge: pendingCount || undefined,
+    },
     { href: '/admin/orgs', label: 'Organizations', icon: Building2 },
     { href: '/admin/publishers', label: 'Publishers', icon: Users },
     { href: '/admin/categories', label: 'Categories', icon: Tag },
     { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+    { href: '/admin/settings', label: 'Settings', icon: Settings },
     { href: '/dashboard', label: 'Publisher Workspace', icon: Megaphone, exact: true },
     { href: '/', label: 'Public Announcements', icon: Newspaper, exact: true },
   ]
@@ -49,6 +70,7 @@ const superAdminNav: NavItem[] = [
   { href: '/super-admin/categories', label: 'Categories', icon: Tag },
   { href: '/super-admin/users', label: 'Users', icon: UserCog },
   { href: '/super-admin/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/super-admin/settings', label: 'Settings', icon: Settings },
   { href: '/', label: 'Public Announcements', icon: Newspaper, exact: true },
 ]
 
@@ -58,11 +80,27 @@ const ownerNav: NavItem[] = [
   { href: '/admin', label: 'Admin Workspace', icon: ClipboardList, exact: true },
   { href: '/dashboard', label: 'Publisher Workspace', icon: Megaphone, exact: true },
   { href: '/owner/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/owner/resources', label: 'Resources', icon: Activity },
   { href: '/owner/users', label: 'All Users', icon: Users },
   { href: '/owner/categories', label: 'Categories', icon: Tag },
   { href: '/owner/audit', label: 'Audit Log', icon: ScrollText },
+  { href: '/owner/settings', label: 'Settings', icon: Settings },
   { href: '/', label: 'Public Announcements', icon: Newspaper, exact: true },
 ]
+
+const ROLE_HOME: Record<string, { href: string; label: string; icon: NavItem['icon'] }> = {
+  owner: { href: '/owner', label: 'Return to Owner', icon: Crown },
+  super_admin: { href: '/super-admin', label: 'Return to Super Admin', icon: ShieldCheck },
+  admin: { href: '/admin', label: 'Return to Admin', icon: ClipboardList },
+  publisher: { href: '/dashboard', label: 'Publisher Home', icon: Home },
+}
+
+const VARIANT_HOME: Record<NonNullable<DashboardSidebarProps['variant']>, string> = {
+  publisher: '/dashboard',
+  admin: '/admin',
+  super_admin: '/super-admin',
+  owner: '/owner',
+}
 
 function getIsActive(item: NavItem, pathname: string): boolean {
   if (item.exact) return pathname === item.href
@@ -90,7 +128,7 @@ function NavLinks({
               onClick={onClick}
               className={cn(
                 'flex items-center justify-center gap-3 lg:justify-start',
-                'rounded-xl px-0 py-2.5 text-sm font-medium lg:px-3',
+                'min-h-11 rounded-xl px-0 text-sm font-medium lg:px-3',
                 'transition-all duration-150',
                 isActive
                   ? 'bg-[var(--color-accent-surface)] text-[var(--color-accent)]'
@@ -101,7 +139,7 @@ function NavLinks({
               <span className="relative shrink-0">
                 <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
                 {item.badge != null && item.badge > 0 && (
-                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-accent)] text-[13.5px] font-bold text-white">
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-accent)] text-[13.5px] font-bold text-white">
                     {item.badge > 99 ? '99+' : item.badge}
                   </span>
                 )}
@@ -113,13 +151,7 @@ function NavLinks({
                 </span>
               )}
             </Link>
-            <div
-              className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2
-                whitespace-nowrap rounded-lg bg-[var(--color-surface-high)]
-                px-2 py-1 text-xs font-medium text-[var(--color-text-primary)]
-                opacity-0 transition-opacity duration-150 group-hover:opacity-100
-                lg:hidden"
-            >
+            <div className="pointer-events-none absolute top-1/2 left-full z-50 ml-2 -translate-y-1/2 rounded-lg bg-[var(--color-surface-high)] px-2 py-1 text-xs font-medium whitespace-nowrap text-[var(--color-text-primary)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 lg:hidden">
               {item.label}
             </div>
           </div>
@@ -157,6 +189,14 @@ export function DashboardSidebar({
           ? superAdminNav
           : publisherNav
 
+  const roleHome = role ? ROLE_HOME[role] : null
+  const returnItem =
+    roleHome && roleHome.href !== VARIANT_HOME[variant]
+      ? [{ ...roleHome, icon: ArrowUpRight, exact: true }]
+      : []
+
+  const visibleNavItems = [...returnItem, ...navItems]
+
   return (
     <>
       {/* ── Desktop + Tablet sidebar ── */}
@@ -167,28 +207,44 @@ export function DashboardSidebar({
           'w-12 lg:w-64',
           'bg-[var(--color-canvas)]/90 backdrop-blur-xl',
           'border-r border-[var(--color-border)]',
-          'transition-[width] duration-200 overflow-hidden'
+          'overflow-hidden transition-[width] duration-200'
         )}
       >
-        <div className="px-3 lg:px-6 py-5 border-b border-[var(--color-border)] overflow-hidden flex items-center gap-3">
-          <Image src="/bulletin_logo.png" alt="Bulletin" width={32} height={32} className="h-8 w-8 shrink-0 object-contain" />
-          <div className="hidden lg:block min-w-0">
-            <p className="text-[15px] font-bold uppercase tracking-widest text-[var(--color-accent)]">BULLETIN</p>
-            <p className="text-[15px] text-[var(--color-text-muted)] mt-0.5 leading-tight">INTI International University</p>
+        <div className="flex items-center gap-3 overflow-hidden border-b border-[var(--color-border)] px-3 py-5 lg:px-6">
+          <Image
+            src="/bulletin_logo.png"
+            alt="Bulletin"
+            width={32}
+            height={32}
+            className="h-8 w-8 shrink-0 object-contain"
+          />
+          <div className="hidden min-w-0 lg:block">
+            <p className="text-[15px] font-bold tracking-widest text-[var(--color-accent)] uppercase">
+              BULLETIN
+            </p>
+            <p className="mt-0.5 text-[15px] leading-tight text-[var(--color-text-muted)]">
+              INTI International University
+            </p>
           </div>
         </div>
 
-        <nav className="flex-1 px-1.5 lg:px-3 py-4 space-y-1">
-          <NavLinks navItems={navItems} pathname={pathname} />
+        <nav className="flex-1 space-y-1 px-1.5 py-4 lg:px-3">
+          <NavLinks navItems={visibleNavItems} pathname={pathname} />
         </nav>
 
-        <div className="px-1.5 lg:px-3 py-4 border-t border-[var(--color-border)] space-y-2">
+        <div className="space-y-2 border-t border-[var(--color-border)] px-1.5 py-4 lg:px-3">
           <div className="flex items-center justify-center lg:justify-between lg:px-3">
-            <div className="hidden lg:block min-w-0">
-              <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{displayName ?? '—'}</p>
+            <div className="hidden min-w-0 lg:block">
+              <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                {displayName ?? '—'}
+              </p>
               <div className="flex items-center gap-1.5">
-                {variant === 'owner' && <Crown size={10} className="text-[var(--color-gold)] shrink-0" />}
-                <p className="text-[15px] text-[var(--color-text-muted)] capitalize">{role?.replace('_', ' ') ?? '—'}</p>
+                {variant === 'owner' && (
+                  <Crown size={10} className="shrink-0 text-[var(--color-gold)]" />
+                )}
+                <p className="text-[15px] text-[var(--color-text-muted)] capitalize">
+                  {role?.replace('_', ' ') ?? '—'}
+                </p>
               </div>
             </div>
             <ThemeToggle />
@@ -197,10 +253,10 @@ export function DashboardSidebar({
             <button
               type="submit"
               className={cn(
-                'flex items-center justify-center lg:justify-start gap-2 w-full',
-                'lg:px-3 py-2 rounded-xl text-xs',
+                'flex w-full items-center justify-center gap-2 lg:justify-start',
+                'min-h-11 rounded-xl text-xs lg:px-3',
                 'text-[var(--color-text-muted)] hover:text-[var(--color-destructive)]',
-                'hover:bg-[var(--color-surface-elevated)] transition-all duration-150'
+                'transition-all duration-150 hover:bg-[var(--color-surface-elevated)]'
               )}
               aria-label="Sign out"
             >
@@ -227,29 +283,43 @@ export function DashboardSidebar({
         aria-label="Navigation menu"
       >
         <div className="flex justify-center pt-3 pb-2">
-          <div className="w-10 h-1 rounded-full bg-[var(--color-border)]" />
+          <div className="h-1 w-10 rounded-full bg-[var(--color-border)]" />
         </div>
-        <div className="px-6 pb-3 border-b border-[var(--color-border)] flex items-center gap-3">
-          <Image src="/bulletin_logo.png" alt="Bulletin" width={28} height={28} className="h-7 w-7 shrink-0 object-contain" />
+        <div className="flex items-center gap-3 border-b border-[var(--color-border)] px-6 pb-3">
+          <Image
+            src="/bulletin_logo.png"
+            alt="Bulletin"
+            width={28}
+            height={28}
+            className="h-7 w-7 shrink-0 object-contain"
+          />
           <div>
-            <p className="text-[15px] font-bold uppercase tracking-widest text-[var(--color-accent)]">BULLETIN</p>
-            <p className="text-[15px] text-[var(--color-text-muted)]">INTI International University</p>
+            <p className="text-[15px] font-bold tracking-widest text-[var(--color-accent)] uppercase">
+              BULLETIN
+            </p>
+            <p className="text-[15px] text-[var(--color-text-muted)]">
+              INTI International University
+            </p>
           </div>
         </div>
-        <nav className="px-4 py-3 space-y-1">
-          <NavLinks navItems={navItems} pathname={pathname} onClick={onMobileClose} />
+        <nav className="space-y-1 px-4 py-3">
+          <NavLinks navItems={visibleNavItems} pathname={pathname} onClick={onMobileClose} />
         </nav>
-        <div className="px-4 pb-6 pt-2 border-t border-[var(--color-border)] flex items-center justify-between">
+        <div className="flex items-center justify-between border-t border-[var(--color-border)] px-4 pt-2 pb-6">
           <div>
-            <p className="text-sm font-medium text-[var(--color-text-primary)]">{displayName ?? '—'}</p>
-            <p className="text-[15px] text-[var(--color-text-muted)] capitalize">{role?.replace('_', ' ') ?? '—'}</p>
+            <p className="text-sm font-medium text-[var(--color-text-primary)]">
+              {displayName ?? '—'}
+            </p>
+            <p className="text-[15px] text-[var(--color-text-muted)] capitalize">
+              {role?.replace('_', ' ') ?? '—'}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <form action={logout}>
               <button
                 type="submit"
-                className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-destructive)] transition-colors py-2 px-3 rounded-xl hover:bg-[var(--color-surface-elevated)]"
+                className="flex min-h-11 items-center gap-1.5 rounded-xl px-3 text-xs text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-destructive)]"
               >
                 <LogOut size={14} />
                 Sign out

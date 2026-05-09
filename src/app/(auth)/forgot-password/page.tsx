@@ -1,0 +1,95 @@
+import Image from 'next/image'
+import Link from 'next/link'
+import { ArrowLeft, Mail } from 'lucide-react'
+import { requestPasswordReset } from './actions'
+
+export const metadata = { title: 'Forgot Password - Bulletin' }
+
+export default async function ForgotPasswordPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sent?: string }>
+}) {
+  const { sent } = await searchParams
+
+  return (
+    <main className="relative w-full max-w-[22rem]">
+      <div className="animate-fade-up relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-8 shadow-[var(--shadow-soft)]">
+        <div
+          className="absolute inset-x-0 top-0 h-px bg-[var(--color-border-subtle)]"
+          aria-hidden="true"
+        />
+
+        <div className="mb-6 flex flex-col items-center gap-4">
+          <div className="flex h-[88px] w-[88px] items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-[var(--shadow-button)]">
+            <Image
+              src="/bulletin_logo.png"
+              alt="Bulletin"
+              width={54}
+              height={54}
+              className="h-[54px] w-[54px] object-contain"
+              priority
+            />
+          </div>
+
+          <div className="text-center">
+            <h1 className="font-sans text-xl font-semibold tracking-[-0.02em] text-[var(--color-text-primary)]">
+              Reset access
+            </h1>
+            <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
+              Ask a super admin to issue a temporary password.
+            </p>
+          </div>
+        </div>
+
+        {sent ? (
+          <div
+            className="rounded-lg border border-[var(--color-status-published-text)]/25 bg-[var(--color-status-published-bg)] px-3 py-3 text-xs leading-5 text-[var(--color-status-published-text)]"
+            role="status"
+          >
+            If this email belongs to a Bulletin account, a reset request is now waiting for a super
+            admin.
+          </div>
+        ) : (
+          <form action={requestPasswordReset} className="flex flex-col gap-3">
+            <div className="relative">
+              <label htmlFor="email" className="sr-only">
+                Email address
+              </label>
+              <Mail
+                size={15}
+                strokeWidth={1.8}
+                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
+                aria-hidden="true"
+              />
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="Email address"
+                className="input-inti h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 pl-9 text-sm text-[var(--color-text-primary)] transition-[border-color,box-shadow,background] duration-200 outline-none placeholder:text-[var(--color-text-muted)]"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="h-11 w-full cursor-pointer rounded-lg bg-[var(--color-accent-inti)] text-sm font-semibold text-white shadow-[0_8px_24px_color-mix(in_oklab,var(--color-accent-inti)_30%,transparent)] transition-[transform,background,box-shadow] duration-200 hover:-translate-y-0.5 hover:bg-[var(--color-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]/50 active:translate-y-0 active:scale-[0.99]"
+            >
+              Request reset
+            </button>
+          </form>
+        )}
+
+        <Link
+          href="/login"
+          className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-3 text-xs font-semibold text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)]"
+        >
+          <ArrowLeft size={14} aria-hidden="true" />
+          Back to sign in
+        </Link>
+      </div>
+    </main>
+  )
+}

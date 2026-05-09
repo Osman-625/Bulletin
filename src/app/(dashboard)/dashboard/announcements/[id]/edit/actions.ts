@@ -5,7 +5,11 @@ import { revalidatePath } from 'next/cache'
 import { logAuditEvent } from '@/lib/audit'
 import { createClient } from '@/lib/supabase/server'
 import { canManageAnnouncementForOrg } from '@/lib/announcements/access'
-import { readOptionalIsoDate } from '@/lib/announcements/form'
+import {
+  readOptionalBannerUrl,
+  readOptionalHttpUrl,
+  readOptionalIsoDate,
+} from '@/lib/announcements/form'
 import {
   normalizeAnnouncementDisplayFont,
   normalizeAnnouncementDisplaySize,
@@ -14,7 +18,10 @@ import {
 import { getCurrentAccessContext } from '@/lib/auth/authz'
 import { notifyAnnouncementSubmitted } from '@/lib/notifications'
 
-async function verifyAnnouncementAccess(supabase: Awaited<ReturnType<typeof createClient>>, announcementId: string) {
+async function verifyAnnouncementAccess(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  announcementId: string
+) {
   const access = await getCurrentAccessContext()
   if (!access) throw new Error('Unauthorized')
 
@@ -47,8 +54,8 @@ export async function updateAnnouncement(id: string, formData: FormData) {
   const title = formData.get('title') as string
   const body = formData.get('body') as string
   const categoryId = formData.get('category_id') as string | null
-  const bannerUrl = formData.get('banner_url') as string | null
-  const registrationLink = formData.get('registration_link') as string | null
+  const bannerUrl = readOptionalBannerUrl(formData, 'banner_url')
+  const registrationLink = readOptionalHttpUrl(formData, 'registration_link', 'Registration link')
   const expiresAt = readOptionalIsoDate(formData, 'expires_at')
   const scheduledPublishAt = readOptionalIsoDate(formData, 'scheduled_publish_at')
   const pinnedUntil = readOptionalIsoDate(formData, 'pinned_until')
@@ -207,10 +214,7 @@ export async function deleteAnnouncement(id: string) {
   const supabase = await createClient()
   const announcement = await verifyAnnouncementAccess(supabase, id)
 
-  const { error } = await supabase
-    .from('announcements')
-    .delete()
-    .eq('id', id)
+  const { error } = await supabase.from('announcements').delete().eq('id', id)
 
   if (error) throw new Error(error.message)
 

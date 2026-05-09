@@ -4,21 +4,33 @@ import { ArrowLeft, ExternalLink } from 'lucide-react'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { StatusBadge } from '@/components/dashboard/StatusBadge'
 import { getAnnouncementForReview } from '@/lib/data'
+import { toSafeHttpUrl } from '@/lib/announcements/urls'
 import { reviewAnnouncement } from './actions'
 
 export const metadata = { title: 'Review Announcement — Bulletin Admin' }
 
-export default async function ReviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ReviewDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ error?: string }>
+}) {
   const { id } = await params
+  const { error } = await searchParams
   const announcement = await getAnnouncementForReview(id)
 
   if (!announcement || announcement.status !== 'submitted') notFound()
 
   const review = reviewAnnouncement.bind(null, id)
+  const registrationHref = toSafeHttpUrl(announcement.registration_link)
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8 space-y-6">
-      <Link href="/admin/review" className="text-sm text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] flex items-center gap-1 transition-colors w-fit">
+    <div className="mx-auto max-w-3xl space-y-6 px-6 py-8">
+      <Link
+        href="/admin/review"
+        className="flex min-h-11 w-fit items-center gap-1 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+      >
         <ArrowLeft size={14} /> Back to queue
       </Link>
 
@@ -28,42 +40,60 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
           // eslint-disable-next-line @next/next/no-img-element
           <img src={announcement.banner_url} alt="" className="h-48 w-full object-contain" />
         )}
-        <div className="p-6 space-y-4">
+        <div className="space-y-4 p-6">
           <div className="space-y-2">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-wrap items-center gap-2">
               <StatusBadge status="submitted" />
               {announcement.categories && (
                 <span
-                  className="inline-flex items-center px-2 py-0.5 rounded text-[15px] font-bold uppercase tracking-wider text-white"
+                  className="inline-flex items-center rounded px-2 py-0.5 text-[15px] font-bold tracking-wider text-white uppercase"
                   style={{ background: announcement.categories.color ?? '#C8102E' }}
                 >
                   {announcement.categories.name}
                 </span>
               )}
             </div>
-            <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{announcement.title}</h1>
+            <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
+              {announcement.title}
+            </h1>
           </div>
 
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-[var(--color-text-muted)] text-xs uppercase tracking-wider mb-1">Organization</p>
-              <p className="text-[var(--color-text-primary)] font-medium">{announcement.organizations?.name ?? '—'}</p>
+              <p className="mb-1 text-xs tracking-wider text-[var(--color-text-muted)] uppercase">
+                Organization
+              </p>
+              <p className="font-medium text-[var(--color-text-primary)]">
+                {announcement.organizations?.name ?? '—'}
+              </p>
             </div>
             <div>
-              <p className="text-[var(--color-text-muted)] text-xs uppercase tracking-wider mb-1">Author</p>
-              <p className="text-[var(--color-text-primary)] font-medium">{announcement.users?.display_name ?? '—'}</p>
-              <p className="text-[var(--color-text-muted)] text-xs">{announcement.users?.email}</p>
+              <p className="mb-1 text-xs tracking-wider text-[var(--color-text-muted)] uppercase">
+                Author
+              </p>
+              <p className="font-medium text-[var(--color-text-primary)]">
+                {announcement.users?.display_name ?? '—'}
+              </p>
+              <p className="text-xs text-[var(--color-text-muted)]">{announcement.users?.email}</p>
             </div>
             <div>
-              <p className="text-[var(--color-text-muted)] text-xs uppercase tracking-wider mb-1">Submitted</p>
-              <p className="text-[var(--color-text-primary)] font-medium">
-                {new Date(announcement.updated_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric' })}
+              <p className="mb-1 text-xs tracking-wider text-[var(--color-text-muted)] uppercase">
+                Submitted
+              </p>
+              <p className="font-medium text-[var(--color-text-primary)]">
+                {new Date(announcement.updated_at).toLocaleDateString('en-MY', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric',
+                })}
               </p>
             </div>
             {announcement.scheduled_publish_at && (
               <div>
-                <p className="text-[var(--color-text-muted)] text-xs uppercase tracking-wider mb-1">Scheduled</p>
-                <p className="text-[var(--color-text-primary)] font-medium">
+                <p className="mb-1 text-xs tracking-wider text-[var(--color-text-muted)] uppercase">
+                  Scheduled
+                </p>
+                <p className="font-medium text-[var(--color-text-primary)]">
                   {new Date(announcement.scheduled_publish_at).toLocaleString('en-MY', {
                     day: 'numeric',
                     month: 'short',
@@ -76,8 +106,10 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
             )}
             {announcement.pinned_until && (
               <div>
-                <p className="text-[var(--color-text-muted)] text-xs uppercase tracking-wider mb-1">Pinned Until</p>
-                <p className="text-[var(--color-text-primary)] font-medium">
+                <p className="mb-1 text-xs tracking-wider text-[var(--color-text-muted)] uppercase">
+                  Pinned Until
+                </p>
+                <p className="font-medium text-[var(--color-text-primary)]">
                   {new Date(announcement.pinned_until).toLocaleString('en-MY', {
                     day: 'numeric',
                     month: 'short',
@@ -90,21 +122,29 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
             )}
             {announcement.expires_at && (
               <div>
-                <p className="text-[var(--color-text-muted)] text-xs uppercase tracking-wider mb-1">Expires</p>
-                <p className="text-[var(--color-text-primary)] font-medium">
-                  {new Date(announcement.expires_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric' })}
+                <p className="mb-1 text-xs tracking-wider text-[var(--color-text-muted)] uppercase">
+                  Expires
+                </p>
+                <p className="font-medium text-[var(--color-text-primary)]">
+                  {new Date(announcement.expires_at).toLocaleDateString('en-MY', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
                 </p>
               </div>
             )}
           </div>
 
           <div className="border-t border-[var(--color-border)] pt-4">
-            <p className="text-[var(--color-text-secondary)] leading-relaxed whitespace-pre-wrap">{announcement.body}</p>
+            <p className="leading-relaxed whitespace-pre-wrap text-[var(--color-text-secondary)]">
+              {announcement.body}
+            </p>
           </div>
 
-          {announcement.registration_link && (
+          {registrationHref && (
             <a
-              href={announcement.registration_link}
+              href={registrationHref}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-sm text-[var(--color-accent)] hover:underline"
@@ -116,19 +156,33 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
       </GlassCard>
 
       {/* Review form */}
-      <GlassCard hover={false} className="p-6 space-y-4">
+      <GlassCard hover={false} className="space-y-4 p-6">
         <h2 className="font-semibold text-[var(--color-text-primary)]">Decision</h2>
+        {error === 'rejection_comment_required' && (
+          <div
+            role="alert"
+            className="rounded-lg border border-[var(--color-status-rejected-text)]/25 bg-[var(--color-status-rejected-bg)] px-4 py-3 text-sm text-[var(--color-status-rejected-text)]"
+          >
+            Add a rejection comment before sending changes back to the publisher.
+          </div>
+        )}
         <form action={review} className="space-y-4">
           <div>
-            <label htmlFor="comment" className="block text-sm font-medium text-[var(--color-text-secondary)] mb-1.5">
-              Comment <span className="text-[var(--color-text-muted)] font-normal">(required for rejection)</span>
+            <label
+              htmlFor="comment"
+              className="mb-1.5 block text-sm font-medium text-[var(--color-text-secondary)]"
+            >
+              Comment{' '}
+              <span className="font-normal text-[var(--color-text-muted)]">
+                (required for rejection)
+              </span>
             </label>
             <textarea
               id="comment"
               name="comment"
               rows={3}
               placeholder="Optional note to the publisher..."
-              className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none input-inti resize-none"
+              className="input-inti w-full resize-none rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
             />
           </div>
           <div className="flex gap-3">
@@ -136,7 +190,7 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
               type="submit"
               name="_action"
               value="approve"
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--color-status-published-bg)] text-[var(--color-status-published-text)] hover:opacity-90 transition-opacity"
+              className="min-h-11 flex-1 rounded-xl bg-[var(--color-status-published-bg)] text-sm font-semibold text-[var(--color-status-published-text)] transition-opacity hover:opacity-90"
             >
               Approve &amp; Publish
             </button>
@@ -144,7 +198,7 @@ export default async function ReviewDetailPage({ params }: { params: Promise<{ i
               type="submit"
               name="_action"
               value="reject"
-              className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-[var(--color-status-rejected-bg)] text-[var(--color-status-rejected-text)] hover:opacity-90 transition-opacity"
+              className="min-h-11 flex-1 rounded-xl bg-[var(--color-status-rejected-bg)] text-sm font-semibold text-[var(--color-status-rejected-text)] transition-opacity hover:opacity-90"
             >
               Reject
             </button>

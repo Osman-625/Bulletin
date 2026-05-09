@@ -12,8 +12,9 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
   if (!access) redirect('/login')
   if (!canAccessAdminArea(access.role)) redirect('/login')
 
-  const action = formData.get('_action') as 'approve' | 'reject'
+  const action = formData.get('_action')
   const comment = (formData.get('comment') as string | null)?.trim() || null
+  if (action !== 'approve' && action !== 'reject') redirect('/admin/review')
   const supabase = await createClient()
   const { data: announcement } = await supabase
     .from('announcements')
@@ -25,6 +26,9 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
   if (access.role === 'admin' && !access.orgIds.includes(announcement.organization_id)) {
     redirect('/admin/review')
   }
+  if (action === 'reject' && !comment) {
+    redirect(`/admin/review/${announcementId}?error=rejection_comment_required`)
+  }
 
   if (action === 'approve') {
     const now = new Date().toISOString()
@@ -34,18 +38,24 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
         ? announcement.scheduled_publish_at
         : null
 
-    const { error } = await supabase.from('announcements').update({
-      status: 'published',
-      published_at: scheduledPublishAt ?? now,
-      scheduled_publish_at: scheduledPublishAt,
-      rejection_comment: null,
-    }).eq('id', announcementId)
+    const { error } = await supabase
+      .from('announcements')
+      .update({
+        status: 'published',
+        published_at: scheduledPublishAt ?? now,
+        scheduled_publish_at: scheduledPublishAt,
+        rejection_comment: null,
+      })
+      .eq('id', announcementId)
     if (error) throw new Error(error.message)
   } else {
-    const { error } = await supabase.from('announcements').update({
-      status: 'rejected',
-      rejection_comment: comment ?? 'No reason provided.',
-    }).eq('id', announcementId)
+    const { error } = await supabase
+      .from('announcements')
+      .update({
+        status: 'rejected',
+        rejection_comment: comment,
+      })
+      .eq('id', announcementId)
     if (error) throw new Error(error.message)
   }
 

@@ -21,7 +21,17 @@ describe('POST /api/setup security', () => {
   beforeEach(() => {
     vi.mocked(createServiceClient).mockReset()
     resetRateLimitForTests()
+    process.env.ENABLE_SETUP_ROUTE = '1'
     process.env.SETUP_SECRET = 'test-secret'
+  })
+
+  it('stays disabled unless the setup route is explicitly enabled', async () => {
+    delete process.env.ENABLE_SETUP_ROUTE
+
+    const response = await POST(setupRequest('test-secret'))
+
+    expect(response.status).toBe(404)
+    expect(createServiceClient).not.toHaveBeenCalled()
   })
 
   it('rejects missing setup secret without creating a service client', async () => {

@@ -5,7 +5,11 @@ import { revalidatePath } from 'next/cache'
 import { logAuditEvent } from '@/lib/audit'
 import { createClient } from '@/lib/supabase/server'
 import { getWritableOrganizationId } from '@/lib/announcements/access'
-import { readOptionalIsoDate } from '@/lib/announcements/form'
+import {
+  readOptionalBannerUrl,
+  readOptionalHttpUrl,
+  readOptionalIsoDate,
+} from '@/lib/announcements/form'
 import {
   normalizeAnnouncementDisplayFont,
   normalizeAnnouncementDisplaySize,
@@ -25,8 +29,8 @@ export async function createAnnouncement(formData: FormData) {
   const title = (formData.get('title') as string) || 'Untitled Announcement'
   const body = (formData.get('body') as string) || ''
   const categoryId = formData.get('category_id') as string | null
-  const bannerUrl = formData.get('banner_url') as string | null
-  const registrationLink = formData.get('registration_link') as string | null
+  const bannerUrl = readOptionalBannerUrl(formData, 'banner_url')
+  const registrationLink = readOptionalHttpUrl(formData, 'registration_link', 'Registration link')
   const expiresAt = readOptionalIsoDate(formData, 'expires_at')
   const scheduledPublishAt = readOptionalIsoDate(formData, 'scheduled_publish_at')
   const pinnedUntil = readOptionalIsoDate(formData, 'pinned_until')
@@ -88,8 +92,8 @@ export async function createAndSubmitAnnouncement(formData: FormData) {
   const title = (formData.get('title') as string) || 'Untitled Announcement'
   const body = (formData.get('body') as string) || ''
   const categoryId = formData.get('category_id') as string | null
-  const bannerUrl = formData.get('banner_url') as string | null
-  const registrationLink = formData.get('registration_link') as string | null
+  const bannerUrl = readOptionalBannerUrl(formData, 'banner_url')
+  const registrationLink = readOptionalHttpUrl(formData, 'registration_link', 'Registration link')
   const expiresAt = readOptionalIsoDate(formData, 'expires_at')
   const scheduledPublishAt = readOptionalIsoDate(formData, 'scheduled_publish_at')
   const pinnedUntil = readOptionalIsoDate(formData, 'pinned_until')

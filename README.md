@@ -10,13 +10,13 @@ A governed announcement platform for INTI International University. Public-facin
 
 Five tiers, each with a dedicated route group and dashboard:
 
-| Role | Who | Can do |
-|------|-----|--------|
-| **Public** | Anyone | Browse the feed, read announcements — no login required |
-| **Publisher** | Clubs, departments, societies | Create drafts, submit for review, manage own announcements, receive review notifications |
-| **Admin** | SA Director, Student Council President | Approve/reject submissions, manage publishers, orgs, categories, users — notified on new submissions |
-| **Super Admin** | Platform administrators | Manage admins, global categories, platform analytics, password resets |
-| **Owner** | Platform owner (Maaney) | Full audit log, all metrics, all user management — bypasses RLS |
+| Role            | Who                                    | Can do                                                                                               |
+| --------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Public**      | Anyone                                 | Browse the feed, read announcements — no login required                                              |
+| **Publisher**   | Clubs, departments, societies          | Create drafts, submit for review, manage own announcements, receive review notifications             |
+| **Admin**       | SA Director, Student Council President | Approve/reject submissions, manage publishers, orgs, categories, users — notified on new submissions |
+| **Super Admin** | Platform administrators                | Manage admins, global categories, platform analytics, password resets                                |
+| **Owner**       | Platform owner (Maaney)                | Full audit log, all metrics, all user management — bypasses RLS                                      |
 
 Login automatically routes each role to its panel.
 
@@ -25,21 +25,23 @@ Login automatically routes each role to its panel.
 ## Features
 
 ### Public feed
+
 - Announcement grid with featured first-card layout
-- Category filter via URL search params
+- Database-backed search and category filter via URL search params
 - Markdown-stripped excerpts on cards
-- Full detail view with optional registration link
+- Full detail view with optional safe `http`/`https` registration link
 - View count tracked per announcement (via RPC — safe for unauthenticated users)
-- Back navigation on detail pages
+- Back navigation on detail pages with a direct-load fallback to `/`
 - Pinned announcements surfaced above the fold (until `pinned_until` expires)
 - Scheduled posts hidden until their publish time
 
 ### Publisher dashboard
+
 - Create and edit announcements with rich presentation controls:
   - **Urgency** — `normal` · `important` · `urgent`
   - **Display font** — `editorial` · `clean`
   - **Display size** — `compact` · `standard` · `large`
-- Banner image upload to Supabase Storage
+- Banner image upload to the Supabase `banner-images` storage bucket
 - Draft autosave with visual indicator
 - Schedule a future publish time (`scheduled_publish_at`)
 - Edit rejected announcements and resubmit
@@ -47,8 +49,9 @@ Login automatically routes each role to its panel.
 - In-app notifications: approval, rejection (with comment), scheduled publish confirmation
 
 ### Admin panel
+
 - Review queue — approve or reject submitted announcements
-- Rejection comments sent to publisher as a notification
+- Rejection comments are required and sent to the publisher as a notification
 - Publisher invite flow with copyable invite link
 - Organization management
 - Category management
@@ -57,37 +60,45 @@ Login automatically routes each role to its panel.
 - In-app notifications for new submissions
 
 ### Super admin panel
+
 - Admin invite and management
 - Global category control
 - Platform-wide analytics
-- User password resets
+- User password resets and forgot-password request queue
 - In-app notifications
 
 ### Owner panel
+
 - Bento dashboard: user role breakdown chart, publish-rate donut, pending review count, recent audit feed
 - Full paginated audit log (50 per page, newest first)
+- Read-only resource page for Vercel deployment status, Supabase health, banner storage, setup-route status, and view counters
 - All-user management
 - Owner-level analytics
 - In-app notifications
 
 ### Notifications
+
 In-app notification system covering the full review workflow:
 
-| Event | Who is notified |
-|-------|----------------|
-| Publisher submits announcement | All admins, super admins, and owner |
-| Admin approves announcement | Publisher (with scheduled time if applicable) |
-| Admin rejects announcement | Publisher (with rejection comment) |
+| Event                          | Who is notified                               |
+| ------------------------------ | --------------------------------------------- |
+| Publisher submits announcement | All admins, super admins, and owner           |
+| Admin approves announcement    | Publisher (with scheduled time if applicable) |
+| Admin rejects announcement     | Publisher (with rejection comment)            |
 
 Notifications are per-user, have unread state, and link directly to the relevant page. Delivered via the `NotificationsPanel` component available in all role dashboards.
 
 ### Security
+
 - IP-based rate limiting on all public routes
 - Server action rate limiting
 - Row-level security on all database tables
 - Service-role client for owner/admin queries that bypass RLS
-- One-time bootstrap endpoint (`/api/setup`) protected by `SETUP_SECRET`
+- Server-side validation for announcement banner URLs and registration links
+- Next image allow-list scoped to the configured Supabase `banner-images` bucket
+- One-time bootstrap endpoint (`/api/setup`) disabled by default and protected by `SETUP_SECRET`
 - Idle logout on all authenticated sessions
+- Admin-created and reset passwords force a password change on next login
 
 ---
 
@@ -99,7 +110,7 @@ Draft → Submitted → Published → Expired (auto at 30 days) → Archived
             Rejected → (publisher edits) → Submitted
 ```
 
-Publishers save drafts and submit for admin review. Admins approve or reject (with an optional comment). Rejected announcements can be revised and resubmitted. Published announcements auto-expire after 30 days.
+Publishers save drafts and submit for admin review. Admins approve or reject; rejections require a comment so publishers know what to change. Rejected announcements can be revised and resubmitted. Published announcements auto-expire after 30 days.
 
 **Scheduled publishing:** Approved announcements with a `scheduled_publish_at` in the future are not visible on the public feed until that time passes. The RLS policy and the public query both enforce this.
 
@@ -111,14 +122,14 @@ Publishers save drafts and submit for admin review. Admins approve or reject (wi
 
 Every significant system action writes a row to `audit_log`:
 
-| Field | Description |
-|-------|-------------|
-| `actor_id` | User who performed the action (with display name + role) |
-| `action` | What was done (e.g. `approve_announcement`, `invite_publisher`) |
-| `target_type` | What was acted on (e.g. `announcement`, `user`) |
-| `target_id` | ID of the affected record |
-| `metadata` | Additional context as JSON |
-| `created_at` | Timestamp |
+| Field         | Description                                                     |
+| ------------- | --------------------------------------------------------------- |
+| `actor_id`    | User who performed the action (with display name + role)        |
+| `action`      | What was done (e.g. `approve_announcement`, `invite_publisher`) |
+| `target_type` | What was acted on (e.g. `announcement`, `user`)                 |
+| `target_id`   | ID of the affected record                                       |
+| `metadata`    | Additional context as JSON                                      |
+| `created_at`  | Timestamp                                                       |
 
 The owner dashboard shows the 6 most recent entries. `/owner/audit` shows the full paginated log. Only the owner can read this table — append-only, no editing. Owner dashboard paths are revalidated automatically after each write.
 
@@ -127,85 +138,99 @@ The owner dashboard shows the 6 most recent entries. `/owner/audit` shows the fu
 ## Routes
 
 ### Public
-| Route | Description |
-|-------|-------------|
-| `/` | Announcement feed with category filter, pinned posts, scheduled post enforcement |
-| `/announcements/[id]` | Full announcement detail (increments view count) |
+
+| Route                 | Description                                                                      |
+| --------------------- | -------------------------------------------------------------------------------- |
+| `/`                   | Announcement feed with category filter, pinned posts, scheduled post enforcement |
+| `/announcements/[id]` | Full announcement detail (increments view count)                                 |
 
 ### Auth
-| Route | Description |
-|-------|-------------|
-| `/login` | Email/username + password (routes to role dashboard on success) |
-| `/change-password` | Forced password change flow |
-| `/register` | Account registration |
+
+| Route              | Description                                                     |
+| ------------------ | --------------------------------------------------------------- |
+| `/login`           | Email/username + password (routes to role dashboard on success) |
+| `/forgot-password` | Request a super-admin temporary password reset                  |
+| `/change-password` | Forced password change flow                                     |
+| `/register`        | Account registration                                            |
 
 ### Publisher — `/dashboard`
-| Route | Description |
-|-------|-------------|
-| `/dashboard` | Overview stats and quick actions |
-| `/dashboard/announcements` | All announcements with status badges |
-| `/dashboard/announcements/new` | Create announcement (with scheduled publish option) |
+
+| Route                                | Description                                                 |
+| ------------------------------------ | ----------------------------------------------------------- |
+| `/dashboard`                         | Overview stats and quick actions                            |
+| `/dashboard/announcements`           | All announcements with status badges                        |
+| `/dashboard/announcements/new`       | Create announcement (with scheduled publish option)         |
 | `/dashboard/announcements/[id]/edit` | Edit announcement (available on draft, submitted, rejected) |
-| `/dashboard/notifications` | In-app notification inbox |
+| `/dashboard/notifications`           | In-app notification inbox                                   |
+| `/dashboard/settings`                | Account name, password, theme, and workspace shortcuts      |
 
 ### Admin — `/admin`
-| Route | Description |
-|-------|-------------|
-| `/admin` | Overview with pending count and quick links |
-| `/admin/review` | Pending review queue |
-| `/admin/review/[id]` | Review detail — approve (with optional schedule) or reject (with comment) |
-| `/admin/publishers` | Publisher list |
-| `/admin/publishers/invite` | Invite new publisher (with copyable link) |
-| `/admin/orgs` | Organization list |
-| `/admin/orgs/new` | Create organization |
-| `/admin/categories` | Category management |
-| `/admin/users` | User management |
-| `/admin/analytics` | Admin analytics |
-| `/admin/notifications` | In-app notification inbox |
+
+| Route                      | Description                                                               |
+| -------------------------- | ------------------------------------------------------------------------- |
+| `/admin`                   | Overview with pending count and quick links                               |
+| `/admin/review`            | Pending review queue                                                      |
+| `/admin/review/[id]`       | Review detail — approve (with optional schedule) or reject (with comment) |
+| `/admin/publishers`        | Publisher list                                                            |
+| `/admin/publishers/invite` | Invite new publisher (with copyable link)                                 |
+| `/admin/orgs`              | Organization list                                                         |
+| `/admin/orgs/new`          | Create organization                                                       |
+| `/admin/categories`        | Category management                                                       |
+| `/admin/users`             | User management                                                           |
+| `/admin/analytics`         | Admin analytics                                                           |
+| `/admin/notifications`     | In-app notification inbox                                                 |
+| `/admin/settings`          | Account name, password, theme, and workspace shortcuts                    |
 
 ### Super Admin — `/super-admin`
-| Route | Description |
-|-------|-------------|
-| `/super-admin` | Platform overview |
-| `/super-admin/admins` | Admin list |
-| `/super-admin/admins/invite` | Invite new admin |
-| `/super-admin/categories` | Global category management |
-| `/super-admin/users` | All users with password reset |
-| `/super-admin/analytics` | Platform analytics |
-| `/super-admin/notifications` | In-app notification inbox |
+
+| Route                        | Description                                            |
+| ---------------------------- | ------------------------------------------------------ |
+| `/super-admin`               | Platform overview                                      |
+| `/super-admin/admins`        | Admin list                                             |
+| `/super-admin/admins/invite` | Invite new admin                                       |
+| `/super-admin/categories`    | Global category management                             |
+| `/super-admin/users`         | All users with password reset                          |
+| `/super-admin/analytics`     | Platform analytics                                     |
+| `/super-admin/notifications` | In-app notification inbox                              |
+| `/super-admin/settings`      | Account name, password, theme, and workspace shortcuts |
 
 ### Owner — `/owner`
-| Route | Description |
-|-------|-------------|
-| `/owner` | Bento dashboard: role breakdown, publish rate, audit feed |
-| `/owner/users` | All users |
-| `/owner/analytics` | Owner analytics |
-| `/owner/audit` | Full audit log (paginated, 50/page) |
-| `/owner/notifications` | In-app notification inbox |
+
+| Route                  | Description                                               |
+| ---------------------- | --------------------------------------------------------- |
+| `/owner`               | Bento dashboard: role breakdown, publish rate, audit feed |
+| `/owner/users`         | All users                                                 |
+| `/owner/analytics`     | Owner analytics                                           |
+| `/owner/resources`     | Read-only Vercel, Supabase, storage, and view counters    |
+| `/owner/audit`         | Full audit log (paginated, 50/page)                       |
+| `/owner/notifications` | In-app notification inbox                                 |
+| `/owner/settings`      | Account name, password, theme, and workspace shortcuts    |
 
 ### API
-| Route | Description |
-|-------|-------------|
-| `/api/setup` | One-time owner bootstrap — **delete after first run** |
+
+| Route        | Description                                                       |
+| ------------ | ----------------------------------------------------------------- |
+| `/api/setup` | One-time owner bootstrap — disabled unless `ENABLE_SETUP_ROUTE=1` |
 
 ---
 
 ## Database
 
-13 migrations. Run them in order from `supabase/migrations/` in the Supabase SQL editor.
+14 migrations. Run them in order from `supabase/migrations/` in the Supabase SQL editor.
 
-| File | Description |
-|------|-------------|
-| `000001_schema` | Core tables: users, organizations, organization_members, categories, announcements |
-| `000002_rls` | Row-level security policies for all tables |
-| `000003_storage` | `banner-images` bucket + storage RLS |
-| `000004–007` | RLS recursion fixes for org_members (Supabase gotcha) |
-| `000008_post_status_enums` | Announcement status enum |
-| `000009_role_system` | User role enum and RBAC policies |
-| `000010_owner_role` | Owner role schema |
-| `000011_sync_auth_users` | Trigger: sync `auth.users` → `public.users` |
-| `000012_announcement_presentation` | `urgency`, `display_font`, `display_size` columns |
-| `000013_announcement_workflow` | `scheduled_publish_at`, `pinned_until`, `view_count` + `notifications` table + `increment_announcement_view` RPC |
+| File                               | Description                                                                                                      |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `000001_schema`                    | Core tables: users, organizations, organization_members, categories, announcements                               |
+| `000002_rls`                       | Row-level security policies for all tables                                                                       |
+| `000003_storage`                   | `banner-images` bucket + storage RLS                                                                             |
+| `000004–007`                       | RLS recursion fixes for org_members (Supabase gotcha)                                                            |
+| `000008_post_status_enums`         | Announcement status enum                                                                                         |
+| `000009_role_system`               | User role enum and RBAC policies                                                                                 |
+| `000010_owner_role`                | Owner role schema                                                                                                |
+| `000011_sync_auth_users`           | Trigger: sync `auth.users` → `public.users`                                                                      |
+| `000012_announcement_presentation` | `urgency`, `display_font`, `display_size` columns                                                                |
+| `000013_announcement_workflow`     | `scheduled_publish_at`, `pinned_until`, `view_count` + `notifications` table + `increment_announcement_view` RPC |
+| `000014_password_reset_requests`   | Forgot-password reset request queue + password reset notifications                                               |
 
 ---
 
@@ -232,14 +257,26 @@ NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+ENABLE_SETUP_ROUTE=0
 SETUP_SECRET=choose-a-strong-secret
+
+# Optional owner-only resource cards
+VERCEL_API_TOKEN=
+VERCEL_PROJECT_ID=
+VERCEL_TEAM_ID=
+SUPABASE_ACCESS_TOKEN=
+SUPABASE_PROJECT_REF=
 ```
 
 ### 3. Run migrations
 
-In the Supabase SQL editor, paste and run each file from `supabase/migrations/` in filename order (all 13).
+In the Supabase SQL editor, paste and run each file from `supabase/migrations/` in filename order (all 14).
+
+Migration `000003_storage` creates the public `banner-images` bucket used by announcement banner uploads. Keep that bucket name unchanged unless you also update `next.config.ts` and the announcement form validation helpers.
 
 ### 4. Bootstrap the owner account
+
+Temporarily set `ENABLE_SETUP_ROUTE=1` in the running environment, then run:
 
 ```powershell
 # PowerShell
@@ -250,12 +287,12 @@ Or with curl:
 
 ```bash
 curl -X POST http://localhost:3000/api/setup \
-  -H "x-setup-secret: your-secret" \
-  -H "Content-Type: application/json" \
-  -d '{"email":"owner@example.com","password":"strongpassword"}'
+  -H "x-setup-secret: your-secret"
 ```
 
-> Delete or disable `/api/setup` after the owner account is created.
+The bootstrap route creates or resets the built-in owner login `osman_owner` and returns a temporary password. The next login forces a password change.
+
+> Set `ENABLE_SETUP_ROUTE=0` or remove it after the owner account is created.
 
 ### 5. Start dev server
 
@@ -273,7 +310,7 @@ npm run dev
 npm test
 ```
 
-5 test files: authz, feed queries, rate limiting, setup route security, presentation constants.
+6 test files: authz, announcement form validation, feed queries, rate limiting, setup route security, presentation constants.
 
 ### E2E tests (Playwright)
 
@@ -302,22 +339,37 @@ Runs on every push and pull request:
 
 Required repository secrets: `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_SUPABASE_SERVICE_ROLE_KEY`, `TEST_SETUP_SECRET`, and email/password pairs for each test role (owner, super_admin, admin, publisher, force_change).
 
+### Owner resource integrations
+
+`/owner/resources` is read-only. It always shows internal app metrics such as total announcement views, top viewed announcements, banner storage file count, pending password reset requests, and setup-route status.
+
+External Vercel and Supabase cards are optional:
+
+- Vercel: set `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID`, and optionally `VERCEL_TEAM_ID`.
+- Supabase: set `SUPABASE_ACCESS_TOKEN` and optionally `SUPABASE_PROJECT_REF`; when blank, the project ref is inferred from `NEXT_PUBLIC_SUPABASE_URL`.
+
+Keep these variables server-only. Do not prefix them with `NEXT_PUBLIC_`, and do not display raw token values in UI or logs.
+
+### Security audit note
+
+`npm audit --omit=dev` currently reports a moderate PostCSS advisory under Next.js 16.2.3's bundled dependency tree. `npm audit fix --force` suggests downgrading Next to `9.3.3`, so do not run the forced fix. Leave this to an upstream Next patch or a deliberate Next upgrade.
+
 ---
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start development server |
-| `npm run build` | Production build |
-| `npm run start` | Start production server |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier (write) |
-| `npm run format:check` | Prettier (check only) |
-| `npm test` | Unit tests |
-| `npm run test:watch` | Unit tests in watch mode |
-| `npm run test:e2e` | E2E tests |
-| `npm run test:e2e:ui` | E2E tests with Playwright UI |
+| Command                | Description                  |
+| ---------------------- | ---------------------------- |
+| `npm run dev`          | Start development server     |
+| `npm run build`        | Production build             |
+| `npm run start`        | Start production server      |
+| `npm run lint`         | ESLint                       |
+| `npm run format`       | Prettier (write)             |
+| `npm run format:check` | Prettier (check only)        |
+| `npm test`             | Unit tests                   |
+| `npm run test:watch`   | Unit tests in watch mode     |
+| `npm run test:e2e`     | E2E tests                    |
+| `npm run test:e2e:ui`  | E2E tests with Playwright UI |
 
 ---
 
@@ -328,35 +380,37 @@ Bulletin/
 ├── src/
 │   ├── app/
 │   │   ├── (public)/             # Feed, announcement detail (+ ViewTracker, view actions)
-│   │   ├── (auth)/               # Login, register, change-password
+│   │   ├── (auth)/               # Login, forgot-password, register, change-password
 │   │   ├── (dashboard)/          # Publisher dashboard + notifications
 │   │   ├── (admin)/              # Admin panel + notifications
 │   │   ├── (super-admin)/        # Super admin panel + notifications
 │   │   ├── (owner)/              # Owner panel + notifications
-│   │   ├── api/setup/            # One-time bootstrap endpoint
+│   │   ├── api/setup/            # One-time bootstrap endpoint (disabled by default)
 │   │   └── layout.tsx            # Root layout (Libre Franklin + Newsreader + Geist Mono)
 │   ├── components/
 │   │   ├── announcements/        # AnnouncementCard, CategoryFilter, BackButton
+│   │   ├── account/              # Account settings forms and password controls
 │   │   ├── auth/                 # IdleLogout
 │   │   ├── dashboard/            # AnnouncementForm, AnnouncementRow, DashboardShell,
 │   │   │                         # DashboardSidebar, DashboardTopNav, StatusBadge,
 │   │   │                         # GlassCard, AutosaveIndicator, CountUp, ActionBar,
 │   │   │                         # NotificationsPanel
-│   │   ├── layout/               # Header, ThemeToggle
-│   │   └── ui/                   # Button (base-ui + CVA, 6 variants)
+│   │   └── layout/               # Header, ThemeToggle
 │   └── lib/
-│       ├── announcements/        # Feed queries, access control, presentation constants, form helpers
+│       ├── account/              # Account settings and password update helpers
+│       ├── announcements/        # Feed helpers, access control, presentation constants, URL/form helpers
 │       ├── auth/                 # Authorization, auth-to-users sync
+│       ├── owner/                # Owner-only read-only resource and operations DTOs
 │       ├── security/             # IP rate limiting, action rate limiting
 │       ├── supabase/             # Browser client, server client, service client
 │       ├── audit.ts              # logAuditEvent — writes to audit_log, revalidates owner paths
 │       ├── notifications.ts      # getUnreadCount, getNotifications, notifySubmitted, notifyReviewed
 │       └── notification-actions.ts  # Server actions for marking notifications read
 ├── supabase/
-│   └── migrations/               # 13 ordered SQL migrations
+│   └── migrations/               # 14 ordered SQL migrations
 ├── tests/
 │   ├── e2e/                      # 5 Playwright specs
-│   └── unit/                     # 5 Vitest tests
+│   └── unit/                     # 6 Vitest test files
 ├── scripts/
 │   ├── setup-owner.ps1           # Owner bootstrap (PowerShell)
 │   ├── seed-test-users.js        # Seed E2E test accounts
@@ -375,6 +429,7 @@ Bulletin/
 - **No student accounts.** The public feed is fully unauthenticated — only staff and publishers log in.
 - **Server Actions for all mutations.** Create, edit, publish, delete, review, and notification reads go through co-located `actions.ts` files with no separate API layer.
 - **RLS on every table.** Admin and owner pages use a service-role client where RLS needs to be bypassed. The notifications table has its own RLS: users can only read and update their own rows.
+- **Upload and link validation.** Banner URLs are restricted to local sample assets or the configured Supabase `banner-images` bucket; registration links must be valid `http` or `https` URLs.
 - **View tracking via RPC.** `increment_announcement_view` runs as `SECURITY DEFINER` so anonymous users can increment counts without needing table-level write access.
 - **Autosave.** The announcement form autosaves drafts continuously with a visual indicator.
 - **Presentation layer.** Publishers control how their announcement renders on the public feed (font, size, urgency) — stored in the database, applied at render time.
