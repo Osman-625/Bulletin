@@ -79,7 +79,7 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
     <div style={style}>
       <GlassCard hover className={cn('cursor-pointer', isDraft && 'border-dashed opacity-70')}>
         <div
-          className="flex items-center gap-5 p-5"
+          className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:gap-5 sm:p-5"
           onClick={handleRowClick}
           role="button"
           tabIndex={0}
@@ -91,7 +91,7 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
           }}
         >
           {/* Thumbnail */}
-          <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-[var(--color-glass-border)] bg-[var(--color-surface-elevated)]">
+          <div className="flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-[0.8rem] border border-[var(--color-glass-border)] bg-[var(--color-surface-elevated)] sm:h-16 sm:w-16">
             {announcement.banner_url ? (
               <Image
                 src={announcement.banner_url}
@@ -188,7 +188,7 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
           </div>
 
           {/* Right — date + author */}
-          <div className="shrink-0 text-right">
+          <div className="w-full shrink-0 text-left sm:w-auto sm:text-right">
             <p className="font-mono text-sm text-[var(--color-text-muted)]">{dateLabel}</p>
             <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
               {isScheduled
@@ -206,7 +206,7 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
           </div>
 
           {/* Actions */}
-          <div className="flex shrink-0 items-center gap-1" data-action="true">
+          <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto" data-action="true">
             <button
               type="button"
               data-action="true"

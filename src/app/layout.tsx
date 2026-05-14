@@ -1,13 +1,13 @@
 import type { Metadata } from 'next'
-import { Geist_Mono, Libre_Franklin, Newsreader } from 'next/font/google'
+import { Atkinson_Hyperlegible, Bricolage_Grotesque, Geist_Mono } from 'next/font/google'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { Providers } from './providers'
 import './globals.css'
 
-const libreFranklin = Libre_Franklin({
+const atkinsonHyperlegible = Atkinson_Hyperlegible({
   variable: '--font-sans',
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '700'],
   display: 'swap',
 })
 
@@ -17,10 +17,10 @@ const geistMono = Geist_Mono({
   display: 'swap',
 })
 
-const newsreader = Newsreader({
+const bricolageGrotesque = Bricolage_Grotesque({
   variable: '--font-newsreader',
   subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700', '800'],
   display: 'swap',
 })
 
@@ -40,7 +40,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${libreFranklin.variable} ${geistMono.variable} ${newsreader.variable} h-full antialiased`}
+      className={`${atkinsonHyperlegible.variable} ${geistMono.variable} ${bricolageGrotesque.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col" suppressHydrationWarning>

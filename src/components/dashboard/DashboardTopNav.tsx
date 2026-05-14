@@ -29,10 +29,11 @@ export function DashboardTopNav({
     <header
       className={cn(
         'fixed top-0 right-0 left-0 z-30 h-16',
-        'md:left-12 lg:left-64',
+        'md:left-12 lg:left-72',
         'flex items-center justify-between px-4 md:px-6',
-        'bg-[var(--color-canvas)]/80 backdrop-blur-xl',
+        'bg-[var(--color-header-bg)]/90 backdrop-blur-xl',
         'border-b border-[var(--color-border)]',
+        'shadow-[0_8px_24px_rgba(36,24,21,0.05)]',
         'transition-[left] duration-200'
       )}
     >
@@ -60,10 +61,10 @@ export function DashboardTopNav({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={cn(
-                'min-h-11 w-72 px-4 text-sm',
-                'rounded-full bg-[var(--color-surface-elevated)]',
-                'text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]',
-                'border-none outline-none',
+            'min-h-11 w-72 px-4 text-sm',
+            'rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]',
+            'text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]',
+            'outline-none',
                 'focus:ring-1 focus:ring-[var(--color-accent)]/40',
                 'transition-all duration-150'
               )}

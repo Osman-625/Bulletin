@@ -1,6 +1,5 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -23,7 +22,8 @@ import {
   ArrowUpRight,
   Activity,
 } from 'lucide-react'
-import { ThemeToggle } from './ThemeToggle'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
+import { BrandMark } from '@/components/layout/BrandMark'
 import { logout } from '@/app/(auth)/login/actions'
 import { cn } from '@/lib/utils'
 
@@ -204,36 +204,27 @@ export function DashboardSidebar({
         className={cn(
           'hidden md:flex',
           'fixed inset-y-0 left-0 z-40 flex-col',
-          'w-12 lg:w-64',
-          'bg-[var(--color-canvas)]/90 backdrop-blur-xl',
+          'w-12 lg:w-72',
+          'bg-[var(--color-header-bg)]/95 backdrop-blur-xl',
           'border-r border-[var(--color-border)]',
-          'overflow-hidden transition-[width] duration-200'
+          'overflow-hidden shadow-[8px_0_30px_rgba(36,24,21,0.06)] transition-[width] duration-200'
         )}
       >
-        <div className="flex items-center gap-3 overflow-hidden border-b border-[var(--color-border)] px-3 py-5 lg:px-6">
-          <Image
-            src="/bulletin_logo.png"
-            alt="Bulletin"
-            width={32}
-            height={32}
-            className="h-8 w-8 shrink-0 object-contain"
+        <div className="flex items-center justify-center overflow-hidden border-b border-[var(--color-border)] px-1.5 py-4 lg:justify-start lg:px-5">
+          <BrandMark
+            size="sm"
+            showText
+            textClassName="hidden lg:block"
+            className="lg:gap-3"
           />
-          <div className="hidden min-w-0 lg:block">
-            <p className="text-[15px] font-bold tracking-widest text-[var(--color-accent)] uppercase">
-              BULLETIN
-            </p>
-            <p className="mt-0.5 text-[15px] leading-tight text-[var(--color-text-muted)]">
-              INTI International University
-            </p>
-          </div>
         </div>
 
-        <nav className="flex-1 space-y-1 px-1.5 py-4 lg:px-3">
+        <nav className="flex-1 space-y-1 px-1.5 py-4 lg:px-4">
           <NavLinks navItems={visibleNavItems} pathname={pathname} />
         </nav>
 
-        <div className="space-y-2 border-t border-[var(--color-border)] px-1.5 py-4 lg:px-3">
-          <div className="flex items-center justify-center lg:justify-between lg:px-3">
+        <div className="space-y-2 border-t border-[var(--color-border)] px-1.5 py-4 lg:px-4">
+          <div className="hidden items-center justify-between lg:flex lg:px-3">
             <div className="hidden min-w-0 lg:block">
               <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
                 {displayName ?? '—'}
@@ -285,22 +276,8 @@ export function DashboardSidebar({
         <div className="flex justify-center pt-3 pb-2">
           <div className="h-1 w-10 rounded-full bg-[var(--color-border)]" />
         </div>
-        <div className="flex items-center gap-3 border-b border-[var(--color-border)] px-6 pb-3">
-          <Image
-            src="/bulletin_logo.png"
-            alt="Bulletin"
-            width={28}
-            height={28}
-            className="h-7 w-7 shrink-0 object-contain"
-          />
-          <div>
-            <p className="text-[15px] font-bold tracking-widest text-[var(--color-accent)] uppercase">
-              BULLETIN
-            </p>
-            <p className="text-[15px] text-[var(--color-text-muted)]">
-              INTI International University
-            </p>
-          </div>
+        <div className="border-b border-[var(--color-border)] px-6 pb-3">
+          <BrandMark size="sm" />
         </div>
         <nav className="space-y-1 px-4 py-3">
           <NavLinks navItems={visibleNavItems} pathname={pathname} onClick={onMobileClose} />

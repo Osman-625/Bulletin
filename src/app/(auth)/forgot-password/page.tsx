@@ -1,6 +1,8 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLeft, Mail } from 'lucide-react'
+import { BrandMark } from '@/components/layout/BrandMark'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
+import { BackNavButton } from '@/components/navigation/BackNavButton'
 import { requestPasswordReset } from './actions'
 
 export const metadata = { title: 'Forgot Password - Bulletin' }
@@ -14,23 +16,18 @@ export default async function ForgotPasswordPage({
 
   return (
     <main className="relative w-full max-w-[22rem]">
-      <div className="animate-fade-up relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-8 shadow-[var(--shadow-soft)]">
-        <div
-          className="absolute inset-x-0 top-0 h-px bg-[var(--color-border-subtle)]"
-          aria-hidden="true"
+      <div className="animate-fade-up relative overflow-hidden rounded-[1.5rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-8 pt-20 shadow-[var(--shadow-soft)]">
+        <BackNavButton
+          aria-label="Go back"
+          fallbackHref="/login"
+          className="absolute top-4 left-4 z-20"
         />
+        <div className="absolute top-4 right-4 z-20">
+          <ThemeToggle />
+        </div>
 
         <div className="mb-6 flex flex-col items-center gap-4">
-          <div className="flex h-[88px] w-[88px] items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] shadow-[var(--shadow-button)]">
-            <Image
-              src="/bulletin_logo.png"
-              alt="Bulletin"
-              width={54}
-              height={54}
-              className="h-[54px] w-[54px] object-contain"
-              priority
-            />
-          </div>
+          <BrandMark size="lg" showText={false} preload />
 
           <div className="text-center">
             <h1 className="font-sans text-xl font-semibold tracking-[-0.02em] text-[var(--color-text-primary)]">
