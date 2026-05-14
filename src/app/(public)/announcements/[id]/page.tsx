@@ -70,25 +70,32 @@ export default async function AnnouncementPage({ params }: { params: Promise<{ i
   const registrationHref = toSafeHttpUrl(registration_link)
 
   return (
-    <div className="min-h-[100dvh]">
+    <div className="future-warm-plane min-h-[100dvh]">
       <ViewTracker announcementId={announcement.id} />
-      <main className="mx-auto w-full max-w-[90rem] px-4 py-10 sm:px-6 lg:px-10 xl:px-12">
-        <article className="animate-fade-up max-w-[58rem]">
+      <main className="mx-auto w-full max-w-[1500px] px-4 py-10 sm:px-6 lg:px-10 xl:px-12">
+        <article className="animate-fade-up max-w-[76rem]">
           <BackButton />
 
           {banner_url && (
-            <div
-              className="relative mb-10 aspect-[16/7] w-full overflow-hidden rounded-2xl"
-              style={{ background: 'var(--color-surface-elevated)' }}
-            >
-              <Image
-                src={banner_url}
-                alt={title}
-                fill
-                className="object-contain"
-                sizes="(max-width: 768px) 100vw, 58rem"
-                priority
-              />
+            <div className="future-bento-cell mb-10 rounded-[1.65rem] p-3 sm:p-4">
+              <a
+                href={banner_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group block overflow-hidden rounded-[1.1rem] bg-[var(--color-surface)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+                aria-label="Open original announcement image"
+              >
+                <Image
+                  data-testid="announcement-poster-image"
+                  src={banner_url}
+                  alt={title}
+                  width={1800}
+                  height={2250}
+                  sizes="(max-width: 768px) 92vw, (max-width: 1280px) 84vw, 76rem"
+                  className="h-auto w-full object-contain transition-transform duration-500 ease-[var(--ease-ui)] group-hover:scale-[1.01]"
+                  preload
+                />
+              </a>
             </div>
           )}
 
@@ -187,7 +194,7 @@ export default async function AnnouncementPage({ params }: { params: Promise<{ i
                 href={registrationHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex cursor-pointer items-center rounded-[10px] bg-[var(--color-accent-inti)] px-8 py-3.5 font-sans text-base font-semibold text-white transition-all duration-200 hover:scale-[1.01] hover:opacity-90 focus:outline-none focus-visible:ring-2"
+                className="action-lift inline-flex cursor-pointer items-center rounded-[1rem] bg-[var(--color-accent-inti)] px-8 py-3.5 font-sans text-base font-semibold text-white focus:outline-none focus-visible:ring-2"
                 style={{ boxShadow: '0 2px 12px rgba(200, 16, 46, 0.3)' }}
               >
                 Register Here

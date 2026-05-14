@@ -76,7 +76,7 @@ export function DashboardShell({
         announcementSearchHref={ANNOUNCEMENT_SEARCH_HREFS[variant]}
       />
 
-      <main className="min-h-screen pt-16 pl-0 transition-[padding-left] duration-200 md:pl-12 lg:pl-64">
+      <main className="min-h-screen pt-16 pl-0 transition-[padding-left] duration-200 md:pl-12 lg:pl-72">
         {children}
       </main>
     </div>

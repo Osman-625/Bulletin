@@ -35,8 +35,9 @@ export function ActionBar({
     <div
       className={cn(
         'sticky bottom-0 z-20',
-        'bg-[var(--color-surface)]/95 backdrop-blur-sm',
+        'bg-[var(--color-header-bg)]/95 backdrop-blur-xl',
         'border-t border-[var(--color-border)]',
+        'shadow-[0_-10px_30px_rgba(36,24,21,0.06)]',
         'flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6'
       )}
     >

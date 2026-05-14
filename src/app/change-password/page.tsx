@@ -1,4 +1,5 @@
-import Image from 'next/image'
+import { BrandMark } from '@/components/layout/BrandMark'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { changePassword } from './actions'
 
 export const metadata = { title: 'Change Password — Bulletin' }
@@ -11,15 +12,12 @@ export default async function ChangePasswordPage({
   const { error } = await searchParams
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-canvas)] p-4">
-      <div className="w-full max-w-sm space-y-8">
-        <div className="flex flex-col items-center gap-3">
-          <Image src="/bulletin_logo.png" alt="Bulletin" width={48} height={48} className="h-12 w-12 object-contain" />
-          <div className="text-center">
-            <p className="text-xs font-bold uppercase tracking-widest text-[var(--color-accent)]">BULLETIN</p>
-            <p className="text-xs text-[var(--color-text-muted)]">INTI International University</p>
-          </div>
+    <div className="flex min-h-screen items-center justify-center bg-[var(--color-canvas)] p-4">
+      <div className="future-panel relative w-full max-w-md space-y-8 rounded-[1.5rem] p-6 pt-20 shadow-[var(--shadow-soft)] sm:p-8 sm:pt-20">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
         </div>
+        <BrandMark size="lg" preload className="justify-center" textClassName="text-center" />
 
         <div className="text-center">
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Set a new password</h1>

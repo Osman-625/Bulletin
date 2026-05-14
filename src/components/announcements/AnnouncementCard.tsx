@@ -15,6 +15,8 @@ import {
 import { toSafeHttpUrl } from '@/lib/announcements/urls'
 import type { AnnouncementWithRelations } from '@/lib/types'
 
+export type AnnouncementCardVisual = 'poster' | 'letterbox' | 'stamp' | 'ribbon'
+
 function stripMarkdown(md: string): string {
   return md
     .replace(/^#{1,6}\s+/gm, '')
@@ -42,6 +44,21 @@ function isExpiringSoon(expiresAt: string | null): boolean {
   return diff > 0 && diff < 7 * 24 * 60 * 60 * 1000
 }
 
+function daysUntil(expiresAt: string | null): number | null {
+  if (!expiresAt) return null
+  const diff = new Date(expiresAt).getTime() - Date.now()
+  if (diff <= 0) return null
+  return Math.ceil(diff / (24 * 60 * 60 * 1000))
+}
+
+function deadlineLabel(expiresAt: string | null) {
+  const days = daysUntil(expiresAt)
+  if (!expiresAt || days === null) return 'Open'
+  if (days === 1) return '1 day left'
+  if (days <= 14) return `${days} days left`
+  return formatDate(expiresAt)
+}
+
 function categoryBadgeStyle(color: string): CSSProperties {
   return {
     color: 'var(--color-text-primary)',
@@ -60,15 +77,56 @@ function PosterImage({
   src,
   alt,
   sizes,
-  priority = false,
+  preload = false,
+  className,
 }: {
   src: string
   alt: string
   sizes: string
-  priority?: boolean
+  preload?: boolean
+  className?: string
 }) {
   return (
-    <Image src={src} alt={alt} fill className="object-contain" sizes={sizes} priority={priority} />
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      className={cn('object-contain', className)}
+      sizes={sizes}
+      preload={preload}
+    />
+  )
+}
+
+function EventMetaPill({
+  label,
+  value,
+  active = false,
+}: {
+  label: string
+  value: string
+  active?: boolean
+}) {
+  return (
+    <span
+      className="rounded-[0.85rem] border px-3 py-2"
+      style={{
+        background: active ? 'var(--color-accent-surface)' : 'var(--color-surface-elevated)',
+        borderColor: active
+          ? 'color-mix(in oklab, var(--color-accent-inti) 38%, var(--color-border))'
+          : 'var(--color-border-subtle)',
+      }}
+    >
+      <span className="block font-mono text-[0.62rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
+        {label}
+      </span>
+      <span
+        className="mt-1 block truncate text-sm font-bold"
+        style={{ color: active ? 'var(--color-accent-inti)' : 'var(--color-text-primary)' }}
+      >
+        {value}
+      </span>
+    </span>
   )
 }
 
@@ -76,19 +134,27 @@ function PosterImage({
 export default function AnnouncementCard({
   announcement,
   featured = false,
+  visual = 'letterbox',
 }: {
   announcement: AnnouncementWithRelations
   featured?: boolean
+  visual?: AnnouncementCardVisual
 }) {
   return featured ? (
-    <FeaturedCard announcement={announcement} />
+    <FeaturedCard announcement={announcement} visual={visual} />
   ) : (
-    <StandardCard announcement={announcement} />
+    <StandardCard announcement={announcement} visual={visual} />
   )
 }
 
 // ── Standard (2-col grid) ──────────────────────────────────────────────────────
-function StandardCard({ announcement }: { announcement: AnnouncementWithRelations }) {
+function StandardCard({
+  announcement,
+  visual,
+}: {
+  announcement: AnnouncementWithRelations
+  visual: AnnouncementCardVisual
+}) {
   const {
     id,
     title,
@@ -110,12 +176,14 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
   const titleFontClass = getAnnouncementTitleFontClass(displayFont)
   const pinned = isAnnouncementPinned(announcement)
   const registrationHref = toSafeHttpUrl(registration_link)
+  const deadlineIsActive = isExpiringSoon(expires_at)
 
   return (
     <Link
       href={`/announcements/${id}`}
       data-testid="announcement-card"
-      className="card-lift group relative flex min-h-[15rem] flex-col overflow-hidden rounded-[18px] outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      data-image-layout={visual}
+      className="card-lift group relative flex h-full min-h-[13rem] flex-col overflow-hidden rounded-[1.25rem] outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       style={{
         background: 'var(--color-surface)',
         border: `1px solid var(--color-border)`,
@@ -125,109 +193,154 @@ function StandardCard({ announcement }: { announcement: AnnouncementWithRelation
       {/* Banner */}
       {banner_url && (
         <div
-          className="relative aspect-[16/10] overflow-hidden sm:aspect-[2/3]"
-          style={{ background: 'var(--color-surface-elevated)' }}
+          data-card-media={visual}
+          className={standardImagePanelClass(visual)}
+          style={standardImagePanelStyle(catColor, visual)}
         >
-          <PosterImage src={banner_url} alt={title} sizes="(max-width: 640px) 100vw, 50vw" />
+          <PosterImage
+            src={banner_url}
+            alt={title}
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 31vw"
+            className="transition-transform duration-500 ease-[var(--ease-ui)] group-hover:scale-[1.015]"
+          />
         </div>
       )}
 
-      <div className="flex flex-1 flex-col gap-3.5 p-5 sm:gap-4 sm:p-6">
-        {/* Badges */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          {urgency !== 'normal' && (
-            <span
-              className="rounded-md px-3 py-1.5 text-sm font-semibold"
-              style={{ color: urgencyMeta.tone, background: urgencyMeta.background }}
-            >
-              {urgencyMeta.label}
-            </span>
-          )}
-          {pinned && (
-            <span
-              className="rounded-md px-3 py-1.5 text-sm font-semibold"
-              style={{
-                color: 'var(--color-status-published-text)',
-                background: 'var(--color-status-published-bg)',
-              }}
-            >
-              Pinned
-            </span>
-          )}
-          {categories && (
-            <span
-              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-semibold"
-              style={categoryBadgeStyle(catColor)}
-            >
-              <span
-                className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
-                style={{ background: catColor }}
-                aria-hidden="true"
-              />
-              {categories.name}
-            </span>
-          )}
-          {registrationHref && !expiring && (
-            <span
-              className="rounded-md px-3 py-1.5 text-sm font-semibold"
-              style={{
-                color: 'var(--color-accent-inti)',
-                background: 'var(--color-accent-surface)',
-              }}
-            >
-              Registration open
-            </span>
-          )}
-          {expiring && (
-            <span
-              className="rounded-md px-3 py-1.5 text-sm font-semibold"
-              style={{ color: 'var(--color-gold)', background: 'rgba(212,148,31,0.12)' }}
-            >
-              Closing {formatDate(expires_at!)}
-            </span>
-          )}
+      <div className="flex flex-1 flex-col gap-3 p-4 sm:p-5">
+        <div className="flex flex-wrap items-center gap-2">
+          {urgency !== 'normal' && <StatusChip label={urgencyMeta.label} tone="urgency" />}
+          {pinned && <StatusChip label="Pinned" tone="published" />}
+          {categories && <CategoryChip color={catColor} label={categories.name} />}
+          {registrationHref && !expiring && <StatusChip label="Registration open" tone="open" />}
+          {expiring && <StatusChip label={`Closing ${formatDate(expires_at!)}`} tone="closing" />}
         </div>
 
-        {/* Title */}
         <h2
-          className={cn(titleFontClass, 'leading-[1.18] font-semibold')}
+          className={cn(titleFontClass, 'line-clamp-3 leading-[1.08] font-bold tracking-[-0.01em]')}
           style={{ fontSize: CARD_TITLE_SIZES[displaySize], color: 'var(--color-text-primary)' }}
         >
           {title}
         </h2>
 
-        {/* Excerpt */}
         <p
-          className="line-clamp-2 flex-1 text-base leading-7 sm:line-clamp-3"
+          className="line-clamp-2 flex-1 text-sm leading-6 sm:text-base"
           style={{ color: 'var(--color-text-muted)' }}
         >
           {body ? stripMarkdown(body) : ''}
         </p>
 
-        {/* Footer */}
+        <div className="grid grid-cols-2 gap-2">
+          <EventMetaPill label="Issued" value={published_at ? formatDate(published_at) : 'Pending'} />
+          <EventMetaPill label="Deadline" value={deadlineLabel(expires_at)} active={deadlineIsActive} />
+        </div>
+
         <div
-          className="flex items-center justify-between gap-2 border-t pt-3"
+          className="flex items-center justify-between gap-2 border-t pt-3 text-sm"
           style={{ borderColor: 'var(--color-border)' }}
         >
           <span
-            className="truncate text-sm font-medium"
+            className="truncate font-semibold"
             style={{ color: 'var(--color-text-muted)' }}
           >
             {organizations?.name}
           </span>
-          {published_at && (
-            <span className="flex-shrink-0 text-sm" style={{ color: 'var(--color-text-muted)' }}>
-              {formatDate(published_at)}
-            </span>
-          )}
+          <span className="flex-shrink-0 font-mono text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
+            Open
+          </span>
         </div>
       </div>
     </Link>
   )
 }
 
+function standardImagePanelClass(visual: AnnouncementCardVisual) {
+  const base = 'relative overflow-hidden border-b'
+  const border = 'border-[var(--color-border-subtle)]'
+
+  if (visual === 'poster') {
+    return cn(base, border, 'aspect-[5/6]')
+  }
+
+  if (visual === 'stamp') {
+    return cn(
+      'relative mx-4 mt-4 aspect-[4/3] overflow-hidden rounded-[0.95rem] border',
+      border
+    )
+  }
+
+  if (visual === 'ribbon') {
+    return cn(base, border, 'aspect-[21/9]')
+  }
+
+  return cn(base, border, 'aspect-[16/10]')
+}
+
+function standardImagePanelStyle(color: string, visual: AnnouncementCardVisual): CSSProperties {
+  const surface =
+    visual === 'stamp'
+      ? `color-mix(in oklab, ${color} 12%, var(--color-surface-elevated))`
+      : `color-mix(in oklab, ${color} 7%, var(--color-surface-elevated))`
+
+  return { background: surface }
+}
+
+function StatusChip({
+  label,
+  tone,
+}: {
+  label: string
+  tone: 'urgency' | 'published' | 'open' | 'closing'
+}) {
+  const styles: Record<typeof tone, CSSProperties> = {
+    urgency: {
+      color: 'var(--color-accent-inti)',
+      background: 'var(--color-accent-surface)',
+    },
+    published: {
+      color: 'var(--color-status-published-text)',
+      background: 'var(--color-status-published-bg)',
+    },
+    open: {
+      color: 'var(--color-accent-inti)',
+      background: 'var(--color-accent-surface)',
+    },
+    closing: {
+      color: 'var(--color-gold)',
+      background: 'rgba(224,160,31,0.14)',
+    },
+  }
+
+  return (
+    <span className="rounded-md px-3 py-1.5 text-sm font-bold" style={styles[tone]}>
+      {label}
+    </span>
+  )
+}
+
+function CategoryChip({ color, label }: { color: string; label: string }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-bold"
+      style={categoryBadgeStyle(color)}
+    >
+      <span
+        className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
+        style={{ background: color }}
+        aria-hidden="true"
+      />
+      {label}
+    </span>
+  )
+}
+
 // ── Featured (full-width horizontal) ──────────────────────────────────────────
-function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelations }) {
+function FeaturedCard({
+  announcement,
+  visual,
+}: {
+  announcement: AnnouncementWithRelations
+  visual: AnnouncementCardVisual
+}) {
   const {
     id,
     title,
@@ -249,95 +362,81 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
   const titleFontClass = getAnnouncementTitleFontClass(displayFont)
   const pinned = isAnnouncementPinned(announcement)
   const registrationHref = toSafeHttpUrl(registration_link)
+  const deadlineIsActive = isExpiringSoon(expires_at)
 
   return (
     <Link
       href={`/announcements/${id}`}
       data-testid="announcement-card"
-      className="card-lift group relative grid overflow-hidden rounded-[24px] outline-none focus-visible:ring-2 focus-visible:ring-offset-2 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)]"
+      data-image-layout={visual}
+      className="card-lift group relative flex h-full min-h-[24rem] flex-col overflow-hidden rounded-[1.45rem] outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       style={{
         background: 'var(--color-surface)',
         border: `1px solid var(--color-border)`,
         boxShadow: 'var(--shadow-soft)',
       }}
     >
-      {/* Content — left side */}
-      <div className="flex flex-col justify-between p-6 sm:min-h-[18rem] sm:p-8 lg:p-10">
-        {/* Badges */}
+      {/* Visual panel */}
+      <div
+        data-card-media={visual}
+        className={cn(
+          'relative overflow-hidden border-b border-[var(--color-border-subtle)]',
+          visual === 'ribbon' ? 'aspect-[21/9]' : 'aspect-[5/6]'
+        )}
+        style={categoryPanelStyle(catColor)}
+      >
+        {banner_url ? (
+          <PosterImage
+            src={banner_url}
+            alt={title}
+            sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 31vw"
+            preload
+            className="transition-transform duration-500 ease-[var(--ease-ui)] group-hover:scale-[1.015]"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <span
+              className="font-display text-7xl leading-none font-bold opacity-[0.18] select-none sm:text-8xl"
+              style={{ color: catColor }}
+            >
+              {categories?.name?.[0] ?? organizations?.name?.[0] ?? 'B'}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="flex flex-1 flex-col justify-between p-5 sm:p-6">
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          {urgency !== 'normal' && (
-            <span
-              className="rounded-md px-3 py-1.5 text-sm font-semibold"
-              style={{ color: urgencyMeta.tone, background: urgencyMeta.background }}
-            >
-              {urgencyMeta.label}
-            </span>
-          )}
-          {pinned && (
-            <span
-              className="rounded-md px-3 py-1.5 text-sm font-semibold"
-              style={{
-                color: 'var(--color-status-published-text)',
-                background: 'var(--color-status-published-bg)',
-              }}
-            >
-              Pinned
-            </span>
-          )}
-          {categories && (
-            <span
-              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-semibold"
-              style={categoryBadgeStyle(catColor)}
-            >
-              <span
-                className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
-                style={{ background: catColor }}
-                aria-hidden="true"
-              />
-              {categories.name}
-            </span>
-          )}
-          {registrationHref && !expiring && (
-            <span
-              className="rounded-md px-3 py-1.5 text-sm font-semibold"
-              style={{
-                color: 'var(--color-accent-inti)',
-                background: 'var(--color-accent-surface)',
-              }}
-            >
-              Registration open
-            </span>
-          )}
-          {expiring && (
-            <span
-              className="rounded-md px-3 py-1.5 text-sm font-semibold"
-              style={{ color: 'var(--color-gold)', background: 'rgba(212,148,31,0.12)' }}
-            >
-              Closing {formatDate(expires_at!)}
-            </span>
-          )}
+          {urgency !== 'normal' && <StatusChip label={urgencyMeta.label} tone="urgency" />}
+          {pinned && <StatusChip label="Pinned" tone="published" />}
+          {categories && <CategoryChip color={catColor} label={categories.name} />}
+          {registrationHref && !expiring && <StatusChip label="Registration open" tone="open" />}
+          {expiring && <StatusChip label={`Closing ${formatDate(expires_at!)}`} tone="closing" />}
         </div>
 
-        {/* Title — larger for featured */}
         <h2
-          className={cn(titleFontClass, 'mb-4 leading-[1.08] font-semibold')}
+          className={cn(titleFontClass, 'mb-3 line-clamp-3 leading-[1.04] font-bold tracking-[-0.01em]')}
           style={{
-            fontSize: FEATURED_TITLE_SIZES[displaySize],
+            fontSize: `min(${FEATURED_TITLE_SIZES[displaySize]}, 2.35rem)`,
             color: 'var(--color-text-primary)',
           }}
         >
           {title}
         </h2>
 
-        {/* Excerpt — 3 lines */}
         <p
-          className="mb-5 line-clamp-3 flex-1 text-base leading-7 sm:mb-6 sm:line-clamp-4 sm:text-lg sm:leading-8"
+          className="mb-4 line-clamp-3 flex-1 text-base leading-7"
           style={{ color: 'var(--color-text-muted)' }}
         >
           {body ? stripMarkdown(body) : ''}
         </p>
 
-        {/* Footer */}
+        <div className="mb-5 grid grid-cols-2 gap-2">
+          <EventMetaPill label="Issued" value={published_at ? formatDate(published_at) : 'Pending'} />
+          <EventMetaPill label="Deadline" value={deadlineLabel(expires_at)} active={deadlineIsActive} />
+        </div>
+
         <div
           className="flex items-center justify-between gap-2 border-t pt-4"
           style={{ borderColor: 'var(--color-border)' }}
@@ -356,30 +455,6 @@ function FeaturedCard({ announcement }: { announcement: AnnouncementWithRelation
         </div>
       </div>
 
-      {/* Visual panel — right side */}
-      <div
-        className="relative order-first aspect-[16/10] overflow-hidden lg:order-none lg:aspect-[2/3] lg:min-h-full"
-        style={categoryPanelStyle(catColor)}
-      >
-        {banner_url ? (
-          <PosterImage
-            src={banner_url}
-            alt={title}
-            sizes="(max-width: 1024px) 100vw, 40vw"
-            priority
-          />
-        ) : (
-          // No banner: typographic placeholder using category initial
-          <div className="flex h-full items-center justify-center">
-            <span
-              className="font-display text-7xl leading-none font-bold opacity-[0.18] select-none sm:text-8xl lg:text-9xl"
-              style={{ color: catColor }}
-            >
-              {categories?.name?.[0] ?? organizations?.name?.[0] ?? 'B'}
-            </span>
-          </div>
-        )}
-      </div>
     </Link>
   )
 }

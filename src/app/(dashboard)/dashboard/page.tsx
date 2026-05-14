@@ -145,21 +145,37 @@ export default async function DashboardPage() {
   const isInheritedWorkspace = access.role !== 'publisher'
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
-      {/* Section 1 — Greeting */}
-      <div className="space-y-2">
-        <h1 className="text-2xl font-bold tracking-tight text-[var(--color-text-primary)] sm:text-3xl">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <section className="grid auto-rows-[minmax(8.5rem,auto)] gap-3 lg:grid-cols-12">
+        <div className="future-bento-cell rounded-[1.4rem] p-6 sm:p-8 lg:col-span-8 lg:row-span-2">
+          <p className="future-kicker">Publisher workspace</p>
+          <h1 className="mt-4 max-w-[42rem] font-display text-4xl leading-[0.95] font-extrabold tracking-[-0.01em] text-[var(--color-text-primary)] sm:text-5xl">
           {greeting}, {displayName ?? 'Publisher'}
         </h1>
-        <p className="max-w-2xl text-sm text-[var(--color-text-secondary)] sm:text-base">
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--color-text-secondary)] sm:text-base">
           {isInheritedWorkspace
             ? 'Use the announcement creator tools alongside your higher-level workspace.'
             : "Manage INTI's announcements from here."}
         </p>
-      </div>
+        </div>
 
-      {/* Section 2 — Stats strip */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-0 sm:divide-x sm:divide-[var(--color-border)]">
+        <Link
+          href="/dashboard/announcements/new"
+          className="future-bento-cell group rounded-[1.4rem] p-5 transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-[var(--color-accent-inti)] hover:shadow-[var(--shadow-soft)] lg:col-span-4"
+        >
+          <div className="flex h-full flex-col justify-between gap-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-accent-inti)] text-white shadow-[0_12px_26px_color-mix(in_oklab,var(--color-accent-inti)_26%,transparent)]">
+              <Plus size={22} className="transition-transform duration-300 group-hover:rotate-90" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-[var(--color-text-primary)]">Create announcement</p>
+              <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">
+                Draft a notice, event, deadline, or student opportunity.
+              </p>
+            </div>
+          </div>
+        </Link>
+
         {[
           { label: 'Published this month', value: publishedThisMonth },
           { label: 'Scheduled', value: scheduled },
@@ -168,20 +184,17 @@ export default async function DashboardPage() {
         ].map(({ label, value }) => (
           <div
             key={label}
-            className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 sm:rounded-none sm:border-0 sm:bg-transparent sm:px-6 sm:first:pl-0 sm:last:pr-0"
+            className="future-bento-cell rounded-[1.2rem] px-4 py-5 lg:col-span-3"
           >
             <CountUp value={value} className="font-mono text-2xl font-bold text-[var(--color-accent)] sm:text-3xl" />
             <p className="mt-1 text-[11px] uppercase tracking-widest text-[var(--color-text-muted)] sm:text-xs">{label}</p>
           </div>
         ))}
-      </div>
-
-      {/* Section 3 — Recent announcements */}
-      <div>
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="future-bento-cell rounded-[1.4rem] p-4 sm:p-5 lg:col-span-12">
+          <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Recent</h2>
           <Link href="/dashboard/announcements" className="text-sm text-[var(--color-accent)] hover:underline">
-            View all →
+            View all
           </Link>
         </div>
         {recentAnnouncements.length === 0 ? (
@@ -193,7 +206,8 @@ export default async function DashboardPage() {
             ))}
           </div>
         )}
-      </div>
+        </div>
+      </section>
 
       {/* Section 4 — FAB */}
       <Link

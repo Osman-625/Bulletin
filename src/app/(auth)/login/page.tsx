@@ -1,6 +1,8 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import { LockKeyhole, Mail } from 'lucide-react'
+import { BrandMark } from '@/components/layout/BrandMark'
+import { ThemeToggle } from '@/components/layout/ThemeToggle'
+import { BackNavButton } from '@/components/navigation/BackNavButton'
 import { login } from './actions'
 
 export const metadata = { title: 'Sign In' }
@@ -16,37 +18,20 @@ export default async function LoginPage({
     <main className="relative w-[min(1200px,calc(100vw-2rem))]">
       <div
         data-testid="login-card"
-        className="animate-fade-up relative grid min-h-[min(620px,calc(100dvh-1.5rem))] w-full overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-soft)] md:min-h-[720px] lg:h-[800px] lg:grid-cols-[1.08fr_0.92fr]"
+        className="animate-fade-up relative grid min-h-[min(640px,calc(100dvh-1.5rem))] w-full overflow-hidden rounded-[1.75rem] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_24px_90px_rgba(30,26,23,0.14)] md:min-h-[720px] lg:h-[800px] lg:grid-cols-[1.08fr_0.92fr]"
       >
-        {/* Top edge highlight */}
-        <div
-          className="absolute inset-x-0 top-0 h-px bg-[var(--color-border-subtle)]"
-          aria-hidden="true"
-        />
+        <BackNavButton aria-label="Go back" className="absolute top-4 left-4 z-20 sm:top-5 sm:left-5" />
+        <div className="absolute top-4 right-4 z-20 sm:top-5 sm:right-5">
+          <ThemeToggle />
+        </div>
 
-        <section className="flex flex-col justify-between gap-5 bg-[var(--color-surface-elevated)] px-6 py-6 sm:gap-10 sm:px-10 sm:py-10 lg:px-14 lg:py-14">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-button)] sm:h-24 sm:w-24 lg:h-32 lg:w-32">
-              <Image
-                src="/bulletin_logo.png"
-                alt="Bulletin"
-                width={112}
-                height={112}
-                className="h-12 w-12 object-contain sm:h-16 sm:w-16 lg:h-24 lg:w-24"
-                priority
-              />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold tracking-[0.28em] text-[var(--color-accent-inti)] uppercase">
-                Bulletin
-              </p>
-              <p className="mt-2 max-w-[20rem] text-sm leading-6 text-[var(--color-text-muted)] sm:text-base">
-                INTI International University
-              </p>
-            </div>
+        <section className="relative flex flex-col justify-between gap-5 bg-[linear-gradient(140deg,var(--color-surface-elevated),var(--color-surface)_58%,var(--color-accent-surface))] px-6 py-6 pt-20 sm:gap-10 sm:px-10 sm:py-10 sm:pt-24 lg:px-14 lg:py-14">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,color-mix(in_oklab,var(--color-accent-inti)_13%,transparent),transparent_24%),radial-gradient(circle_at_88%_82%,rgba(212,148,31,0.12),transparent_26%)]" aria-hidden="true" />
+          <div className="relative">
+            <BrandMark size="hero" preload textClassName="hidden sm:block" />
           </div>
 
-          <div className="max-w-[34rem]">
+          <div className="relative max-w-[34rem]">
             <h1 className="font-display text-4xl leading-none font-semibold tracking-tight text-[var(--color-text-primary)] sm:text-6xl lg:text-7xl">
               Welcome back
             </h1>
