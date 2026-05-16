@@ -62,7 +62,7 @@ export default async function OwnerPage() {
       href: '/super-admin',
       label: 'Super Admin Workspace',
       icon: ShieldCheck,
-      desc: 'Use platform admin tools and user oversight',
+      desc: 'Manage users, admins, and platform-level settings.',
     },
     {
       href: '/admin',
@@ -86,7 +86,7 @@ export default async function OwnerPage() {
       href: '/owner/resources',
       label: 'Resources',
       icon: Activity,
-      desc: 'Read-only Vercel, Supabase, storage, and view counters',
+      desc: 'Monitor server health, storage usage, and view counters.',
     },
     {
       href: '/owner/users',
@@ -98,7 +98,7 @@ export default async function OwnerPage() {
       href: '/owner/categories',
       label: 'Categories',
       icon: Tag,
-      desc: 'Create, edit, and force delete categories',
+      desc: 'Create, edit, and remove categories.',
     },
     {
       href: '/owner/audit',

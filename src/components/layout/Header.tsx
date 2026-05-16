@@ -31,27 +31,12 @@ export default async function Header() {
             className="group min-w-0 rounded-[1.5rem] pr-2 transition-transform duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] sm:pr-3"
           >
             <BrandMark
-              size="xl"
+              size="lg"
               preload
               className="transition-transform duration-300 ease-[var(--ease-ui)] group-hover:scale-[1.015]"
               textClassName="hidden min-[500px]:block"
             />
           </Link>
-
-          <nav className="hidden items-center gap-1 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]/72 p-1 text-sm font-semibold text-[var(--color-text-secondary)] shadow-[var(--shadow-button)] lg:flex">
-            <Link
-              href="/"
-              className="rounded-full px-4 py-2.5 transition-[background,color,transform] duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
-            >
-              Campus feed
-            </Link>
-            <Link
-              href="/#announcements"
-              className="rounded-full px-4 py-2.5 transition-[background,color,transform] duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
-            >
-              Announcements
-            </Link>
-          </nav>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <ThemeToggle />

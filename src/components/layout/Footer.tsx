@@ -26,10 +26,10 @@ export default function Footer() {
           <BrandMark size="md" />
           <div>
             <p className="max-w-[38rem] text-base leading-7 text-[var(--color-text-muted)]">
-              Official notices, events, deadlines, and student opportunities from INTI.
+              Notices, events, deadlines, and student opportunities for the INTI community.
             </p>
             <p className="mt-2 font-mono text-[0.65rem] font-bold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
-              © {year} INTI International University
+              © {year} Bulletin · Independent campus project
             </p>
           </div>
         </div>

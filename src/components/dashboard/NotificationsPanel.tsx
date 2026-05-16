@@ -58,7 +58,7 @@ export async function NotificationsPanel() {
             Notifications
           </h1>
           <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-            Review updates and workflow messages from Bulletin.
+            Approval decisions and submission updates from the team.
           </p>
         </div>
 

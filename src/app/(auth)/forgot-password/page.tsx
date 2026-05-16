@@ -31,10 +31,10 @@ export default async function ForgotPasswordPage({
 
           <div className="text-center">
             <h1 className="font-sans text-xl font-semibold tracking-[-0.02em] text-[var(--color-text-primary)]">
-              Reset access
+              Forgot your password?
             </h1>
             <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
-              Ask a super admin to issue a temporary password.
+              Submit your email and an administrator will issue a temporary password.
             </p>
           </div>
         </div>
@@ -44,8 +44,8 @@ export default async function ForgotPasswordPage({
             className="rounded-lg border border-[var(--color-status-published-text)]/25 bg-[var(--color-status-published-bg)] px-3 py-3 text-xs leading-5 text-[var(--color-status-published-text)]"
             role="status"
           >
-            If this email belongs to a Bulletin account, a reset request is now waiting for a super
-            admin.
+            If this email belongs to a Bulletin account, your request has been submitted. An
+            administrator will be in touch.
           </div>
         ) : (
           <form action={requestPasswordReset} className="flex flex-col gap-3">

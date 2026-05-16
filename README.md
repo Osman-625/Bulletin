@@ -1,14 +1,14 @@
 # Bulletin
 
-A governed announcement platform for INTI International University. Public-facing feed with a five-tier role system, editorial presentation controls, in-app notifications, view tracking, and a full audit trail.
+A governed announcement platform for INTI International University. Public-facing feed with a four-tier role system, editorial presentation controls, in-app notifications, view tracking, and a full audit trail.
 
-**Stack:** Next.js 16.2.3 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Supabase (PostgreSQL + RLS + Auth + Storage) · Vercel
+**Stack:** Next.js 16.2.3 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Supabase (PostgreSQL + RLS + Auth + Storage) · Vercel · Speed Insights
 
 ---
 
 ## Role System
 
-Five tiers, each with a dedicated route group and dashboard:
+Four authenticated tiers, each with a dedicated route group and dashboard. The public feed requires no login.
 
 | Role            | Who                                    | Can do                                                                                               |
 | --------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
@@ -34,6 +34,10 @@ Login automatically routes each role to its panel.
 - Back navigation on detail pages with a direct-load fallback to `/`
 - Pinned announcements surfaced above the fold (until `pinned_until` expires)
 - Scheduled posts hidden until their publish time
+- Hero section with editorial stats panel (live post count, active topics) and pulsing INTI dot
+- Dynamic XML sitemap generated from all published announcements
+- `robots.txt` blocking auth, dashboard, admin, and owner routes from crawlers
+- Canonical URL resolved from `NEXT_PUBLIC_APP_URL` with production fallback to `bulletininti.vercel.app`
 
 ### Publisher dashboard
 
@@ -71,7 +75,7 @@ Login automatically routes each role to its panel.
 
 - Bento dashboard: user role breakdown chart, publish-rate donut, pending review count, recent audit feed
 - Full paginated audit log (50 per page, newest first)
-- Read-only resource page for Vercel deployment status, Supabase health, banner storage, setup-route status, and view counters
+- Resource page for Vercel deployment status, Supabase health, banner storage, setup-route status, and view counters
 - All-user management
 - Owner-level analytics
 - In-app notifications
@@ -149,7 +153,7 @@ The owner dashboard shows the 6 most recent entries. `/owner/audit` shows the fu
 | Route              | Description                                                     |
 | ------------------ | --------------------------------------------------------------- |
 | `/login`           | Email/username + password (routes to role dashboard on success) |
-| `/forgot-password` | Request a super-admin temporary password reset                  |
+| `/forgot-password` | Submit email to request an administrator password reset         |
 | `/change-password` | Forced password change flow                                     |
 | `/register`        | Account registration                                            |
 
@@ -166,20 +170,20 @@ The owner dashboard shows the 6 most recent entries. `/owner/audit` shows the fu
 
 ### Admin — `/admin`
 
-| Route                      | Description                                                               |
-| -------------------------- | ------------------------------------------------------------------------- |
-| `/admin`                   | Overview with pending count and quick links                               |
-| `/admin/review`            | Pending review queue                                                      |
-| `/admin/review/[id]`       | Review detail — approve (with optional schedule) or reject (with comment) |
-| `/admin/publishers`        | Publisher list                                                            |
-| `/admin/publishers/invite` | Invite new publisher (with copyable link)                                 |
-| `/admin/orgs`              | Organization list                                                         |
-| `/admin/orgs/new`          | Create organization                                                       |
-| `/admin/categories`        | Category management                                                       |
-| `/admin/users`             | User management                                                           |
-| `/admin/analytics`         | Admin analytics                                                           |
-| `/admin/notifications`     | In-app notification inbox                                                 |
-| `/admin/settings`          | Account name, password, theme, and workspace shortcuts                    |
+| Route                      | Description                                                             |
+| -------------------------- | ----------------------------------------------------------------------- |
+| `/admin`                   | Overview with pending count and quick links                             |
+| `/admin/review`            | Review queue                                                            |
+| `/admin/review/[id]`       | Review detail — approve (with optional schedule) or return with comment |
+| `/admin/publishers`        | Publisher list                                                          |
+| `/admin/publishers/invite` | Invite new publisher (with copyable link)                               |
+| `/admin/orgs`              | Organization list                                                       |
+| `/admin/orgs/new`          | Create organization                                                     |
+| `/admin/categories`        | Category management                                                     |
+| `/admin/users`             | User management                                                         |
+| `/admin/analytics`         | Admin analytics                                                         |
+| `/admin/notifications`     | In-app notification inbox                                               |
+| `/admin/settings`          | Account name, password, theme, and workspace shortcuts                  |
 
 ### Super Admin — `/super-admin`
 
@@ -201,7 +205,7 @@ The owner dashboard shows the 6 most recent entries. `/owner/audit` shows the fu
 | `/owner`               | Bento dashboard: role breakdown, publish rate, audit feed |
 | `/owner/users`         | All users                                                 |
 | `/owner/analytics`     | Owner analytics                                           |
-| `/owner/resources`     | Read-only Vercel, Supabase, storage, and view counters    |
+| `/owner/resources`     | Server health, storage usage, and view counters           |
 | `/owner/audit`         | Full audit log (paginated, 50/page)                       |
 | `/owner/notifications` | In-app notification inbox                                 |
 | `/owner/settings`      | Account name, password, theme, and workspace shortcuts    |
@@ -310,7 +314,7 @@ npm run dev
 npm test
 ```
 
-6 test files: authz, announcement form validation, feed queries, rate limiting, setup route security, presentation constants.
+9 test files: authz, announcement form validation, feed queries, rate limiting, setup route security, presentation constants, Future Commons UI, SEO URL helpers, brand lab.
 
 ### E2E tests (Playwright)
 
@@ -319,7 +323,7 @@ npm run test:e2e        # headless
 npm run test:e2e:ui     # interactive UI mode
 ```
 
-5 spec files: auth, feed, routing, setup-route, users.
+6 spec files: auth, feed, routing, setup-route, users, public theme.
 Runs on Desktop Chrome, Desktop Safari, Mobile Chrome (Pixel 5), Mobile Safari (iPhone 13).
 
 Seed test accounts before running E2E:
@@ -341,7 +345,7 @@ Required repository secrets: `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TES
 
 ### Owner resource integrations
 
-`/owner/resources` is read-only. It always shows internal app metrics such as total announcement views, top viewed announcements, banner storage file count, pending password reset requests, and setup-route status.
+`/owner/resources` always shows internal app metrics: total announcement views, top viewed announcements, banner storage file count, pending password reset requests, and setup-route status.
 
 External Vercel and Supabase cards are optional:
 
@@ -385,32 +389,38 @@ Bulletin/
 │   │   ├── (admin)/              # Admin panel + notifications
 │   │   ├── (super-admin)/        # Super admin panel + notifications
 │   │   ├── (owner)/              # Owner panel + notifications
+│   │   ├── brand-lab/            # Design token and component showcase (internal)
 │   │   ├── api/setup/            # One-time bootstrap endpoint (disabled by default)
-│   │   └── layout.tsx            # Root layout (Libre Franklin + Newsreader + Geist Mono)
+│   │   ├── robots.ts             # robots.txt — blocks auth/dashboard/admin/owner from crawlers
+│   │   ├── sitemap.ts            # Dynamic XML sitemap from published announcements
+│   │   └── layout.tsx            # Root layout (Atkinson Hyperlegible + Bricolage Grotesque + Geist Mono)
 │   ├── components/
 │   │   ├── announcements/        # AnnouncementCard, CategoryFilter, BackButton
+│   │   ├── navigation/           # BackNavButton (history-aware back navigation with fallback)
 │   │   ├── account/              # Account settings forms and password controls
 │   │   ├── auth/                 # IdleLogout
 │   │   ├── dashboard/            # AnnouncementForm, AnnouncementRow, DashboardShell,
 │   │   │                         # DashboardSidebar, DashboardTopNav, StatusBadge,
 │   │   │                         # GlassCard, AutosaveIndicator, CountUp, ActionBar,
 │   │   │                         # NotificationsPanel
-│   │   └── layout/               # Header, ThemeToggle
+│   │   └── layout/               # Header, BrandMark (multi-size logo+wordmark), ThemeToggle
 │   └── lib/
 │       ├── account/              # Account settings and password update helpers
-│       ├── announcements/        # Feed helpers, access control, presentation constants, URL/form helpers
+│       ├── announcements/        # Feed helpers, access control, presentation constants, URL/slug helpers
 │       ├── auth/                 # Authorization, auth-to-users sync
+│       ├── brand-lab/            # Design token directions and brand showcase data
 │       ├── owner/                # Owner-only read-only resource and operations DTOs
 │       ├── security/             # IP rate limiting, action rate limiting
 │       ├── supabase/             # Browser client, server client, service client
 │       ├── audit.ts              # logAuditEvent — writes to audit_log, revalidates owner paths
 │       ├── notifications.ts      # getUnreadCount, getNotifications, notifySubmitted, notifyReviewed
-│       └── notification-actions.ts  # Server actions for marking notifications read
+│       ├── notification-actions.ts  # Server actions for marking notifications read
+│       └── site.ts               # getCanonicalSiteUrl — resolves production URL, strips localhost
 ├── supabase/
 │   └── migrations/               # 14 ordered SQL migrations
 ├── tests/
-│   ├── e2e/                      # 5 Playwright specs
-│   └── unit/                     # 6 Vitest test files
+│   ├── e2e/                      # 6 Playwright specs
+│   └── unit/                     # 9 Vitest test files
 ├── scripts/
 │   ├── setup-owner.ps1           # Owner bootstrap (PowerShell)
 │   ├── seed-test-users.js        # Seed E2E test accounts
@@ -434,4 +444,6 @@ Bulletin/
 - **Autosave.** The announcement form autosaves drafts continuously with a visual indicator.
 - **Presentation layer.** Publishers control how their announcement renders on the public feed (font, size, urgency) — stored in the database, applied at render time.
 - **Audit trail.** All significant actions are recorded in `audit_log` via `logAuditEvent()` and visible only to the owner. Owner dashboard paths are revalidated on every write.
-- **Typography.** Three typefaces: Libre Franklin (UI), Newsreader (editorial/serif headings), Geist Mono (code/mono).
+- **Design system.** The public UI uses the Future Commons design system — a bento-grid feed layout, editorial stats panel, and token-based dark/light theming with INTI brand colors (INTI Red). All design tokens live in `globals.css`; never hardcoded in components.
+- **Typography.** Three typefaces: Atkinson Hyperlegible (UI body), Bricolage Grotesque (display headings), Geist Mono (code/mono).
+- **Theme.** Light/dark mode follows the OS preference (`prefers-color-scheme`), with a manual toggle available in every dashboard.

@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { getPublicAnnouncements, getActiveCategories } from '@/lib/data'
+import { derivePublicTopics } from '@/lib/announcements/feed'
 import AnnouncementCard from '@/components/announcements/AnnouncementCard'
 import type { AnnouncementCardVisual } from '@/components/announcements/AnnouncementCard'
 import CategoryFilter from '@/components/announcements/CategoryFilter'
@@ -12,7 +13,7 @@ import {
 } from '@/lib/announcements/presentation'
 import type { AnnouncementWithRelations } from '@/lib/types'
 
-export const metadata = { title: 'Campus Bulletin' }
+export const metadata = { title: { absolute: 'Campus Bulletin' } }
 
 const BOARD_SORTS = ['priority', 'issued', 'closing'] as const
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -28,21 +29,21 @@ const BOARD_SORT_OPTIONS: Array<{
 }> = [
   {
     sort: 'priority',
-    label: 'Priority desk',
+    label: 'Most urgent',
     eyebrow: 'Urgency',
-    summary: 'Pinned, urgent, and deadline-sensitive',
+    summary: 'Pinned, urgent, and deadline-sensitive notices first',
   },
   {
     sort: 'issued',
-    label: 'Newly issued',
-    eyebrow: 'Issued',
-    summary: 'Newest published notices first',
+    label: 'Latest first',
+    eyebrow: 'Newest',
+    summary: 'Most recently published notices at the top',
   },
   {
     sort: 'closing',
     label: 'Closing soon',
     eyebrow: 'Deadline',
-    summary: 'Nearest active deadlines first',
+    summary: 'Nearest active deadlines at the top',
   },
 ]
 
@@ -54,7 +55,7 @@ const BOARD_SECTION_META: Record<
   }
 > = {
   daily: {
-    label: 'Daily issues',
+    label: 'New today',
     summary: 'Fresh notices published today for quick campus scanning.',
   },
   closing: {
@@ -62,11 +63,11 @@ const BOARD_SECTION_META: Record<
     summary: 'Deadlines and registrations that need attention first.',
   },
   future: {
-    label: 'Future events',
+    label: 'Plan ahead',
     summary: 'Upcoming opportunities with more time to plan.',
   },
   campus: {
-    label: 'Campus board',
+    label: 'General notices',
     summary: 'General notices that remain useful but are not deadline-led.',
   },
 }
@@ -85,6 +86,7 @@ export default async function PublicFeedPage({
     getActiveCategories(),
   ])
   const announcements = sortAnnouncementsForPublicBoard(allAnnouncements, activeSort)
+  const topics = derivePublicTopics(categories, allAnnouncements)
 
   const today = new Date().toLocaleDateString('en-MY', {
     weekday: 'long',
@@ -95,15 +97,13 @@ export default async function PublicFeedPage({
 
   const pinnedHero = announcements.find((announcement) => isAnnouncementPinned(announcement))
   const featured =
-    pinnedHero ??
-    announcements.find((announcement) => announcement.banner_url) ??
-    announcements[0]
+    pinnedHero ?? announcements.find((announcement) => announcement.banner_url) ?? announcements[0]
   const featuredIsPinned = featured ? isAnnouncementPinned(featured) : false
   const rest = featured
     ? announcements.filter((announcement) => announcement.id !== featured.id)
     : announcements
   const boardSections = buildAnnouncementSections(rest, activeSort)
-  const activeCategory = category ? categories.find((cat) => cat.slug === category)?.name : null
+  const activeCategory = category ? topics.find((cat) => cat.slug === category)?.name : null
   const clearSearchHref = buildFeedHref({ category, sort: activeSort })
 
   return (
@@ -113,7 +113,7 @@ export default async function PublicFeedPage({
           <section className="grid gap-4 lg:grid-cols-12" aria-labelledby="public-feed-title">
             <div className="public-page-reveal future-bento-cell rounded-[1.75rem] p-5 sm:p-8 lg:col-span-7 lg:min-h-[31rem] lg:p-10 xl:col-span-8">
               <div className="mb-7 flex flex-wrap items-center gap-3">
-                <span className="future-kicker">INTI campus signal</span>
+                <span className="future-kicker">INTI campus board</span>
                 <span
                   className="h-1.5 w-1.5 rounded-full bg-[var(--color-gold)]"
                   aria-hidden="true"
@@ -131,16 +131,16 @@ export default async function PublicFeedPage({
               </h1>
 
               <p className="mt-5 max-w-[38rem] text-2xl leading-[1.08] font-bold text-[var(--color-text-primary)] sm:text-3xl">
-                What is happening around INTI, gathered into one readable public board.
+                What's happening around INTI, in one place.
               </p>
               <p className="mt-5 max-w-[39rem] text-base leading-8 text-[var(--color-text-muted)] sm:text-lg">
-                A bright Future Commons layer for official notices, student posters, deadlines, and
-                campus moments. Fast to scan between classes, structured enough for staff.
+                Official notices, student club posts, deadlines, and campus events — all in one
+                public board. Fast to scan between classes, easy to search by topic.
               </p>
 
               <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                <CampusMetric value={announcements.length} label="Live posts" />
-                <CampusMetric value={categories.length} label="Topics" />
+                <CampusMetric value={announcements.length} label="Live notices" />
+                <CampusMetric value={topics.length} label="Topics" />
                 <CampusMetric value={today} label="Today" wide />
               </div>
             </div>
@@ -150,22 +150,14 @@ export default async function PublicFeedPage({
               aria-label="Bulletin brand signal"
             >
               <div className="absolute top-6 right-6 h-20 w-20 rounded-full bg-[var(--color-accent-inti)] shadow-[0_18px_38px_color-mix(in_oklab,var(--color-accent-inti)_24%,transparent)]" />
-              <div className="relative flex h-full min-h-[22rem] flex-col justify-between">
-                <BrandMark
-                  size="hero"
-                  preload
-                  className="campus-logo-halo float-soft w-fit rounded-[1.9rem]"
-                  textClassName="hidden"
-                />
-
+              <div className="relative flex h-full min-h-[22rem] flex-col justify-end">
                 <div>
-                  <p className="future-kicker">Bulletin live</p>
+                  <p className="future-kicker">Open to all</p>
                   <p className="font-display mt-3 max-w-[18rem] text-3xl leading-[1.05] font-bold text-[var(--color-text-primary)] sm:text-4xl">
-                    Warm, bright, and campus-first.
+                    One campus feed for notices that matter.
                   </p>
                   <p className="mt-4 max-w-[22rem] text-sm leading-7 text-[var(--color-text-muted)]">
-                    The logo scales up as the broadcast mark, while the red, gold, and deep blue
-                    cues keep the system grounded in the university ecosystem.
+                    Browse by topic, search by keyword, and read full details — no login needed.
                   </p>
                 </div>
               </div>
@@ -173,10 +165,10 @@ export default async function PublicFeedPage({
           </section>
 
           <section
-            className="public-page-reveal grid gap-3 delay-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]"
+            className="mobile-search-dock public-page-reveal sticky bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] z-40 grid gap-3 delay-3 lg:static lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]"
             aria-label="Search and filters"
           >
-            <div className="future-bento-cell rounded-[1.35rem] p-3 sm:p-4">
+            <div className="future-bento-cell rounded-[1.35rem] p-3 shadow-[var(--shadow-soft)] sm:p-4 lg:shadow-none">
               <form
                 action="/"
                 className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"
@@ -193,7 +185,7 @@ export default async function PublicFeedPage({
                   name="q"
                   type="search"
                   defaultValue={search}
-                  placeholder="Search announcements..."
+                  placeholder="Search clubs, workshops, deadlines..."
                   className="input-inti min-h-12 min-w-0 rounded-[1rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-base text-[var(--color-text-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] transition-[border-color,background,box-shadow] duration-300 ease-[var(--ease-ui)] outline-none placeholder:text-[var(--color-text-muted)]"
                 />
                 <div className="grid grid-cols-[1fr_auto] gap-2 sm:flex">
@@ -215,9 +207,9 @@ export default async function PublicFeedPage({
               </form>
             </div>
 
-            <div className="future-bento-cell rounded-[1.35rem] p-3 sm:p-4">
+            <div className="future-bento-cell rounded-[1.35rem] p-3 shadow-[var(--shadow-soft)] sm:p-4 lg:shadow-none">
               <Suspense fallback={<FilterSkeleton />}>
-                <CategoryFilter categories={categories} />
+                <CategoryFilter categories={topics} />
               </Suspense>
             </div>
           </section>
@@ -240,9 +232,9 @@ export default async function PublicFeedPage({
             >
               <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <p className="future-kicker">Campus bento board</p>
+                  <p className="future-kicker">Campus notices</p>
                   <h2 className="font-display mt-1 text-3xl leading-none font-bold text-[var(--color-text-primary)]">
-                    Dense campus board
+                    Announcements
                   </h2>
                 </div>
                 <p className="text-sm font-semibold text-[var(--color-text-muted)]">
@@ -250,7 +242,7 @@ export default async function PublicFeedPage({
                 </p>
               </div>
 
-              <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-12 md:gap-14">
                 {featured && (
                   <div className="grid gap-4 xl:grid-cols-3 xl:items-stretch">
                     <article
@@ -258,7 +250,7 @@ export default async function PublicFeedPage({
                       data-bento-tile="featured"
                     >
                       <p className="future-kicker mb-2">
-                        {featuredIsPinned ? 'Pinned hero' : 'Featured notice'}
+                        {featuredIsPinned ? 'Pinned notice' : 'Featured notice'}
                       </p>
                       <AnnouncementCard
                         announcement={featured}
@@ -287,12 +279,9 @@ export default async function PublicFeedPage({
                         aria-labelledby={`board-section-${section.id}`}
                         style={{ animationDelay: `${0.34 + sectionIndex * 0.06}s` }}
                       >
-                        <div className="dense-bento-section-heading mb-3 flex items-end justify-between gap-4">
+                        <div className="dense-bento-section-heading mb-4 flex items-end justify-between gap-4">
                           <div>
-                            <p
-                              id={`board-section-${section.id}`}
-                              className="future-kicker"
-                            >
+                            <p id={`board-section-${section.id}`} className="future-kicker">
                               {section.label} ({section.items.length})
                             </p>
                             <p className="mt-1 max-w-[34rem] text-sm leading-6 text-[var(--color-text-muted)]">
@@ -326,10 +315,7 @@ export default async function PublicFeedPage({
                             >
                               <AnnouncementCard
                                 announcement={announcement}
-                                visual={imageBentoVariant(
-                                  announcement,
-                                  index + sectionIndex * 2
-                                )}
+                                visual={imageBentoVariant(announcement, index + sectionIndex * 2)}
                               />
                             </article>
                           ))}
@@ -440,7 +426,7 @@ function bentoTileClass(
     classes.push('dense-bento-wide')
   } else if (hasImage && (index + 1) % 3 === 0) {
     classes.push('dense-bento-tall')
-  } else if (!hasImage && index % 3 === 0) {
+  } else if (!hasImage) {
     classes.push('dense-bento-compact')
   } else {
     classes.push('dense-bento-standard')
@@ -450,15 +436,13 @@ function bentoTileClass(
 }
 
 function sectionBoardClass(count: number) {
-  const base = 'grid gap-4 md:grid-cols-2 xl:grid-cols-3 xl:items-stretch'
+  const base = 'grid gap-4 md:grid-cols-2 md:items-start xl:grid-cols-3'
   return count <= 2 ? `priority-lane-board ${base}` : `dense-bento-board ${base}`
 }
 
 function buildAnnouncementSections(announcements: AnnouncementWithRelations[], sort: BoardSort) {
   const order = boardSectionOrder(sort)
-  const sections = new Map<BoardSectionId, AnnouncementWithRelations[]>(
-    order.map((id) => [id, []])
-  )
+  const sections = new Map<BoardSectionId, AnnouncementWithRelations[]>(order.map((id) => [id, []]))
   const now = Date.now()
 
   announcements.forEach((announcement) => {
@@ -563,10 +547,7 @@ function BoardOrderControls({
         </p>
       </div>
 
-      <nav
-        className="grid gap-2 sm:grid-cols-3"
-        aria-label="Sort announcements without changing category"
-      >
+      <nav className="grid gap-2 sm:grid-cols-3" aria-label="Sort order">
         {BOARD_SORT_OPTIONS.map((option) => {
           const active = option.sort === activeSort
 
@@ -606,12 +587,12 @@ function BoardStructurePanel({
 }) {
   const rows = [
     {
-      label: featuredIsPinned ? 'Pinned hero' : 'Featured hero',
-      summary: featuredIsPinned ? 'Pinned event is promoted first.' : 'Best visual notice leads.',
+      label: featuredIsPinned ? 'Pinned first' : 'Featured first',
+      summary: featuredIsPinned ? 'Pinned notices are promoted first.' : 'A useful notice leads.',
     },
-    { label: 'Daily issues', summary: 'Fresh notices from today.' },
+    { label: 'New today', summary: 'Fresh notices from today.' },
     { label: 'Closing soon', summary: 'Deadlines move up when selected.' },
-    { label: 'Future events', summary: 'Upcoming notices with time to plan.' },
+    { label: 'Plan ahead', summary: 'Upcoming notices with time to plan.' },
   ]
 
   return (
@@ -622,24 +603,21 @@ function BoardStructurePanel({
       <div>
         <p className="future-kicker">Board order</p>
         <h3 className="font-display mt-2 text-3xl leading-none font-bold text-[var(--color-text-primary)]">
-          How posts rise
+          How we sort this board
         </h3>
         <p className="mt-3 text-sm leading-6 text-[var(--color-text-muted)]">
-          Current desk: {BOARD_SORT_OPTIONS.find((option) => option.sort === activeSort)?.label}
+          Sorted by: {BOARD_SORT_OPTIONS.find((option) => option.sort === activeSort)?.label}
         </p>
       </div>
 
       <div className="mt-6 grid gap-2">
-        {rows.map((row, index) => (
+        {rows.map((row) => (
           <div
             key={row.label}
             className="rounded-[0.95rem] border bg-[var(--color-surface)] px-4 py-3"
             style={{ borderColor: 'var(--color-border-subtle)' }}
           >
-            <p className="font-mono text-[0.64rem] font-bold tracking-[0.16em] text-[var(--color-accent-inti)] uppercase">
-              {String(index + 1).padStart(2, '0')}
-            </p>
-            <p className="mt-1 text-base leading-tight font-bold text-[var(--color-text-primary)]">
+            <p className="text-base leading-tight font-bold text-[var(--color-text-primary)]">
               {row.label}
             </p>
             <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">{row.summary}</p>

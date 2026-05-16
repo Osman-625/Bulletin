@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { Clock, Edit2, Eye, MoreVertical, FileImage, Pin } from 'lucide-react'
+import { ArrowRight, Clock, Edit2, Eye, FileImage, Pin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { GlassCard } from './GlassCard'
 import { StatusBadge } from './StatusBadge'
@@ -77,9 +77,15 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
 
   return (
     <div style={style}>
-      <GlassCard hover className={cn('cursor-pointer', isDraft && 'border-dashed opacity-70')}>
+      <GlassCard
+        hover
+        className={cn(
+          'group cursor-pointer overflow-hidden',
+          isDraft && 'border-dashed opacity-75'
+        )}
+      >
         <div
-          className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:gap-5 sm:p-5"
+          className="grid gap-4 p-4 sm:grid-cols-[5rem_minmax(0,1fr)_auto_auto] sm:items-center sm:gap-5"
           onClick={handleRowClick}
           role="button"
           tabIndex={0}
@@ -90,24 +96,24 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
             }
           }}
         >
-          {/* Thumbnail */}
-          <div className="flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-[0.8rem] border border-[var(--color-glass-border)] bg-[var(--color-surface-elevated)] sm:h-16 sm:w-16">
+          <div className="flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-[0.9rem] border border-[var(--color-glass-border)] bg-[var(--color-surface-elevated)] sm:h-20 sm:w-20">
             {announcement.banner_url ? (
               <Image
                 src={announcement.banner_url}
                 alt={announcement.title}
-                width={64}
-                height={64}
-                className="h-full w-full object-contain"
+                width={160}
+                height={120}
+                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
               />
             ) : (
-              <FileImage size={20} className="text-[var(--color-text-muted)]" />
+              <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,var(--color-surface-elevated),var(--color-surface-high))]">
+                <FileImage size={20} className="text-[var(--color-text-muted)]" />
+              </div>
             )}
           </div>
 
-          {/* Middle — title + meta */}
           <div className="min-w-0 flex-1">
-            <div className="mb-1 flex items-center gap-2">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
               {(() => {
                 return (
                   <StatusBadge
@@ -125,28 +131,28 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
               })()}
               {urgency !== 'normal' && (
                 <span
-                  className="rounded px-2 py-0.5 text-[15px] font-bold tracking-wider uppercase"
+                  className="rounded-[0.45rem] px-2 py-1 font-mono text-[0.68rem] font-bold tracking-[0.12em] uppercase"
                   style={{ color: urgencyMeta.tone, background: urgencyMeta.background }}
                 >
                   {urgencyMeta.label}
                 </span>
               )}
               {isScheduled && (
-                <span className="inline-flex items-center gap-1 rounded bg-[var(--color-accent-surface)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-accent-inti)] uppercase">
+                <span className="inline-flex items-center gap-1 rounded-[0.45rem] bg-[var(--color-accent-surface)] px-2 py-1 font-mono text-[0.68rem] font-bold tracking-[0.12em] text-[var(--color-accent-inti)] uppercase">
                   <Clock size={12} aria-hidden="true" />
                   Scheduled
                 </span>
               )}
               {isPinned && (
-                <span className="inline-flex items-center gap-1 rounded bg-[var(--color-status-published-bg)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-status-published-text)] uppercase">
+                <span className="inline-flex items-center gap-1 rounded-[0.45rem] bg-[var(--color-status-published-bg)] px-2 py-1 font-mono text-[0.68rem] font-bold tracking-[0.12em] text-[var(--color-status-published-text)] uppercase">
                   <Pin size={12} aria-hidden="true" />
                   Pinned
                 </span>
               )}
-              <span className="truncate text-lg leading-tight font-semibold text-[var(--color-text-primary)]">
-                {announcement.title}
-              </span>
             </div>
+            <p className="truncate text-lg leading-tight font-semibold text-[var(--color-text-primary)]">
+              {announcement.title}
+            </p>
             <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
               {announcement.categories ? (
                 <>
@@ -182,12 +188,11 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
             </div>
             {announcement.status === 'rejected' && announcement.rejection_comment && (
               <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--color-status-rejected-text)]">
-                Admin note: {announcement.rejection_comment}
+                Feedback: {announcement.rejection_comment}
               </p>
             )}
           </div>
 
-          {/* Right — date + author */}
           <div className="w-full shrink-0 text-left sm:w-auto sm:text-right">
             <p className="font-mono text-sm text-[var(--color-text-muted)]">{dateLabel}</p>
             <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
@@ -205,26 +210,24 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
             </p>
           </div>
 
-          {/* Actions */}
-          <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto" data-action="true">
+          <div
+            className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto"
+            data-action="true"
+          >
             <button
               type="button"
               data-action="true"
               onClick={handleEditClick}
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-accent-surface)] hover:text-[var(--color-accent)]"
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-[0.85rem] text-[var(--color-text-muted)] transition-[transform,background,color] duration-200 hover:-translate-y-px hover:bg-[var(--color-accent-surface)] hover:text-[var(--color-accent)] active:scale-[0.98]"
               aria-label="Edit announcement"
             >
               <Edit2 size={16} />
             </button>
-            <button
-              type="button"
-              data-action="true"
-              onClick={(e) => e.stopPropagation()}
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)]"
-              aria-label="More options"
-            >
-              <MoreVertical size={16} />
-            </button>
+            <ArrowRight
+              size={16}
+              className="hidden text-[var(--color-text-muted)] transition-transform duration-200 group-hover:translate-x-1 group-hover:text-[var(--color-accent)] sm:block"
+              aria-hidden="true"
+            />
           </div>
         </div>
       </GlassCard>

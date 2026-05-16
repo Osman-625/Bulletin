@@ -48,7 +48,7 @@ export function DashboardShell({
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-[var(--color-canvas)]">
+    <div className="dashboard-canvas min-h-[100dvh] bg-[var(--color-canvas)]">
       <DashboardSidebar
         displayName={displayName}
         role={role}
@@ -61,7 +61,7 @@ export function DashboardShell({
       {/* Mobile overlay backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          className="fixed inset-0 z-30 bg-[rgba(36,24,21,0.42)] backdrop-blur-[2px] md:hidden"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
         />
@@ -76,7 +76,7 @@ export function DashboardShell({
         announcementSearchHref={ANNOUNCEMENT_SEARCH_HREFS[variant]}
       />
 
-      <main className="min-h-screen pt-16 pl-0 transition-[padding-left] duration-200 md:pl-12 lg:pl-72">
+      <main className="min-h-[100dvh] pt-16 pl-0 transition-[padding-left] duration-300 ease-[var(--ease-ui)] md:pl-[4.25rem] xl:pl-[18.5rem]">
         {children}
       </main>
     </div>

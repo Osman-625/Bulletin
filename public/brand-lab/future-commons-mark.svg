@@ -1,0 +1,11 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bulletin Future Commons mark">
+  <rect width="128" height="128" rx="24" fill="#FFFAF0"/>
+  <rect x="10" y="10" width="108" height="108" rx="18" fill="#F8F2DF" stroke="#E2D3BD" stroke-width="2"/>
+  <path d="M64 24L75.6 52.4L106 64L75.6 75.6L64 104L52.4 75.6L22 64L52.4 52.4L64 24Z" fill="#C8102E"/>
+  <path d="M64 43L70.2 57.8L86 64L70.2 70.2L64 85L57.8 70.2L42 64L57.8 57.8L64 43Z" fill="#FFFAF0"/>
+  <path d="M31 37C40.6 28.8 52.6 24.7 64 24.7C75.4 24.7 87.4 28.8 97 37" stroke="#143A5F" stroke-width="6" stroke-linecap="round"/>
+  <path d="M40 47C47.1 41.5 55.6 38.8 64 38.8C72.4 38.8 80.9 41.5 88 47" stroke="#D4941F" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="64" cy="64" r="6" fill="#143A5F"/>
+  <path d="M30 96H98" stroke="#E2D3BD" stroke-width="5" stroke-linecap="round"/>
+  <path d="M47 96H81" stroke="#C8102E" stroke-width="5" stroke-linecap="round"/>
+</svg>

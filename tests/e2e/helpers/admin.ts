@@ -8,13 +8,24 @@ function adminClient() {
   )
 }
 
+function authClient() {
+  return createClient(
+    requireEnv('NEXT_PUBLIC_SUPABASE_URL'),
+    requireEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+  )
+}
+
 export async function resetForceChangeAccount() {
+  const email = requireEnv('TEST_FORCE_CHANGE_EMAIL')
+  const password = requireEnv('TEST_FORCE_CHANGE_PASSWORD')
+
   await resetUserAccount({
-    email: requireEnv('TEST_FORCE_CHANGE_EMAIL'),
-    password: requireEnv('TEST_FORCE_CHANGE_PASSWORD'),
+    email,
+    password,
     role: 'admin',
     forcePasswordChange: true,
   })
+  await waitForPasswordReset({ email, password, label: 'Force-change' })
 }
 
 export async function resetPublisherAccount() {
@@ -88,10 +99,23 @@ async function resetUserAccount({
 }
 
 export async function waitForPublisherPasswordReset() {
-  const supabase = adminClient()
-  const email = requireEnv('TEST_PUBLISHER_EMAIL')
-  const password = requireEnv('TEST_PUBLISHER_PASSWORD')
+  await waitForPasswordReset({
+    email: requireEnv('TEST_PUBLISHER_EMAIL'),
+    password: requireEnv('TEST_PUBLISHER_PASSWORD'),
+    label: 'Publisher',
+  })
+}
 
+async function waitForPasswordReset({
+  email,
+  password,
+  label,
+}: {
+  email: string
+  password: string
+  label: string
+}) {
+  const supabase = authClient()
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     await supabase.auth.signOut()
@@ -99,5 +123,5 @@ export async function waitForPublisherPasswordReset() {
     await new Promise((resolve) => setTimeout(resolve, 500))
   }
 
-  throw new Error('Publisher test password did not become usable in time')
+  throw new Error(`${label} test password did not become usable in time`)
 }

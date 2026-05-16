@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { matchesSearch } from '@/lib/announcements/feed'
+import { derivePublicTopics, matchesSearch } from '@/lib/announcements/feed'
 import type { AnnouncementWithRelations } from '@/lib/types'
 
 function announcement(overrides: Partial<AnnouncementWithRelations> = {}): AnnouncementWithRelations {
@@ -66,5 +66,58 @@ describe('matchesSearch', () => {
 
   it('does not match on unrelated partial', () => {
     expect(matchesSearch(announcement(), 'xyz')).toBe(false)
+  })
+})
+
+describe('derivePublicTopics', () => {
+  it('falls back to categories attached to visible announcements', () => {
+    const visible = [
+      announcement({
+        id: 'a1',
+        categories: { id: 'cat-1', name: 'Academic', slug: 'academic', color: '#c8102e' },
+      }),
+      announcement({
+        id: 'a2',
+        categories: { id: 'cat-2', name: 'Wellbeing', slug: 'wellbeing', color: '#002f6c' },
+      }),
+      announcement({
+        id: 'a3',
+        categories: { id: 'cat-1', name: 'Academic', slug: 'academic', color: '#c8102e' },
+      }),
+    ]
+
+    expect(derivePublicTopics([], visible)).toEqual([
+      {
+        id: 'cat-1',
+        name: 'Academic',
+        slug: 'academic',
+        color: '#c8102e',
+        is_active: true,
+        created_at: '',
+      },
+      {
+        id: 'cat-2',
+        name: 'Wellbeing',
+        slug: 'wellbeing',
+        color: '#002f6c',
+        is_active: true,
+        created_at: '',
+      },
+    ])
+  })
+
+  it('prefers active category records when they are available', () => {
+    const activeCategories = [
+      {
+        id: 'cat-3',
+        name: 'Events',
+        slug: 'events',
+        color: '#e0a01f',
+        is_active: true,
+        created_at: '2026-05-15T00:00:00.000Z',
+      },
+    ]
+
+    expect(derivePublicTopics(activeCategories, [announcement()])).toBe(activeCategories)
   })
 })

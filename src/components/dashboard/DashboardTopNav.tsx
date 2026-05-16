@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Bell, Menu, Newspaper, Settings } from 'lucide-react'
+import { Bell, Menu, Newspaper, Search, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DashboardTopNavProps {
@@ -29,12 +29,12 @@ export function DashboardTopNav({
     <header
       className={cn(
         'fixed top-0 right-0 left-0 z-30 h-16',
-        'md:left-12 lg:left-72',
+        'md:left-[4.25rem] xl:left-[18.5rem]',
         'flex items-center justify-between px-4 md:px-6',
-        'bg-[var(--color-header-bg)]/90 backdrop-blur-xl',
+        'bg-[var(--color-header-bg)]/86 backdrop-blur-2xl',
         'border-b border-[var(--color-border)]',
-        'shadow-[0_8px_24px_rgba(36,24,21,0.05)]',
-        'transition-[left] duration-200'
+        'shadow-[0_8px_24px_rgba(95,61,22,0.06)]',
+        'transition-[left] duration-300 ease-[var(--ease-ui)]'
       )}
     >
       {/* Left: hamburger (mobile only) + search */}
@@ -42,31 +42,35 @@ export function DashboardTopNav({
         <button
           type="button"
           onClick={onMenuClick}
-          className="flex h-11 w-11 items-center justify-center rounded-lg text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-elevated)] md:hidden"
+          className="flex h-11 w-11 items-center justify-center rounded-[0.9rem] text-[var(--color-text-secondary)] transition-[transform,background,color] duration-200 hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)] active:scale-[0.98] md:hidden"
           aria-label="Open menu"
         >
           <Menu size={20} />
         </button>
 
         {announcementSearchHref && (
-          <form action={announcementSearchHref} className="hidden sm:block">
+          <form action={announcementSearchHref} className="relative hidden sm:block">
             <label htmlFor="topnav-search" className="sr-only">
               Search announcements
             </label>
+            <Search
+              size={15}
+              className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--color-text-muted)]"
+              aria-hidden="true"
+            />
             <input
               id="topnav-search"
               name="search"
               type="search"
-              placeholder="Search announcements..."
+              placeholder="Search announcements"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={cn(
-            'min-h-11 w-72 px-4 text-sm',
-            'rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]',
-            'text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]',
-            'outline-none',
-                'focus:ring-1 focus:ring-[var(--color-accent)]/40',
-                'transition-all duration-150'
+                'min-h-11 w-64 rounded-[0.95rem] border border-[var(--color-border)] bg-[color-mix(in_oklab,var(--color-surface)_78%,transparent)] pr-4 pl-10 text-sm',
+                'text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]',
+                'outline-none',
+                'focus:border-[var(--color-accent-inti)] focus:ring-[3px] focus:ring-[var(--color-accent-surface)]',
+                'transition-[width,border-color,box-shadow,background] duration-200 ease-[var(--ease-ui)] focus:w-80'
               )}
             />
           </form>
@@ -77,7 +81,7 @@ export function DashboardTopNav({
       <div className="flex items-center gap-3">
         <Link
           href="/"
-          className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--color-accent-inti)] px-3 text-xs font-semibold text-white shadow-[0_4px_14px_color-mix(in_oklab,var(--color-accent-inti)_30%,transparent)] transition-[transform,box-shadow,background] duration-200 hover:-translate-y-0.5 hover:bg-[var(--color-accent-hover)] sm:px-4"
+          className="action-lift inline-flex min-h-11 items-center gap-2 rounded-[0.95rem] bg-[var(--color-accent-inti)] px-3 text-xs font-semibold text-white shadow-[var(--shadow-button)] transition-[transform,box-shadow,background] duration-200 hover:bg-[var(--color-accent-hover)] sm:px-4"
           aria-label="Review the public announcements page"
           title="Review the public announcements page"
         >
@@ -87,7 +91,7 @@ export function DashboardTopNav({
 
         <Link
           href={notificationsHref}
-          className="relative flex h-11 w-11 items-center justify-center rounded-full text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-elevated)]"
+          className="relative flex h-11 w-11 items-center justify-center rounded-[0.95rem] text-[var(--color-text-secondary)] transition-[transform,background,color] duration-200 hover:-translate-y-px hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)] active:scale-[0.98]"
           aria-label="Notifications"
         >
           <Bell size={18} />
@@ -100,7 +104,7 @@ export function DashboardTopNav({
 
         <Link
           href={settingsHref}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-accent-surface)] text-xs font-semibold text-[var(--color-accent)] select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/50"
+          className="flex h-11 w-11 items-center justify-center rounded-[0.95rem] border border-[color-mix(in_oklab,var(--color-accent-inti)_18%,var(--color-border))] bg-[var(--color-accent-surface)] text-xs font-semibold text-[var(--color-accent)] select-none transition-[transform,background] duration-200 hover:-translate-y-px hover:bg-[color-mix(in_oklab,var(--color-accent-surface)_72%,var(--color-surface))] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/50 active:scale-[0.98]"
           aria-label={userName ? `${userName} - account settings` : 'Account settings'}
           title="Account settings"
         >

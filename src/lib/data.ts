@@ -13,6 +13,7 @@ import type {
   PublisherWithOrgs,
 } from './types'
 import { sortAnnouncementsForFeed } from './announcements/presentation'
+import { announcementLookupId } from './announcements/urls'
 
 const ANNOUNCEMENT_SELECT = `
   *,
@@ -69,10 +70,11 @@ export async function getPublicAnnouncements(
 export async function getAnnouncementById(id: string): Promise<AnnouncementWithRelations | null> {
   const supabase = await createClient()
   const now = new Date().toISOString()
+  const lookupId = announcementLookupId(id)
   const { data, error } = await supabase
     .from('announcements')
     .select(ANNOUNCEMENT_SELECT)
-    .eq('id', id)
+    .eq('id', lookupId)
     .eq('status', 'published')
     .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${now}`)
     .or(`expires_at.is.null,expires_at.gt.${now}`)

@@ -1,14 +1,14 @@
-import { BrandMark } from '@/components/layout/BrandMark'
+import type { CSSProperties } from 'react'
 
-function Bone({ className = '', style = {} }: { className?: string; style?: React.CSSProperties }) {
+function Bone({ className = '', style = {} }: { className?: string; style?: CSSProperties }) {
   return <div className={`skeleton-shimmer rounded ${className}`} style={style} />
 }
 
 function LoadingCard({ poster = false }: { poster?: boolean }) {
   return (
     <div className="future-bento-cell overflow-hidden rounded-[1.35rem]">
-      {poster && <div className="h-52 bg-[var(--color-surface-elevated)] sm:h-72" />}
-      <div className="flex flex-col gap-4 p-5 sm:p-6">
+      {poster && <div className="h-44 bg-[var(--color-surface-elevated)] sm:h-60" />}
+      <div className="flex flex-col gap-4 p-5">
         <div className="flex gap-2">
           <Bone className="h-8 w-24 rounded-md" />
           <Bone className="h-8 w-20 rounded-md" />
@@ -20,7 +20,6 @@ function LoadingCard({ poster = false }: { poster?: boolean }) {
         <div className="flex flex-col gap-2">
           <Bone className="h-4 w-full" />
           <Bone className="h-4 w-5/6" />
-          <Bone className="h-4 w-3/5" />
         </div>
         <div className="flex items-center justify-between border-t border-[var(--color-border)] pt-4">
           <Bone className="h-3 w-28" />
@@ -37,46 +36,24 @@ export default function PublicLoading() {
       <main className="w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10 xl:px-12">
         <div className="mx-auto flex w-full max-w-[1500px] flex-col gap-4 sm:gap-5">
           <section className="grid gap-4 lg:grid-cols-12" aria-label="Loading public bulletin">
-            <div className="future-bento-cell public-page-reveal rounded-[1.75rem] p-5 sm:p-8 lg:col-span-7 lg:min-h-[31rem] lg:p-10 xl:col-span-8">
-              <div className="mb-8 flex items-center gap-4">
-                <BrandMark
-                  size="lg"
-                  showText={false}
-                  className="campus-logo-halo rounded-[1.35rem]"
-                  preload
-                />
-                <div>
-                  <p className="future-kicker">Loading campus signal</p>
-                  <p className="mt-2 text-sm font-semibold text-[var(--color-text-muted)]">
-                    Gathering live notices
-                  </p>
-                </div>
-              </div>
-
-              <div className="loading-signal mb-8 h-2 overflow-hidden rounded-full bg-[var(--color-surface-high)]" />
-
+            <div className="future-bento-cell rounded-[1.75rem] p-5 sm:p-8 lg:col-span-7 lg:min-h-[31rem] lg:p-10 xl:col-span-8">
               <div className="flex max-w-[46rem] flex-col gap-3">
-                <Bone className="h-16 w-full max-w-[34rem] rounded-xl sm:h-20 lg:h-28" />
-                <Bone className="h-16 w-5/6 max-w-[30rem] rounded-xl sm:h-20 lg:h-28" />
+                <Bone className="h-4 w-48 rounded-md" />
+                <Bone className="mt-6 h-16 w-full max-w-[34rem] rounded-xl sm:h-20 lg:h-24" />
+                <Bone className="h-16 w-5/6 max-w-[30rem] rounded-xl sm:h-20 lg:h-24" />
               </div>
-              <div className="mt-7 grid gap-3 sm:grid-cols-3">
+              <div className="mt-8 grid gap-3 sm:grid-cols-3">
                 <Bone className="h-24 rounded-[1.15rem]" />
                 <Bone className="h-24 rounded-[1.15rem]" />
                 <Bone className="h-24 rounded-[1.15rem]" />
               </div>
             </div>
 
-            <aside className="future-bento-cell public-page-reveal relative overflow-hidden rounded-[1.75rem] p-5 delay-2 sm:p-8 lg:col-span-5 xl:col-span-4">
-              <div className="absolute top-6 right-6 h-20 w-20 rounded-full bg-[var(--color-accent-inti)] opacity-85" />
-              <div className="relative flex min-h-[22rem] flex-col justify-between">
-                <BrandMark
-                  size="hero"
-                  showText={false}
-                  className="campus-logo-halo float-soft w-fit rounded-[1.9rem]"
-                  preload
-                />
+            <aside className="future-bento-cell relative overflow-hidden rounded-[1.75rem] p-5 sm:p-8 lg:col-span-5 xl:col-span-4">
+              <div className="absolute top-6 right-6 h-16 w-16 rounded-full bg-[var(--color-accent-inti)] opacity-90" />
+              <div className="relative flex min-h-[22rem] flex-col justify-end">
                 <div className="flex flex-col gap-3">
-                  <Bone className="h-8 w-48 rounded-md" />
+                  <Bone className="h-9 w-52 max-w-full rounded-md" />
                   <Bone className="h-4 w-64 max-w-full" />
                   <Bone className="h-4 w-52 max-w-full" />
                 </div>

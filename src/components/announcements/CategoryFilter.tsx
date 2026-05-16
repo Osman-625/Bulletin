@@ -46,6 +46,12 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
         All
       </button>
 
+      {categories.length === 0 && (
+        <span className="inline-flex min-h-11 shrink-0 items-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3.5 text-sm font-semibold text-[var(--color-text-muted)]">
+          No topics available yet
+        </span>
+      )}
+
       {/* Category tabs */}
       {categories.map((cat) => {
         const isActive = active === cat.slug
