@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ThemeToggle } from './ThemeToggle'
 import { BrandMark } from './BrandMark'
+import { HeaderLoadingSignal } from './HeaderLoadingSignal'
 import { getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
 
 function formatRole(role: string) {
@@ -16,7 +17,7 @@ export default async function Header() {
       className="sticky top-0 z-50 shadow-[0_12px_36px_rgba(95,61,22,0.1),0_1px_0_rgba(30,26,23,0.05)] dark:shadow-[0_10px_36px_rgba(0,0,0,0.42),0_1px_0_rgba(255,255,255,0.04)]"
       style={{ borderBottom: '1px solid var(--color-border)' }}
     >
-      <div className="loading-signal h-1.5 bg-[var(--color-accent-inti)]" />
+      <HeaderLoadingSignal />
 
       <div
         style={{
@@ -25,13 +26,13 @@ export default async function Header() {
           WebkitBackdropFilter: 'blur(18px)',
         }}
       >
-        <div className="mx-auto flex min-h-[6.25rem] w-full max-w-[1500px] items-center justify-between gap-3 px-4 py-3 sm:min-h-28 sm:gap-5 sm:px-6 lg:px-[18px] xl:px-[18px]">
+        <div className="mx-auto flex min-h-16 w-full max-w-[1280px] items-center justify-between gap-2 px-3 py-2 sm:min-h-20 sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
           <Link
             href="/"
             className="group min-w-0 rounded-[1.5rem] pr-2 transition-transform duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] sm:pr-3"
           >
             <BrandMark
-              size="lg"
+              size="md"
               preload
               className="transition-transform duration-300 ease-[var(--ease-ui)] group-hover:scale-[1.015]"
               textClassName="hidden min-[500px]:block"

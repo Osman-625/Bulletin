@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { AutosaveIndicator } from './AutosaveIndicator'
 import { StatusBadge } from './StatusBadge'
@@ -31,6 +32,14 @@ export function ActionBar({
   saveLabel = 'Save Draft',
   publishLabel = 'Submit for Review',
 }: ActionBarProps) {
+  const [showUnpublishConfirm, setShowUnpublishConfirm] = useState(false)
+
+  function handleConfirmUnpublish() {
+    if (!onUnpublish) return
+    setShowUnpublishConfirm(false)
+    onUnpublish()
+  }
+
   return (
     <div
       className={cn(
@@ -51,22 +60,72 @@ export function ActionBar({
       <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
         {isPublished ? (
           <>
-            {onUnpublish && (
-              <button
-                type="button"
-                onClick={onUnpublish}
-                disabled={isPublishing}
-                className={cn(
-                  'min-h-11 rounded-xl px-4 text-sm font-medium transition-all duration-150',
-                  'border border-[var(--color-destructive)]/30 text-[var(--color-destructive)]',
-                  'hover:bg-[var(--color-destructive)]/10',
-                  'active:scale-[0.98]',
-                  'disabled:cursor-not-allowed disabled:opacity-50'
-                )}
-              >
-                Unpublish
-              </button>
-            )}
+            {onUnpublish &&
+              (showUnpublishConfirm ? (
+                <div
+                  role="alertdialog"
+                  aria-modal="false"
+                  aria-labelledby="unpublish-confirm-title"
+                  aria-describedby="unpublish-confirm-description"
+                  className="flex w-full flex-col gap-2 rounded-xl border border-[var(--color-destructive)]/30 bg-[var(--color-surface)] p-3 sm:w-auto sm:flex-row sm:items-center"
+                >
+                  <div className="min-w-0">
+                    <p
+                      id="unpublish-confirm-title"
+                      className="text-sm font-semibold text-[var(--color-text-primary)]"
+                    >
+                      Unpublish announcement?
+                    </p>
+                    <p
+                      id="unpublish-confirm-description"
+                      className="text-xs text-[var(--color-text-muted)]"
+                    >
+                      Unpublishing will hide this announcement from the public feed.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 sm:ml-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowUnpublishConfirm(false)}
+                      className={cn(
+                        'min-h-11 rounded-xl px-4 text-sm font-medium transition-all duration-150',
+                        'border border-[var(--color-glass-border)] text-[var(--color-text-secondary)]',
+                        'hover:bg-[var(--color-surface-elevated)] active:scale-[0.98]'
+                      )}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleConfirmUnpublish}
+                      disabled={isPublishing}
+                      className={cn(
+                        'min-h-11 rounded-xl px-4 text-sm font-medium transition-all duration-150',
+                        'bg-[var(--color-destructive)] text-white hover:opacity-90',
+                        'active:scale-[0.98]',
+                        'disabled:cursor-not-allowed disabled:opacity-50'
+                      )}
+                    >
+                      Unpublish
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowUnpublishConfirm(true)}
+                  disabled={isPublishing}
+                  className={cn(
+                    'min-h-11 rounded-xl px-4 text-sm font-medium transition-all duration-150',
+                    'border border-[var(--color-destructive)]/30 text-[var(--color-destructive)]',
+                    'hover:bg-[var(--color-destructive)]/10',
+                    'active:scale-[0.98]',
+                    'disabled:cursor-not-allowed disabled:opacity-50'
+                  )}
+                >
+                  Unpublish
+                </button>
+              ))}
             <button
               type="button"
               onClick={onSaveDraft}

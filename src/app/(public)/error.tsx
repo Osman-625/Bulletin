@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { BrandMark } from '@/components/layout/BrandMark'
+import { reportClientError } from '@/lib/client-error-reporting'
 
 export default function PublicError({
   error,
@@ -11,7 +12,9 @@ export default function PublicError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error(error)
+    reportClientError('public.error_boundary', error, {
+      digest: error.digest ?? null,
+    })
   }, [error])
 
   return (

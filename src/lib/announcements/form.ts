@@ -1,3 +1,48 @@
+export const ANNOUNCEMENT_TITLE_MAX = 120
+export const ANNOUNCEMENT_BODY_MAX = 5000
+
+type AnnouncementTextOptions = {
+  requireComplete?: boolean
+}
+
+export function readAnnouncementTextFields(
+  formData: FormData,
+  options: AnnouncementTextOptions = {}
+) {
+  const title = readTrimmedText(formData, 'title')
+  const body = readTrimmedText(formData, 'body')
+
+  if (title.length > ANNOUNCEMENT_TITLE_MAX) {
+    throw new Error(`Title must be ${ANNOUNCEMENT_TITLE_MAX} characters or fewer.`)
+  }
+
+  if (body.length > ANNOUNCEMENT_BODY_MAX) {
+    throw new Error(`Body must be ${ANNOUNCEMENT_BODY_MAX} characters or fewer.`)
+  }
+
+  if (options.requireComplete) {
+    assertAnnouncementReadyForReview(title, body)
+  }
+
+  return {
+    title: title || 'Untitled Announcement',
+    body,
+  }
+}
+
+export function assertAnnouncementReadyForReview(
+  title: string | null | undefined,
+  body: string | null | undefined
+) {
+  if (!(title ?? '').trim()) {
+    throw new Error('Add a title before submitting for review.')
+  }
+
+  if (!(body ?? '').trim()) {
+    throw new Error('Add announcement body before submitting for review.')
+  }
+}
+
 export function readOptionalIsoDate(formData: FormData, key: string): string | null {
   const value = formData.get(key)
   if (typeof value !== 'string' || value.trim() === '') return null
@@ -73,4 +118,9 @@ function readTrimmedOptionalString(formData: FormData, key: string): string | nu
 
   const trimmed = value.trim()
   return trimmed === '' ? null : trimmed
+}
+
+function readTrimmedText(formData: FormData, key: string): string {
+  const value = formData.get(key)
+  return typeof value === 'string' ? value.trim() : ''
 }

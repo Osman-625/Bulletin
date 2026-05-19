@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { announcementPath } from '@/lib/announcements/urls'
+import { reportServerError } from '@/lib/error-reporting'
 import { getCanonicalSiteUrl } from '@/lib/site'
 
 type SitemapAnnouncement = {
@@ -32,7 +33,7 @@ async function getSitemapAnnouncements(): Promise<SitemapAnnouncement[]> {
     .order('published_at', { ascending: false })
 
   if (error) {
-    console.error('[sitemap]', error.message, error.code)
+    reportServerError('sitemap.announcements_query_failed', error)
     return []
   }
 
@@ -57,7 +58,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }))
   } catch (error) {
-    console.error('[sitemap]', error)
+    reportServerError('sitemap.generate_failed', error)
   }
 
   return [

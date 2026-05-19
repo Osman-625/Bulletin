@@ -12,6 +12,7 @@ import {
   type AppRole,
 } from '@/lib/auth/authz'
 import { syncAuthUsersToProfiles } from '@/lib/auth/sync-users'
+import { reportServerError } from '@/lib/error-reporting'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'All Users — Bulletin Owner' }
@@ -33,6 +34,18 @@ const LEVEL_COLOR: Record<number, string> = {
   3: 'var(--color-text-muted)',
 }
 
+const OWNER_USERS_PATH = '/owner/users'
+const USER_CREATE_ERROR = 'Could not create user. Try again.'
+const USER_UPDATE_ERROR = 'Could not update user. Try again.'
+const PASSWORD_RESET_ERROR = 'Could not reset password. Try again.'
+const USER_DELETE_ERROR = 'Could not delete user. Try again.'
+
+function userErrorHref(message: string, add = false) {
+  const key = add ? 'err' : 'error'
+  const prefix = add ? `${OWNER_USERS_PATH}?add=true&` : `${OWNER_USERS_PATH}?`
+  return `${prefix}${key}=${encodeURIComponent(message)}`
+}
+
 async function createUser(formData: FormData) {
   'use server'
 
@@ -49,20 +62,35 @@ async function createUser(formData: FormData) {
   const assignableRoles = getAssignableRoles(access.role)
   if (!displayName || !password || !role) redirect('/owner/users?add=true&err=missing_fields')
   if (!assignableRoles.includes(role)) redirect('/owner/users?add=true&err=invalid_role')
-  const { data: authData, error } = await supabase.auth.admin.createUser({
+  const { data: authData, error: authCreateError } = await supabase.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
     user_metadata: { display_name: displayName, role },
   })
-  if (error || !authData.user)
-    redirect(`/owner/users?add=true&err=${encodeURIComponent(error?.message ?? 'Failed')}`)
-  await supabase
+  if (authCreateError || !authData.user) {
+    reportServerError(
+      'owner.users.create_auth',
+      authCreateError ?? new Error('Supabase Auth did not return a user'),
+      { actorId: access.userId, email, role }
+    )
+    redirect(userErrorHref(USER_CREATE_ERROR, true))
+  }
+  const { error: profileUpsertError } = await supabase
     .from('users')
     .upsert(
       { id: authData.user.id, email, display_name: displayName, role, force_password_change: true },
       { onConflict: 'id' }
     )
+  if (profileUpsertError) {
+    reportServerError('owner.users.create_profile', profileUpsertError, {
+      actorId: access.userId,
+      targetId: authData.user.id,
+      email,
+      role,
+    })
+    redirect(userErrorHref(USER_CREATE_ERROR, true))
+  }
   await logAuditEvent({
     actorId: access.userId,
     action: 'user.created',
@@ -89,11 +117,18 @@ async function setRole(userId: string, newRole: string) {
   if (!getAssignableRoles(access.role).includes(role)) return
 
   const supabase = await createServiceClient()
-  const { data: target } = await supabase
+  const { data: target, error: targetReadError } = await supabase
     .from('users')
     .select('id, email, display_name, role')
     .eq('id', userId)
     .single()
+  if (targetReadError) {
+    reportServerError('owner.users.read_for_role_change', targetReadError, {
+      actorId: access.userId,
+      targetId: userId,
+    })
+    redirect(userErrorHref(USER_UPDATE_ERROR))
+  }
   if (!target) return
   if (
     !canManageUser(
@@ -102,7 +137,15 @@ async function setRole(userId: string, newRole: string) {
     )
   )
     return
-  await supabase.from('users').update({ role }).eq('id', userId)
+  const { error: roleUpdateError } = await supabase.from('users').update({ role }).eq('id', userId)
+  if (roleUpdateError) {
+    reportServerError('owner.users.role_change', roleUpdateError, {
+      actorId: access.userId,
+      targetId: userId,
+      role,
+    })
+    redirect(userErrorHref(USER_UPDATE_ERROR))
+  }
   await logAuditEvent({
     actorId: access.userId,
     action: 'user.role_changed',
@@ -126,11 +169,18 @@ async function resetPassword(userId: string, formData: FormData) {
   if (!canAccessOwnerArea(access.role)) redirect(getDefaultAppPath(access.role))
 
   const supabase = await createServiceClient()
-  const { data: target } = await supabase
+  const { data: target, error: targetReadError } = await supabase
     .from('users')
     .select('id, email, display_name, role')
     .eq('id', userId)
     .single()
+  if (targetReadError) {
+    reportServerError('owner.users.read_for_password_reset', targetReadError, {
+      actorId: access.userId,
+      targetId: userId,
+    })
+    redirect(userErrorHref(PASSWORD_RESET_ERROR))
+  }
   if (!target) return
   if (
     !canManageUser(
@@ -141,8 +191,27 @@ async function resetPassword(userId: string, formData: FormData) {
     return
   const temp = formData.get('temp_password') as string
   if (!temp || temp.length < 8) redirect('/owner/users?msg=Password+must+be+at+least+8+characters.')
-  await supabase.auth.admin.updateUserById(userId, { password: temp })
-  await supabase.from('users').update({ force_password_change: true }).eq('id', userId)
+  const { error: authUpdateError } = await supabase.auth.admin.updateUserById(userId, {
+    password: temp,
+  })
+  if (authUpdateError) {
+    reportServerError('owner.users.password_reset_auth', authUpdateError, {
+      actorId: access.userId,
+      targetId: userId,
+    })
+    redirect(userErrorHref(PASSWORD_RESET_ERROR))
+  }
+  const { error: profileUpdateError } = await supabase
+    .from('users')
+    .update({ force_password_change: true })
+    .eq('id', userId)
+  if (profileUpdateError) {
+    reportServerError('owner.users.password_reset_profile', profileUpdateError, {
+      actorId: access.userId,
+      targetId: userId,
+    })
+    redirect(userErrorHref(PASSWORD_RESET_ERROR))
+  }
   await logAuditEvent({
     actorId: access.userId,
     action: 'user.password_reset',
@@ -167,11 +236,18 @@ async function deleteUser(userId: string) {
   if (!canAccessOwnerArea(access.role)) redirect(getDefaultAppPath(access.role))
 
   const supabase = await createServiceClient()
-  const { data: target } = await supabase
+  const { data: target, error: targetReadError } = await supabase
     .from('users')
     .select('id, email, display_name, role')
     .eq('id', userId)
     .single()
+  if (targetReadError) {
+    reportServerError('owner.users.read_for_delete', targetReadError, {
+      actorId: access.userId,
+      targetId: userId,
+    })
+    redirect(userErrorHref(USER_DELETE_ERROR))
+  }
   if (!target) return
   if (
     !canManageUser(
@@ -180,7 +256,14 @@ async function deleteUser(userId: string) {
     )
   )
     return
-  await supabase.auth.admin.deleteUser(userId)
+  const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId)
+  if (authDeleteError) {
+    reportServerError('owner.users.delete_auth', authDeleteError, {
+      actorId: access.userId,
+      targetId: userId,
+    })
+    redirect(userErrorHref(USER_DELETE_ERROR))
+  }
   await logAuditEvent({
     actorId: access.userId,
     action: 'user.deleted',
@@ -205,9 +288,10 @@ export default async function OwnerUsersPage({
     confirm?: string
     add?: string
     err?: string
+    error?: string
   }>
 }) {
-  const { role: filterRole, msg, edit, confirm, add, err } = await searchParams
+  const { role: filterRole, msg, edit, confirm, add, err, error } = await searchParams
   const isAdding = add === 'true'
   const access = await getCurrentAccessContext()
   if (!access) redirect('/login')
@@ -330,6 +414,12 @@ export default async function OwnerUsersPage({
       {msg && (
         <div className="rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-3 font-mono text-sm text-[var(--color-status-submitted-text)]">
           {msg}
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-xl bg-[var(--color-status-rejected-bg)] px-4 py-3 text-sm text-[var(--color-status-rejected-text)]">
+          {error}
         </div>
       )}
 

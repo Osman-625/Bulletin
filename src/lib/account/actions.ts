@@ -4,8 +4,12 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { logAuditEvent } from '@/lib/audit'
 import { getDefaultAppPath } from '@/lib/auth/authz'
+import { reportServerError } from '@/lib/error-reporting'
 import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
 import { createClient } from '@/lib/supabase/server'
+
+const ACCOUNT_PROFILE_ERROR = 'Could not update profile. Try again.'
+const ACCOUNT_PASSWORD_ERROR = 'Could not update password. Try again.'
 
 const SETTINGS_PATHS = new Set([
   '/dashboard/settings',
@@ -40,8 +44,12 @@ export async function updateDisplayName(formData: FormData) {
   const supabase = await createClient()
   const {
     data: { user },
+    error: userReadError,
   } = await supabase.auth.getUser()
 
+  if (userReadError) {
+    reportServerError('account.display_name.user_read_failed', userReadError)
+  }
   if (!user) redirect('/login')
 
   const rateLimit = await checkActionRateLimit('account-display-name', user.id)
@@ -53,26 +61,44 @@ export async function updateDisplayName(formData: FormData) {
     redirectWithStatus(returnTo, 'error', 'Display name must be at least 2 characters.')
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileReadError } = await supabase
     .from('users')
     .select('display_name, role')
     .eq('id', user.id)
     .single()
 
+  if (profileReadError) {
+    reportServerError('account.display_name.profile_read_failed', profileReadError, {
+      user_id: user.id,
+    })
+    redirectWithStatus(returnTo, 'error', ACCOUNT_PROFILE_ERROR)
+  }
   if (!profile?.role) redirect('/login?error=profile_missing')
 
-  const { error: profileError } = await supabase
+  const { error: profileUpdateError } = await supabase
     .from('users')
     .update({ display_name: displayName })
     .eq('id', user.id)
 
-  if (profileError) redirectWithStatus(returnTo, 'error', profileError.message)
+  if (profileUpdateError) {
+    reportServerError('account.display_name.profile_update_failed', profileUpdateError, {
+      user_id: user.id,
+    })
+    redirectWithStatus(returnTo, 'error', ACCOUNT_PROFILE_ERROR)
+  }
 
-  await supabase.auth.updateUser({
+  const { error: authMetadataUpdateError } = await supabase.auth.updateUser({
     data: {
       display_name: displayName,
     },
   })
+
+  if (authMetadataUpdateError) {
+    reportServerError('account.display_name.auth_metadata_update_failed', authMetadataUpdateError, {
+      user_id: user.id,
+    })
+    redirectWithStatus(returnTo, 'error', ACCOUNT_PROFILE_ERROR)
+  }
 
   await logAuditEvent({
     actorId: user.id,
@@ -98,8 +124,12 @@ export async function updateAccountPassword(formData: FormData) {
   const supabase = await createClient()
   const {
     data: { user },
+    error: userReadError,
   } = await supabase.auth.getUser()
 
+  if (userReadError) {
+    reportServerError('account.password.user_read_failed', userReadError)
+  }
   if (!user) redirect('/login')
 
   const rateLimit = await checkActionRateLimit('account-password', user.id)
@@ -117,8 +147,18 @@ export async function updateAccountPassword(formData: FormData) {
   if (currentPassword === newPassword)
     redirectWithStatus(returnTo, 'error', 'Choose a password you are not already using.')
 
-  const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).single()
+  const { data: profile, error: profileReadError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
 
+  if (profileReadError) {
+    reportServerError('account.password.profile_read_failed', profileReadError, {
+      user_id: user.id,
+    })
+    redirectWithStatus(returnTo, 'error', ACCOUNT_PASSWORD_ERROR)
+  }
   if (!profile?.role) redirect('/login?error=profile_missing')
 
   const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -126,12 +166,38 @@ export async function updateAccountPassword(formData: FormData) {
     password: currentPassword,
   })
 
-  if (signInError) redirectWithStatus(returnTo, 'error', 'Current password is incorrect.')
+  if (signInError) {
+    reportServerError('account.password.current_password_rejected', signInError, {
+      user_id: user.id,
+    })
+    redirectWithStatus(returnTo, 'error', 'Current password is incorrect.')
+  }
 
-  const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
-  if (updateError) redirectWithStatus(returnTo, 'error', updateError.message)
+  const { error: authPasswordUpdateError } = await supabase.auth.updateUser({
+    password: newPassword,
+  })
+  if (authPasswordUpdateError) {
+    reportServerError('account.password.auth_update_failed', authPasswordUpdateError, {
+      user_id: user.id,
+    })
+    redirectWithStatus(returnTo, 'error', ACCOUNT_PASSWORD_ERROR)
+  }
 
-  await supabase.from('users').update({ force_password_change: false }).eq('id', user.id)
+  const { error: forcePasswordChangeError } = await supabase
+    .from('users')
+    .update({ force_password_change: false })
+    .eq('id', user.id)
+
+  if (forcePasswordChangeError) {
+    reportServerError(
+      'account.password.force_password_change_update_failed',
+      forcePasswordChangeError,
+      {
+        user_id: user.id,
+      }
+    )
+    redirectWithStatus(returnTo, 'error', ACCOUNT_PASSWORD_ERROR)
+  }
 
   await logAuditEvent({
     actorId: user.id,

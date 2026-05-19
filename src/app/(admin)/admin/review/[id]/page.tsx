@@ -183,6 +183,14 @@ export default async function ReviewDetailPage({
               Add feedback before returning this to the publisher.
             </div>
           )}
+          {error === 'review_failed' && (
+            <div
+              role="alert"
+              className="rounded-[1rem] border border-[var(--color-status-rejected-text)]/25 bg-[var(--color-status-rejected-bg)] px-4 py-3 text-sm text-[var(--color-status-rejected-text)]"
+            >
+              Could not save the review decision. Try again.
+            </div>
+          )}
           <form action={review} className="space-y-4">
             <div>
               <label

@@ -1,0 +1,41 @@
+import { readFileSync } from 'node:fs'
+import { describe, expect, it } from 'vitest'
+
+function source(path: string) {
+  return readFileSync(path, 'utf8')
+}
+
+describe('data helper error handling source guards', () => {
+  it('logs Supabase read failures for admin and platform data helpers', () => {
+    const data = source('src/lib/data.ts')
+
+    expect(data).toContain("from '@/lib/error-reporting'")
+    expect(data).toContain('submittedAnnouncementsError')
+    expect(data).toContain('reviewAnnouncementError')
+    expect(data).toContain('organizationsError')
+    expect(data).toContain('orgWithMembersError')
+    expect(data).toContain('publishersError')
+    expect(data).toContain('visibleUsersError')
+    expect(data).toContain('adminsError')
+    expect(data).toContain('platformStatsError')
+    expect(data).toContain("reportServerError('data.submitted_announcements.query_failed'")
+    expect(data).toContain("reportServerError('data.review_announcement.query_failed'")
+    expect(data).toContain("reportServerError('data.organizations.query_failed'")
+    expect(data).toContain("reportServerError('data.organization_with_members.query_failed'")
+    expect(data).toContain("reportServerError('data.publishers.query_failed'")
+    expect(data).toContain("reportServerError('data.visible_users.query_failed'")
+    expect(data).toContain("reportServerError('data.admins.query_failed'")
+    expect(data).toContain("reportServerError('data.platform_stats.query_failed'")
+  })
+
+  it('checks admin stats query errors before returning dashboard numbers', () => {
+    const data = source('src/lib/data.ts')
+
+    expect(data).toContain('pendingReviewError')
+    expect(data).toContain('publishedThisMonthError')
+    expect(data).toContain('totalOrgsError')
+    expect(data).toContain('adminStatsPublishersError')
+    expect(data).toContain('adminStatsError')
+    expect(data).toContain("reportServerError('data.admin_stats.query_failed'")
+  })
+})

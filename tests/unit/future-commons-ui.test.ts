@@ -130,7 +130,7 @@ describe('Future Commons production UI guards', () => {
     expect(publicLoading).not.toContain('campus-logo-halo')
     expect(publicLoading).not.toContain('loading-signal')
     expect(publicLoading).not.toContain('float-soft')
-    expect(header).toContain('size="lg"')
+    expect(header).toContain('size="md"')
     expect(globals).toContain('--color-mark-bg')
     expect(globals).toContain('--color-mark-plate')
     expect(globals).toContain('@keyframes signal-ring')
@@ -168,9 +168,52 @@ describe('Future Commons production UI guards', () => {
     const categoryFilter = source('src/components/announcements/CategoryFilter.tsx')
 
     expect(publicHome).toContain('mobile-search-dock')
-    expect(publicHome).toContain('Search exam, yoga, deadlines...')
+    expect(publicHome).toContain('Search clubs, workshops, deadlines...')
     expect(publicHome).toContain('CategoryFilter categories={topics}')
     expect(categoryFilter).toContain('No topics available yet')
+  })
+
+  it('renders publisher form guardrails for uploads, scheduling, body length, and destructive actions', () => {
+    const form = source('src/components/dashboard/AnnouncementForm.tsx')
+    const actionBar = source('src/components/dashboard/ActionBar.tsx')
+
+    expect(form).toContain('ANNOUNCEMENT_BODY_MAX')
+    expect(form).toContain('announcement-body-count')
+    expect(form).toContain('scheduled-publish-at-error')
+    expect(form).toContain('role="alertdialog"')
+    expect(form).toContain('organizationId')
+    expect(form).toContain('supabase.auth.getUser()')
+    expect(form).toContain('bannerUploadError')
+    expect(actionBar).toContain('showUnpublishConfirm')
+    expect(actionBar).toContain('Unpublishing will hide this announcement from the public feed.')
+  })
+
+  it('warns before idle session logout instead of silently redirecting', () => {
+    const idleLogout = source('src/components/auth/IdleLogout.tsx')
+
+    expect(idleLogout).toContain('IDLE_WARNING_MS')
+    expect(idleLogout).toContain('Still there?')
+    expect(idleLogout).toContain('Stay logged in')
+    expect(idleLogout).toContain('aria-modal="true"')
+  })
+
+  it('keeps dashboard mobile navigation scrollable and closes it after route changes', () => {
+    const shell = source('src/components/dashboard/DashboardShell.tsx')
+    const sidebar = source('src/components/dashboard/DashboardSidebar.tsx')
+
+    expect(shell).toContain('usePathname')
+    expect(shell).toContain('setMobileOpen(false)')
+    expect(sidebar).toContain('min-h-0')
+    expect(sidebar).toContain('overflow-y-auto')
+  })
+
+  it('strengthens category filter focus and touch affordances', () => {
+    const categoryFilter = source('src/components/announcements/CategoryFilter.tsx')
+
+    expect(categoryFilter).toContain('focus-visible:ring-[var(--color-accent-inti)]')
+    expect(categoryFilter).toContain('focus-visible:ring-offset-2')
+    expect(categoryFilter).toContain('min-h-11')
+    expect(categoryFilter).toContain('sr-only')
   })
 
   it('uses semantic announcement URLs and clear card actions', () => {
@@ -193,10 +236,16 @@ describe('Future Commons production UI guards', () => {
     const urgent = URGENCY_META.urgent
 
     expect(
-      contrastRatio(resolveColor(important.tone, globals), resolveBackground(important.background, globals))
+      contrastRatio(
+        resolveColor(important.tone, globals),
+        resolveBackground(important.background, globals)
+      )
     ).toBeGreaterThanOrEqual(4.5)
     expect(
-      contrastRatio(resolveColor(urgent.tone, globals), resolveBackground(urgent.background, globals))
+      contrastRatio(
+        resolveColor(urgent.tone, globals),
+        resolveBackground(urgent.background, globals)
+      )
     ).toBeGreaterThanOrEqual(4.5)
     expect(card).toContain("color: 'var(--color-accent-hover)'")
     expect(card).toContain("color: 'var(--color-text-primary)'")
@@ -243,7 +292,7 @@ describe('Future Commons production UI guards', () => {
     expect(publicHome).toContain('sectionBoardClass')
     expect(publicHome).toContain('priority-lane-board')
     expect(publicHome).toContain('dense-bento-board')
-    expect(publicHome).toContain('grid gap-4 md:grid-cols-2 md:items-start xl:grid-cols-3')
+    expect(publicHome).toContain('grid gap-4 md:grid-cols-2 xl:grid-cols-3')
     expect(publicHome).toContain('dense-bento-item')
     expect(publicHome).toContain('dense-bento-section-heading')
     expect(publicHome).toContain('xl:grid-cols-3')
@@ -265,7 +314,9 @@ describe('Future Commons production UI guards', () => {
     expect(card).toContain("'poster' | 'letterbox' | 'stamp' | 'ribbon'")
     expect(globals).toContain('grid-auto-flow: dense')
     expect(globals).toContain('grid-auto-rows: var(--dense-bento-row)')
-    expect(globals).toContain('.priority-lane-board .dense-bento-item:first-child:nth-last-child(2)')
+    expect(globals).toContain(
+      '.priority-lane-board .dense-bento-item:first-child:nth-last-child(2)'
+    )
     expect(globals).toContain('@media (min-width: 768px)')
     expect(globals).toContain('.dense-bento-section-heading')
     expect(globals).toContain('.hero-poster-card')

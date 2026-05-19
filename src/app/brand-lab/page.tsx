@@ -59,6 +59,10 @@ const commonsLabel = Faculty_Glyphic({
 export const metadata: Metadata = {
   title: 'Brand Lab',
   description: 'INTI-inspired brand directions and design-system mockups for Bulletin.',
+  robots: {
+    index: false,
+    follow: false,
+  },
 }
 
 export default async function BrandLabPage({

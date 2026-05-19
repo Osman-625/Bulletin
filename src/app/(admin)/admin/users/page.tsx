@@ -12,6 +12,7 @@ import {
   type ScopedUser,
 } from '@/lib/auth/authz'
 import { getVisibleUsersForAdmin } from '@/lib/data'
+import { reportServerError } from '@/lib/error-reporting'
 import { createServiceClient } from '@/lib/supabase/server'
 
 export const metadata = { title: 'Users - Bulletin Admin' }
@@ -27,16 +28,30 @@ const LEVEL_COLOR: Record<string, string> = {
 }
 
 const EDITABLE_ROLES: AppRole[] = ['publisher']
+const ADMIN_USERS_PATH = '/admin/users'
+const USER_UPDATE_ERROR = 'Could not update user. Try again.'
+const PASSWORD_RESET_ERROR = 'Could not reset password. Try again.'
+const USER_DELETE_ERROR = 'Could not delete user. Try again.'
 
-async function getTargetUser(targetId: string): Promise<ScopedUser & { email: string; displayName: string }> {
+function userErrorHref(message: string) {
+  return `${ADMIN_USERS_PATH}?error=${encodeURIComponent(message)}`
+}
+
+async function getTargetUser(
+  targetId: string
+): Promise<ScopedUser & { email: string; displayName: string }> {
   const supabase = await createServiceClient()
-  const { data: target } = await supabase
+  const { data: target, error: targetReadError } = await supabase
     .from('users')
     .select('id, email, display_name, role, organization_members ( organization_id )')
     .eq('id', targetId)
     .single()
 
-  if (!target) throw new Error('User not found')
+  if (targetReadError) {
+    reportServerError('admin.users.read_target', targetReadError, { targetId })
+    redirect(userErrorHref(USER_UPDATE_ERROR))
+  }
+  if (!target) redirect('/admin/users?error=User+not+found')
 
   return {
     id: target.id,
@@ -75,7 +90,18 @@ async function setRole(userId: string, newRole: string) {
   }
 
   const supabase = await createServiceClient()
-  await supabase.from('users').update({ role: newRole as AppRole }).eq('id', userId)
+  const { error: roleUpdateError } = await supabase
+    .from('users')
+    .update({ role: newRole as AppRole })
+    .eq('id', userId)
+  if (roleUpdateError) {
+    reportServerError('admin.users.role_confirm', roleUpdateError, {
+      actorId: access.userId,
+      targetId: userId,
+      role: newRole,
+    })
+    redirect(userErrorHref(USER_UPDATE_ERROR))
+  }
   await logAuditEvent({
     actorId: access.userId,
     action: 'user.role_confirmed',
@@ -99,8 +125,27 @@ async function resetPassword(userId: string, formData: FormData) {
   const supabase = await createServiceClient()
   const temp = formData.get('temp_password') as string
   if (!temp || temp.length < 8) redirect('/admin/users?msg=Password+must+be+at+least+8+characters.')
-  await supabase.auth.admin.updateUserById(userId, { password: temp })
-  await supabase.from('users').update({ force_password_change: true }).eq('id', userId)
+  const { error: authUpdateError } = await supabase.auth.admin.updateUserById(userId, {
+    password: temp,
+  })
+  if (authUpdateError) {
+    reportServerError('admin.users.password_reset_auth', authUpdateError, {
+      actorId: access.userId,
+      targetId: userId,
+    })
+    redirect(userErrorHref(PASSWORD_RESET_ERROR))
+  }
+  const { error: profileUpdateError } = await supabase
+    .from('users')
+    .update({ force_password_change: true })
+    .eq('id', userId)
+  if (profileUpdateError) {
+    reportServerError('admin.users.password_reset_profile', profileUpdateError, {
+      actorId: access.userId,
+      targetId: userId,
+    })
+    redirect(userErrorHref(PASSWORD_RESET_ERROR))
+  }
   await logAuditEvent({
     actorId: access.userId,
     action: 'user.password_reset',
@@ -124,7 +169,14 @@ async function deleteUser(userId: string) {
   if (target.role !== 'publisher') throw new Error('Insufficient privilege')
 
   const supabase = await createServiceClient()
-  await supabase.auth.admin.deleteUser(userId)
+  const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId)
+  if (authDeleteError) {
+    reportServerError('admin.users.delete_auth', authDeleteError, {
+      actorId: access.userId,
+      targetId: userId,
+    })
+    redirect(userErrorHref(USER_DELETE_ERROR))
+  }
   await logAuditEvent({
     actorId: access.userId,
     action: 'user.deleted',
@@ -143,9 +195,15 @@ async function deleteUser(userId: string) {
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ role?: string; msg?: string; edit?: string; confirm?: string }>
+  searchParams: Promise<{
+    role?: string
+    msg?: string
+    edit?: string
+    confirm?: string
+    error?: string
+  }>
 }) {
-  const { role: filterRole, msg, edit, confirm } = await searchParams
+  const { role: filterRole, msg, edit, confirm, error } = await searchParams
   const access = await getCurrentAccessContext()
   if (!access) redirect('/login')
   if (!canAccessAdminArea(access.role)) redirect(getDefaultAppPath(access.role))
@@ -171,25 +229,33 @@ export default async function AdminUsersPage({
   const separator = base.includes('?') ? '&' : '?'
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-[var(--color-text-primary)] tracking-tight">Users</h1>
-          <p className="text-[var(--color-text-secondary)] mt-1">
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
+            Users
+          </h1>
+          <p className="mt-1 text-[var(--color-text-secondary)]">
             {users.length} users{filterRole ? ` - ${ROLE_LABELS[filterRole] ?? filterRole}` : ''}
           </p>
         </div>
         <Link
           href="/admin/publishers/invite"
-          className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity shrink-0"
+          className="shrink-0 rounded-xl bg-[var(--color-accent)] px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
         >
           Invite Publisher
         </Link>
       </div>
 
       {msg && (
-        <div className="px-4 py-3 rounded-xl bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)] text-sm font-mono">
+        <div className="rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-3 font-mono text-sm text-[var(--color-status-submitted-text)]">
           {msg}
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-xl bg-[var(--color-status-rejected-bg)] px-4 py-3 text-sm text-[var(--color-status-rejected-text)]">
+          {error}
         </div>
       )}
 
@@ -204,7 +270,7 @@ export default async function AdminUsersPage({
           <a
             key={key}
             href={key ? `/admin/users?role=${key}` : '/admin/users'}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               filterRole === key || (!filterRole && !key)
                 ? 'bg-[var(--color-accent)] text-white'
                 : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
@@ -223,7 +289,9 @@ export default async function AdminUsersPage({
           const target: ScopedUser = {
             id: user.id,
             role,
-            orgIds: (user.organization_members ?? []).map((membership: { organization_id: string }) => membership.organization_id),
+            orgIds: (user.organization_members ?? []).map(
+              (membership: { organization_id: string }) => membership.organization_id
+            ),
           }
           const canManage = role === 'publisher' && canManageUser(actor, target)
 
@@ -243,40 +311,42 @@ export default async function AdminUsersPage({
                     : ''
               }
             >
-              <div className="px-5 py-4 flex items-center gap-4">
-                <div className="h-9 w-9 rounded-full bg-[var(--color-surface-elevated)] flex items-center justify-center shrink-0">
+              <div className="flex items-center gap-4 px-5 py-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-elevated)]">
                   <span className="text-sm font-bold text-[var(--color-text-secondary)]">
                     {user.display_name.charAt(0).toUpperCase()}
                   </span>
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">{user.display_name}</p>
-                    <span className="text-[15px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                      {user.display_name}
+                    </p>
+                    <span className="rounded bg-[var(--color-surface-elevated)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-text-muted)] uppercase">
                       {ROLE_LABELS[role] ?? role}
                     </span>
                     <span
-                      className="text-[15px] font-mono font-bold px-1.5 py-0.5 rounded bg-[var(--color-surface-elevated)]"
+                      className="rounded bg-[var(--color-surface-elevated)] px-1.5 py-0.5 font-mono text-[15px] font-bold"
                       style={{ color: LEVEL_COLOR[role] ?? 'var(--color-text-muted)' }}
                     >
                       L{role === 'admin' ? 2 : 3}
                     </span>
                     {user.id === access.userId && (
-                      <span className="text-[15px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-accent-surface)] text-[var(--color-accent)]">
+                      <span className="rounded bg-[var(--color-accent-surface)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-accent)] uppercase">
                         You
                       </span>
                     )}
                     {user.force_password_change && (
-                      <span className="text-[15px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)]">
+                      <span className="rounded bg-[var(--color-status-submitted-bg)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-status-submitted-text)] uppercase">
                         Must change pw
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{user.email}</p>
+                  <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{user.email}</p>
                 </div>
 
-                <p className="text-xs font-mono text-[var(--color-text-muted)] shrink-0 hidden sm:block">
+                <p className="hidden shrink-0 font-mono text-xs text-[var(--color-text-muted)] sm:block">
                   {new Date(user.created_at).toLocaleDateString('en-MY', {
                     day: 'numeric',
                     month: 'short',
@@ -285,16 +355,16 @@ export default async function AdminUsersPage({
                 </p>
 
                 {canManage && !isEditing && !isConfirming && (
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex shrink-0 gap-2">
                     <a
                       href={`${base}${separator}edit=${user.id}`}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors"
+                      className="rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
                     >
                       Edit
                     </a>
                     <a
                       href={`${base}${separator}confirm=${user.id}`}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--color-status-rejected-bg)] text-[var(--color-status-rejected-text)] hover:opacity-80 transition-opacity"
+                      className="rounded-lg bg-[var(--color-status-rejected-bg)] px-3 py-1.5 text-xs font-medium text-[var(--color-status-rejected-text)] transition-opacity hover:opacity-80"
                     >
                       Delete
                     </a>
@@ -304,7 +374,7 @@ export default async function AdminUsersPage({
                 {(isEditing || isConfirming) && (
                   <a
                     href={base}
-                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] transition-colors shrink-0"
+                    className="shrink-0 rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
                   >
                     Cancel
                   </a>
@@ -312,28 +382,33 @@ export default async function AdminUsersPage({
               </div>
 
               {isEditing && canManage && (
-                <div className="px-5 pb-4 pt-3 border-t border-[var(--color-border)] space-y-4">
-                  <p className="text-xs font-medium text-[var(--color-text-secondary)] uppercase tracking-wider">Publisher Controls</p>
+                <div className="space-y-4 border-t border-[var(--color-border)] px-5 pt-3 pb-4">
+                  <p className="text-xs font-medium tracking-wider text-[var(--color-text-secondary)] uppercase">
+                    Publisher Controls
+                  </p>
                   <form action={setRole.bind(null, user.id, 'publisher')}>
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--color-accent)] text-white"
+                      className="rounded-xl bg-[var(--color-accent)] px-4 py-2 text-xs font-semibold text-white"
                     >
-                      Keep as Publisher <span className="opacity-60 font-mono">L3</span>
+                      Keep as Publisher <span className="font-mono opacity-60">L3</span>
                     </button>
                   </form>
-                  <form action={resetPassword.bind(null, user.id)} className="flex gap-2 items-center">
+                  <form
+                    action={resetPassword.bind(null, user.id)}
+                    className="flex items-center gap-2"
+                  >
                     <input
                       name="temp_password"
                       type="password"
                       required
                       minLength={8}
                       placeholder="New temp password"
-                      className="px-3 py-2 rounded-lg text-sm bg-[var(--color-surface-elevated)] text-[var(--color-text-primary)] border border-[var(--color-border)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)] w-48"
+                      className="w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
                     />
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)] hover:opacity-80 transition-opacity shrink-0"
+                      className="shrink-0 rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-2 text-xs font-semibold text-[var(--color-status-submitted-text)] transition-opacity hover:opacity-80"
                     >
                       Set Password
                     </button>
@@ -342,17 +417,18 @@ export default async function AdminUsersPage({
               )}
 
               {isConfirming && canManage && (
-                <div className="px-5 pb-4 pt-3 border-t border-[var(--color-border)] space-y-3">
+                <div className="space-y-3 border-t border-[var(--color-border)] px-5 pt-3 pb-4">
                   <p className="text-sm font-semibold text-[var(--color-status-rejected-text)]">
                     Delete {user.display_name}?
                   </p>
                   <p className="text-xs text-[var(--color-text-secondary)]">
-                    This permanently removes their account and all associated data. This cannot be undone.
+                    This permanently removes their account and all associated data. This cannot be
+                    undone.
                   </p>
                   <form action={deleteUser.bind(null, user.id)}>
                     <button
                       type="submit"
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--color-status-rejected-text)] text-white hover:opacity-80 transition-opacity"
+                      className="rounded-xl bg-[var(--color-status-rejected-text)] px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-80"
                     >
                       Yes, delete permanently
                     </button>

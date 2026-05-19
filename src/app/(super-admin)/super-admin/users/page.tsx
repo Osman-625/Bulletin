@@ -12,6 +12,7 @@ import {
   type ScopedUser,
 } from '@/lib/auth/authz'
 import { syncAuthUsersToProfiles } from '@/lib/auth/sync-users'
+import { reportServerError } from '@/lib/error-reporting'
 import { createServiceClient } from '@/lib/supabase/server'
 import { PasswordResetRequestButton } from './PasswordResetRequestButton'
 
@@ -27,6 +28,18 @@ const LEVEL_COLOR: Record<string, string> = {
   super_admin: '#7C3AED',
   admin: 'var(--color-accent-inti)',
   publisher: 'var(--color-text-muted)',
+}
+
+const SUPER_ADMIN_USERS_PATH = '/super-admin/users'
+const USER_CREATE_ERROR = 'Could not create user. Try again.'
+const USER_UPDATE_ERROR = 'Could not update user. Try again.'
+const PASSWORD_RESET_ERROR = 'Could not reset password. Try again.'
+const USER_DELETE_ERROR = 'Could not delete user. Try again.'
+
+function userErrorHref(message: string, add = false) {
+  const key = add ? 'err' : 'error'
+  const prefix = add ? `${SUPER_ADMIN_USERS_PATH}?add=true&` : `${SUPER_ADMIN_USERS_PATH}?`
+  return `${prefix}${key}=${encodeURIComponent(message)}`
 }
 
 async function getUsers() {
@@ -55,13 +68,17 @@ async function getTargetUser(
   targetId: string
 ): Promise<ScopedUser & { email: string; displayName: string }> {
   const supabase = await createServiceClient()
-  const { data: user } = await supabase
+  const { data: user, error: targetReadError } = await supabase
     .from('users')
     .select('id, email, display_name, role')
     .eq('id', targetId)
     .single()
 
-  if (!user) throw new Error('User not found')
+  if (targetReadError) {
+    reportServerError('super_admin.users.read_target', targetReadError, { targetId })
+    redirect(userErrorHref(USER_UPDATE_ERROR))
+  }
+  if (!user) redirect('/super-admin/users?error=User+not+found')
   return {
     id: user.id,
     email: user.email,
@@ -110,23 +127,37 @@ async function createUser(formData: FormData) {
   }
 
   const supabase = await createServiceClient()
-  const { data: authData, error } = await supabase.auth.admin.createUser({
+  const { data: authData, error: authCreateError } = await supabase.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
     user_metadata: { display_name: displayName, role },
   })
 
-  if (error || !authData.user) {
-    redirect(`/super-admin/users?add=true&err=${encodeURIComponent(error?.message ?? 'Failed')}`)
+  if (authCreateError || !authData.user) {
+    reportServerError(
+      'super_admin.users.create_auth',
+      authCreateError ?? new Error('Supabase Auth did not return a user'),
+      { actorId: access.userId, email, role }
+    )
+    redirect(userErrorHref(USER_CREATE_ERROR, true))
   }
 
-  await supabase
+  const { error: profileUpsertError } = await supabase
     .from('users')
     .upsert(
       { id: authData.user.id, email, display_name: displayName, role, force_password_change: true },
       { onConflict: 'id' }
     )
+  if (profileUpsertError) {
+    reportServerError('super_admin.users.create_profile', profileUpsertError, {
+      actorId: access.userId,
+      targetId: authData.user.id,
+      email,
+      role,
+    })
+    redirect(userErrorHref(USER_CREATE_ERROR, true))
+  }
   await logAuditEvent({
     actorId: access.userId,
     action: 'user.created',
@@ -153,7 +184,15 @@ async function setRole(userId: string, newRole: string) {
   if (!assignableRoles.includes(role)) throw new Error('Cannot manage this user')
 
   const supabase = await createServiceClient()
-  await supabase.from('users').update({ role }).eq('id', userId)
+  const { error: roleUpdateError } = await supabase.from('users').update({ role }).eq('id', userId)
+  if (roleUpdateError) {
+    reportServerError('super_admin.users.role_change', roleUpdateError, {
+      actorId: access.userId,
+      targetId: userId,
+      role,
+    })
+    redirect(userErrorHref(USER_UPDATE_ERROR))
+  }
   await logAuditEvent({
     actorId: access.userId,
     action: 'user.role_changed',
@@ -177,8 +216,27 @@ async function resetPassword(userId: string, formData: FormData) {
   const temp = formData.get('temp_password') as string
   if (!temp || temp.length < 8)
     redirect('/super-admin/users?msg=Password+must+be+at+least+8+characters.')
-  await supabase.auth.admin.updateUserById(userId, { password: temp })
-  await supabase.from('users').update({ force_password_change: true }).eq('id', userId)
+  const { error: authUpdateError } = await supabase.auth.admin.updateUserById(userId, {
+    password: temp,
+  })
+  if (authUpdateError) {
+    reportServerError('super_admin.users.password_reset_auth', authUpdateError, {
+      actorId: access.userId,
+      targetId: userId,
+    })
+    redirect(userErrorHref(PASSWORD_RESET_ERROR))
+  }
+  const { error: profileUpdateError } = await supabase
+    .from('users')
+    .update({ force_password_change: true })
+    .eq('id', userId)
+  if (profileUpdateError) {
+    reportServerError('super_admin.users.password_reset_profile', profileUpdateError, {
+      actorId: access.userId,
+      targetId: userId,
+    })
+    redirect(userErrorHref(PASSWORD_RESET_ERROR))
+  }
   await logAuditEvent({
     actorId: access.userId,
     action: 'user.password_reset',
@@ -202,7 +260,14 @@ async function deleteUser(userId: string) {
 
   const { access, target } = await assertSuperAdminCanManage(userId)
   const supabase = await createServiceClient()
-  await supabase.auth.admin.deleteUser(userId)
+  const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId)
+  if (authDeleteError) {
+    reportServerError('super_admin.users.delete_auth', authDeleteError, {
+      actorId: access.userId,
+      targetId: userId,
+    })
+    redirect(userErrorHref(USER_DELETE_ERROR))
+  }
   await logAuditEvent({
     actorId: access.userId,
     action: 'user.deleted',
@@ -227,6 +292,7 @@ export default async function SuperAdminUsersPage({
     confirm?: string
     add?: string
     err?: string
+    error?: string
     reset_request?: string
   }>
 }) {
@@ -237,6 +303,7 @@ export default async function SuperAdminUsersPage({
     confirm,
     add,
     err,
+    error,
     reset_request: highlightedResetRequest,
   } = await searchParams
   const isAdding = add === 'true'
@@ -372,6 +439,12 @@ export default async function SuperAdminUsersPage({
       {msg && (
         <div className="rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-3 font-mono text-sm text-[var(--color-status-submitted-text)]">
           {msg}
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-xl bg-[var(--color-status-rejected-bg)] px-4 py-3 text-sm text-[var(--color-status-rejected-text)]">
+          {error}
         </div>
       )}
 

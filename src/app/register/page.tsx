@@ -17,9 +17,15 @@ export default async function RegisterPage({
     return (
       <div className="flex min-h-screen items-center justify-center bg-[var(--color-canvas)] p-4">
         <div className="future-panel max-w-md space-y-3 rounded-[1.5rem] p-7 text-center">
-          <p className="text-lg font-semibold text-[var(--color-text-primary)]">Invalid invite link</p>
-          <p className="text-sm text-[var(--color-text-muted)]">This link is missing a token. Please request a new invite.</p>
-          <Link href="/login" className="text-sm text-[var(--color-accent)] hover:underline">Go to login</Link>
+          <p className="text-lg font-semibold text-[var(--color-text-primary)]">
+            Invalid invite link
+          </p>
+          <p className="text-sm text-[var(--color-text-muted)]">
+            This link is missing a token. Please request a new invite.
+          </p>
+          <Link href="/login" className="text-sm text-[var(--color-accent)] hover:underline">
+            Go to login
+          </Link>
         </div>
       </div>
     )
@@ -43,8 +49,12 @@ export default async function RegisterPage({
           <p className="text-lg font-semibold text-[var(--color-text-primary)]">
             {isUsed ? 'Invite already used' : 'Invite link expired'}
           </p>
-          <p className="text-sm text-[var(--color-text-muted)]">Please request a new invite from your administrator.</p>
-          <Link href="/login" className="text-sm text-[var(--color-accent)] hover:underline">Go to login</Link>
+          <p className="text-sm text-[var(--color-text-muted)]">
+            Please request a new invite from your administrator.
+          </p>
+          <Link href="/login" className="text-sm text-[var(--color-accent)] hover:underline">
+            Go to login
+          </Link>
         </div>
       </div>
     )
@@ -59,14 +69,24 @@ export default async function RegisterPage({
         <BrandMark size="lg" preload className="justify-center" textClassName="text-center" />
 
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Create your account</h1>
-          <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-            Invited as <strong>{invitation.email}</strong> · {invitation.role.replace('_', ' ')}
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
+            Create your account
+          </h1>
+          <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+            Invited as <strong>{invitation.email}</strong> ·{' '}
+            {(
+              {
+                publisher: 'Publisher',
+                admin: 'Admin',
+                super_admin: 'Super admin',
+                owner: 'Owner',
+              } as Record<string, string>
+            )[invitation.role] ?? invitation.role}
           </p>
         </div>
 
         {error && (
-          <div className="px-4 py-3 rounded-xl bg-[var(--color-status-rejected-bg)] text-[var(--color-status-rejected-text)] text-sm text-center">
+          <div className="rounded-xl bg-[var(--color-status-rejected-bg)] px-4 py-3 text-center text-sm text-[var(--color-status-rejected-text)]">
             {error}
           </div>
         )}
@@ -75,19 +95,29 @@ export default async function RegisterPage({
           <input type="hidden" name="token" value={token} />
 
           <div className="space-y-1.5">
-            <label htmlFor="display_name" className="block text-sm font-medium text-[var(--color-text-secondary)]">Display Name</label>
+            <label
+              htmlFor="display_name"
+              className="block text-sm font-medium text-[var(--color-text-secondary)]"
+            >
+              Display Name
+            </label>
             <input
               id="display_name"
               name="display_name"
               type="text"
               required
               placeholder="Your full name"
-              className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none input-inti"
+              className="input-inti w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="password" className="block text-sm font-medium text-[var(--color-text-secondary)]">Password</label>
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-[var(--color-text-secondary)]"
+            >
+              Password
+            </label>
             <input
               id="password"
               name="password"
@@ -95,21 +125,23 @@ export default async function RegisterPage({
               required
               minLength={8}
               placeholder="At least 8 characters"
-              className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none input-inti"
+              className="input-inti w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white transition-colors"
+            className="w-full rounded-xl bg-[var(--color-accent)] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)]"
           >
-            Create Account
+            Create account
           </button>
         </form>
 
         <p className="text-center text-xs text-[var(--color-text-muted)]">
           Already have an account?{' '}
-          <Link href="/login" className="text-[var(--color-accent)] hover:underline">Sign in</Link>
+          <Link href="/login" className="text-[var(--color-accent)] hover:underline">
+            Sign in
+          </Link>
         </p>
       </div>
     </div>

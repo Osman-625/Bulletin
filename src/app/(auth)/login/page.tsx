@@ -42,7 +42,7 @@ export default async function LoginPage({
               Welcome back
             </h1>
             <p className="mt-4 hidden text-base leading-7 text-[var(--color-text-secondary)] sm:block sm:text-lg lg:mt-5">
-              Sign in to manage announcements, approvals, and campus communications for Bulletin.
+              Sign in to post notices, review submissions, and keep campus informed.
             </p>
           </div>
 

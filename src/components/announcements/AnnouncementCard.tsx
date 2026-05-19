@@ -208,7 +208,7 @@ function StandardCard({
         </div>
       )}
 
-      <div className="announcement-card-body flex min-h-0 flex-1 flex-col p-5">
+      <div className="announcement-card-body flex min-h-0 flex-1 flex-col p-4">
         {hasBadgeRow && (
           <div className="announcement-card-badges mb-3 flex flex-wrap items-center gap-2">
             {urgency !== 'normal' && <StatusChip label={urgencyMeta.label} tone="urgency" />}
@@ -258,7 +258,7 @@ function StandardCard({
           >
             {organizations?.name}
           </span>
-          <span className="shrink-0 font-mono text-[0.66rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase transition-colors group-hover:text-[var(--color-accent)]">
+          <span className="shrink-0 font-mono text-[0.66rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase transition-colors group-hover:text-[var(--color-accent)] group-hover:underline">
             Read details
           </span>
         </div>
@@ -421,7 +421,7 @@ function FeaturedCard({
       </div>
 
       {/* Content */}
-      <div className="announcement-card-body flex min-h-0 flex-1 flex-col p-5 sm:p-6">
+      <div className="announcement-card-body flex min-h-0 flex-1 flex-col p-4 sm:p-5">
         {hasBadgeRow && (
           <div className="announcement-card-badges mb-4 flex flex-wrap items-center gap-2">
             {urgency !== 'normal' && <StatusChip label={urgencyMeta.label} tone="urgency" />}

@@ -75,15 +75,15 @@ const superAdminNav: NavItem[] = [
 ]
 
 const ownerNav: NavItem[] = [
-  { href: '/owner', label: 'System', icon: LayoutDashboard, exact: true },
+  { href: '/owner', label: 'Overview', icon: LayoutDashboard, exact: true },
   { href: '/super-admin', label: 'Super admin desk', icon: ShieldCheck, exact: true },
   { href: '/admin', label: 'Admin desk', icon: ClipboardList, exact: true },
   { href: '/dashboard', label: 'Publisher desk', icon: Megaphone, exact: true },
   { href: '/owner/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/owner/resources', label: 'Resources', icon: Activity },
-  { href: '/owner/users', label: 'All Users', icon: Users },
+  { href: '/owner/users', label: 'All users', icon: Users },
   { href: '/owner/categories', label: 'Categories', icon: Tag },
-  { href: '/owner/audit', label: 'Audit Log', icon: ScrollText },
+  { href: '/owner/audit', label: 'Audit log', icon: ScrollText },
   { href: '/owner/settings', label: 'Settings', icon: Settings },
   { href: '/', label: 'Public board', icon: Newspaper, exact: true },
 ]
@@ -214,7 +214,7 @@ export function DashboardSidebar({
           <BrandMark size="sm" showText textClassName="hidden xl:block" className="xl:gap-3" />
         </div>
 
-        <nav className="flex-1 space-y-1.5 px-2 py-4 xl:px-4">
+        <nav className="min-h-0 flex-1 space-y-1.5 overflow-y-auto px-2 py-4 xl:px-4">
           <NavLinks navItems={visibleNavItems} pathname={pathname} />
         </nav>
 
@@ -274,7 +274,7 @@ export function DashboardSidebar({
         <div className="border-b border-[var(--color-border)] px-6 pb-3">
           <BrandMark size="sm" />
         </div>
-        <nav className="space-y-1 px-4 py-3">
+        <nav className="max-h-[min(70dvh,32rem)] space-y-1 overflow-y-auto px-4 py-3">
           <NavLinks navItems={visibleNavItems} pathname={pathname} onClick={onMobileClose} />
         </nav>
         <div className="flex items-center justify-between border-t border-[var(--color-border)] px-4 pt-2 pb-6">

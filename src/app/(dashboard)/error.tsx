@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { reportClientError } from '@/lib/client-error-reporting'
 
 export default function DashboardError({
   error,
@@ -10,7 +11,9 @@ export default function DashboardError({
   reset: () => void
 }) {
   useEffect(() => {
-    console.error(error)
+    reportClientError('dashboard.error_boundary', error, {
+      digest: error.digest ?? null,
+    })
   }, [error])
 
   return (

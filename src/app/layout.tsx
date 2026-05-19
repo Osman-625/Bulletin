@@ -45,7 +45,7 @@ export default function RootLayout({
       className={`${atkinsonHyperlegible.variable} ${geistMono.variable} ${bricolageGrotesque.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="flex min-h-full flex-col" suppressHydrationWarning>
+      <body className="flex min-h-full flex-col">
         <Providers>{children}</Providers>
         <SpeedInsights />
       </body>

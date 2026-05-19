@@ -1,6 +1,7 @@
 import { cache } from 'react'
 import { createClient, createServiceClient } from './supabase/server'
 import { getCurrentAccessContext } from './auth/authz'
+import { reportServerError } from '@/lib/error-reporting'
 import type { Database } from './database.types'
 import type { DbNotification } from './types'
 
@@ -31,24 +32,28 @@ function trimBody(value: string) {
   return value.length > 220 ? `${value.slice(0, 217)}...` : value
 }
 
-export const getUnreadNotificationCount = cache(async function getUnreadNotificationCount(): Promise<number> {
-  const access = await getCurrentAccessContext()
-  if (!access) return 0
+export const getUnreadNotificationCount = cache(
+  async function getUnreadNotificationCount(): Promise<number> {
+    const access = await getCurrentAccessContext()
+    if (!access) return 0
 
-  const supabase = await createClient()
-  const { count, error } = await supabase
-    .from('notifications')
-    .select('id', { count: 'exact', head: true })
-    .eq('recipient_id', access.userId)
-    .is('read_at', null)
+    const supabase = await createClient()
+    const { count, error } = await supabase
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('recipient_id', access.userId)
+      .is('read_at', null)
 
-  if (error) {
-    console.error('[getUnreadNotificationCount]', error.message, error.code)
-    return 0
+    if (error) {
+      reportServerError('notifications.unread_count.query_failed', error, {
+        userId: access.userId,
+      })
+      return 0
+    }
+
+    return count ?? 0
   }
-
-  return count ?? 0
-})
+)
 
 export async function getNotificationsForCurrentUser(): Promise<DbNotification[]> {
   const access = await getCurrentAccessContext()
@@ -63,7 +68,9 @@ export async function getNotificationsForCurrentUser(): Promise<DbNotification[]
     .limit(50)
 
   if (error) {
-    console.error('[getNotificationsForCurrentUser]', error.message, error.code)
+    reportServerError('notifications.current_user.query_failed', error, {
+      userId: access.userId,
+    })
     return []
   }
 
@@ -85,7 +92,10 @@ export async function createNotificationsForUsers(
 
   const { error } = await supabase.from('notifications').insert(rows)
   if (error) {
-    console.error('[createNotificationsForUsers]', error.message, error.code)
+    reportServerError('notifications.create_for_users.insert_failed', error, {
+      recipientCount: recipients.length,
+      type: notification.type,
+    })
   }
 }
 
@@ -102,10 +112,7 @@ export async function notifyAnnouncementSubmitted({
       .select('user_id')
       .eq('organization_id', organizationId)
       .eq('member_role', 'admin'),
-    supabase
-      .from('users')
-      .select('id')
-      .in('role', ['owner', 'super_admin']),
+    supabase.from('users').select('id').in('role', ['owner', 'super_admin']),
   ])
 
   const recipients = compactUnique([

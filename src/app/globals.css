@@ -280,8 +280,9 @@
   *,
   *::before,
   *::after {
-    animation-duration: 0ms !important;
-    transition-duration: 0ms !important;
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -640,6 +641,13 @@
     min-width: 0;
   }
 
+  .urgent-bento-item [data-testid='announcement-card'] {
+    border-color: color-mix(in oklab, var(--color-accent-inti) 34%, var(--color-border)) !important;
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-accent-inti) 16%, transparent),
+      var(--shadow-soft) !important;
+  }
+
   .announcement-card-summary-clamp {
     display: -webkit-box !important;
     overflow: hidden !important;
@@ -648,6 +656,10 @@
 
   .announcement-card-summary-clamp-2 {
     -webkit-line-clamp: 2;
+  }
+
+  .announcement-card-summary-clamp-3 {
+    -webkit-line-clamp: 3;
   }
 
   .campus-logo-halo {
@@ -688,7 +700,12 @@
     );
     content: '';
     transform: translateX(-36%);
-    animation: loading-scan 1.6s var(--ease-ui) infinite alternate;
+    opacity: 0;
+  }
+
+  .loading-signal-active::after {
+    opacity: 1;
+    animation: loading-scan 600ms var(--ease-ui) 1 both;
   }
 
   .float-soft {
@@ -831,6 +848,12 @@
     font-size: 0.82rem;
   }
 
+  /* Cap image panel height so wide-span tiles don't get dominated by a tall image */
+  .dense-bento-board [data-card-media],
+  .priority-lane-board [data-card-media] {
+    max-height: 9rem;
+  }
+
   .dense-bento-board [data-card-media='poster'],
   .priority-lane-board [data-card-media='poster'] {
     aspect-ratio: 16 / 9;
@@ -866,8 +889,8 @@
   *,
   *::before,
   *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
   }
 }

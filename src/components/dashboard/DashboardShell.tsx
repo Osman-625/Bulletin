@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { DashboardSidebar } from './DashboardSidebar'
 import { DashboardTopNav } from './DashboardTopNav'
 
@@ -46,6 +47,12 @@ export function DashboardShell({
   unreadNotificationCount = 0,
 }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const pathname = usePathname()
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMobileOpen(false), 0)
+    return () => window.clearTimeout(timer)
+  }, [pathname])
 
   return (
     <div className="dashboard-canvas min-h-[100dvh] bg-[var(--color-canvas)]">

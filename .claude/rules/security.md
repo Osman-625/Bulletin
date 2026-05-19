@@ -4,6 +4,7 @@ paths:
   - 'src/app/(auth)/**'
   - 'src/app/**/actions.ts'
   - 'src/lib/**'
+  - 'src/proxy.ts'
 ---
 
 # Security

@@ -57,3 +57,9 @@ next-env.d.ts
 # Git worktrees
 .worktrees/
 .env*.local
+.graphify_ast.json
+.graphify_python
+.graphify_uncached.txt
+.graphify_detect.json
+.graphify_cached.json
+scripts/screenshots

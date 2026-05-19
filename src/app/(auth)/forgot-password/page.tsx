@@ -34,7 +34,7 @@ export default async function ForgotPasswordPage({
               Forgot your password?
             </h1>
             <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">
-              Submit your email and an administrator will issue a temporary password.
+              Enter your email and we&apos;ll pass your reset request to an administrator.
             </p>
           </div>
         </div>

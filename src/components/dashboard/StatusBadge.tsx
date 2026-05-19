@@ -4,7 +4,7 @@ const statusLabels: Record<Status, string> = {
   published: 'Published',
   draft: 'Draft',
   submitted: 'In review',
-  rejected: 'Returned',
+  rejected: 'Needs edits',
   expired: 'Expired',
   archived: 'Archived',
 }

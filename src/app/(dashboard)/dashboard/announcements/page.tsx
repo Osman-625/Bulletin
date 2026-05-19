@@ -11,6 +11,8 @@ import type { DbAnnouncement } from '@/lib/types'
 
 export const metadata = { title: 'Announcements' }
 
+const DASHBOARD_ANNOUNCEMENTS_LIMIT = 250
+
 type QueryRow = Pick<
   DbAnnouncement,
   | 'id'
@@ -49,6 +51,7 @@ export default async function AnnouncementsPage({
   let pendingDrafts = 0
   let scheduled = 0
   let archived = 0
+  let totalAnnouncements = 0
 
   let query = supabase
     .from('announcements')
@@ -70,9 +73,11 @@ export default async function AnnouncementsPage({
       categories ( id, name, color ),
       organizations ( id, name ),
       author:users!announcements_author_id_fkey ( display_name )
-    `
+    `,
+      { count: 'exact' }
     )
     .order('updated_at', { ascending: false })
+    .range(0, DASHBOARD_ANNOUNCEMENTS_LIMIT - 1)
 
   if (scopeToMembership) {
     if (access.orgIds.length === 0) {
@@ -82,7 +87,8 @@ export default async function AnnouncementsPage({
     }
   }
 
-  const { data: rows } = await query
+  const { data: rows, count } = await query
+  totalAnnouncements = count ?? rows?.length ?? 0
 
   if (rows) {
     const rawRows = rows as unknown as QueryRow[]
@@ -155,7 +161,7 @@ export default async function AnnouncementsPage({
         <div className="dashboard-command-card rounded-[1.5rem] p-5 xl:col-span-4">
           <p className="future-kicker">Total</p>
           <CountUp
-            value={announcements.length}
+            value={totalAnnouncements}
             className="mt-5 block font-mono text-4xl font-bold text-[var(--color-text-primary)]"
           />
           <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">

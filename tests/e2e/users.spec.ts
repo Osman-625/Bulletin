@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { loginAs } from './helpers/auth'
-import { requireEnv } from './helpers/env'
+import { hasEnv, requireEnv } from './helpers/env'
 import { resetPublisherAccount } from './helpers/admin'
 
 function userCard(page: Page, email: string) {
@@ -60,7 +60,9 @@ test.describe('Super-admin user management', () => {
     await expect(page.getByRole('heading', { name: /users/i })).toBeVisible()
   })
 
-  test('role injection via form tamper is blocked (role must be admin-tier or below)', async ({ page }) => {
+  test('role injection via form tamper is blocked (role must be admin-tier or below)', async ({
+    page,
+  }) => {
     // POST directly to the create user action is blocked by CSRF + server-side role check.
     // Verify the page has no <select> or <input> that exposes "owner" as an option.
     const ownerOption = page.locator('option[value="owner"], input[value="owner"]')
@@ -89,6 +91,10 @@ test.describe('Super-admin user management', () => {
 
 test.describe('Owner user management', () => {
   test.beforeEach(async ({ page }) => {
+    test.skip(
+      !hasEnv('TEST_OWNER_EMAIL', 'TEST_OWNER_PASSWORD'),
+      'Owner E2E credentials are not configured in this environment'
+    )
     await loginAs(page, 'owner')
     await page.goto('/owner/users')
   })

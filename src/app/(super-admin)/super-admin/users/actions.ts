@@ -10,11 +10,20 @@ import {
   getDefaultAppPath,
   type AppRole,
 } from '@/lib/auth/authz'
+import { reportServerError } from '@/lib/error-reporting'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export type PasswordResetRequestState = {
   error?: string
   success?: string
+}
+
+const SUPER_ADMIN_USERS_PATH = '/super-admin/users'
+const PASSWORD_RESET_ERROR = 'Could not reset password. Try again.'
+const PASSWORD_RESET_REQUEST_ERROR = 'Could not fulfill password reset request. Try again.'
+
+function usersErrorHref(message: string) {
+  return `${SUPER_ADMIN_USERS_PATH}?error=${encodeURIComponent(message)}`
 }
 
 export async function resetUserPassword(formData: FormData) {
@@ -30,12 +39,19 @@ export async function resetUserPassword(formData: FormData) {
   }
 
   const adminClient = createAdminClient()
-  const { data: targetProfile } = await adminClient
+  const { data: targetProfile, error: targetReadError } = await adminClient
     .from('users')
     .select('id, email, display_name, role')
     .eq('id', targetUserId)
     .single()
 
+  if (targetReadError) {
+    reportServerError('super_admin.users.actions.read_target', targetReadError, {
+      actorId: access.userId,
+      targetId: targetUserId,
+    })
+    redirect(usersErrorHref(PASSWORD_RESET_ERROR))
+  }
   if (!targetProfile) redirect('/super-admin/users?error=User+not+found')
 
   const canManage = canManageUser(
@@ -45,13 +61,29 @@ export async function resetUserPassword(formData: FormData) {
 
   if (!canManage) redirect('/super-admin/users?error=Cannot+manage+this+user')
 
-  const { error: authError } = await adminClient.auth.admin.updateUserById(targetUserId, {
+  const { error: authUpdateError } = await adminClient.auth.admin.updateUserById(targetUserId, {
     password: tempPassword,
   })
 
-  if (authError) redirect(`/super-admin/users?error=${encodeURIComponent(authError.message)}`)
+  if (authUpdateError) {
+    reportServerError('super_admin.users.actions.reset_auth', authUpdateError, {
+      actorId: access.userId,
+      targetId: targetUserId,
+    })
+    redirect(usersErrorHref(PASSWORD_RESET_ERROR))
+  }
 
-  await adminClient.from('users').update({ force_password_change: true }).eq('id', targetUserId)
+  const { error: profileUpdateError } = await adminClient
+    .from('users')
+    .update({ force_password_change: true })
+    .eq('id', targetUserId)
+  if (profileUpdateError) {
+    reportServerError('super_admin.users.actions.reset_profile', profileUpdateError, {
+      actorId: access.userId,
+      targetId: targetUserId,
+    })
+    redirect(usersErrorHref(PASSWORD_RESET_ERROR))
+  }
 
   await logAuditEvent({
     actorId: access.userId,
@@ -87,21 +119,36 @@ export async function fulfillPasswordResetRequest(
   }
 
   const adminClient = createAdminClient()
-  const { data: resetRequest } = await adminClient
+  const { data: resetRequest, error: requestReadError } = await adminClient
     .from('password_reset_requests')
     .select('id, user_id, email, status')
     .eq('id', requestId)
     .single()
 
+  if (requestReadError) {
+    reportServerError('super_admin.users.actions.read_reset_request', requestReadError, {
+      actorId: access.userId,
+      requestId,
+    })
+    return { error: PASSWORD_RESET_REQUEST_ERROR }
+  }
   if (!resetRequest) return { error: 'Reset request was not found.' }
   if (resetRequest.status !== 'pending') return { error: 'This reset request was already handled.' }
 
-  const { data: targetProfile } = await adminClient
+  const { data: targetProfile, error: targetReadError } = await adminClient
     .from('users')
     .select('id, email, display_name, role')
     .eq('id', resetRequest.user_id)
     .single()
 
+  if (targetReadError) {
+    reportServerError('super_admin.users.actions.read_request_target', targetReadError, {
+      actorId: access.userId,
+      requestId,
+      targetId: resetRequest.user_id,
+    })
+    return { error: PASSWORD_RESET_REQUEST_ERROR }
+  }
   if (!targetProfile) return { error: 'The requested user no longer exists.' }
 
   const canManage = canManageUser(
@@ -112,15 +159,33 @@ export async function fulfillPasswordResetRequest(
   if (!canManage) return { error: 'You cannot reset this user from here.' }
 
   const now = new Date().toISOString()
-  const { error: authError } = await adminClient.auth.admin.updateUserById(targetProfile.id, {
+  const { error: authUpdateError } = await adminClient.auth.admin.updateUserById(targetProfile.id, {
     password: tempPassword,
   })
 
-  if (authError) return { error: authError.message }
+  if (authUpdateError) {
+    reportServerError('super_admin.users.actions.fulfill_reset_auth', authUpdateError, {
+      actorId: access.userId,
+      requestId,
+      targetId: targetProfile.id,
+    })
+    return { error: PASSWORD_RESET_REQUEST_ERROR }
+  }
 
-  await adminClient.from('users').update({ force_password_change: true }).eq('id', targetProfile.id)
+  const { error: profileUpdateError } = await adminClient
+    .from('users')
+    .update({ force_password_change: true })
+    .eq('id', targetProfile.id)
+  if (profileUpdateError) {
+    reportServerError('super_admin.users.actions.fulfill_reset_profile', profileUpdateError, {
+      actorId: access.userId,
+      requestId,
+      targetId: targetProfile.id,
+    })
+    return { error: PASSWORD_RESET_REQUEST_ERROR }
+  }
 
-  await adminClient
+  const { error: requestUpdateError } = await adminClient
     .from('password_reset_requests')
     .update({
       status: 'fulfilled',
@@ -129,6 +194,14 @@ export async function fulfillPasswordResetRequest(
       updated_at: now,
     })
     .eq('id', resetRequest.id)
+  if (requestUpdateError) {
+    reportServerError('super_admin.users.actions.fulfill_reset_request', requestUpdateError, {
+      actorId: access.userId,
+      requestId: resetRequest.id,
+      targetId: targetProfile.id,
+    })
+    return { error: PASSWORD_RESET_REQUEST_ERROR }
+  }
 
   await logAuditEvent({
     actorId: access.userId,

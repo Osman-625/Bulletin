@@ -2,12 +2,26 @@
 
 import { redirect } from 'next/navigation'
 import { logAuditEvent } from '@/lib/audit'
-import { createClient } from '@/lib/supabase/server'
+import { reportServerError } from '@/lib/error-reporting'
 import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
+import { createClient } from '@/lib/supabase/server'
+
+const CHANGE_PASSWORD_PATH = '/change-password'
+const PASSWORD_CHANGE_ERROR = 'Could not finish updating your password. Try again.'
+
+function changePasswordErrorHref(message: string) {
+  return `${CHANGE_PASSWORD_PATH}?error=${encodeURIComponent(message)}`
+}
 
 export async function changePassword(formData: FormData) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+    error: userReadError,
+  } = await supabase.auth.getUser()
+  if (userReadError) {
+    reportServerError('auth.change_password.read_user', userReadError)
+  }
   if (!user) redirect('/login')
 
   const rateLimit = await checkActionRateLimit('change-password', user.id)
@@ -25,11 +39,22 @@ export async function changePassword(formData: FormData) {
     redirect('/change-password?error=Passwords+do+not+match')
   }
 
-  const { error } = await supabase.auth.updateUser({ password })
-  if (error) redirect(`/change-password?error=${encodeURIComponent(error.message)}`)
+  const { error: authUpdateError } = await supabase.auth.updateUser({ password })
+  if (authUpdateError) {
+    reportServerError('auth.change_password.update_auth', authUpdateError, { actorId: user.id })
+    redirect(changePasswordErrorHref(PASSWORD_CHANGE_ERROR))
+  }
 
-  // Clear the force_password_change flag
-  await supabase.from('users').update({ force_password_change: false }).eq('id', user.id)
+  const { error: profileUpdateError } = await supabase
+    .from('users')
+    .update({ force_password_change: false })
+    .eq('id', user.id)
+  if (profileUpdateError) {
+    reportServerError('auth.change_password.update_profile', profileUpdateError, {
+      actorId: user.id,
+    })
+    redirect(changePasswordErrorHref(PASSWORD_CHANGE_ERROR))
+  }
   await logAuditEvent({
     actorId: user.id,
     action: 'user.password_changed',
@@ -39,11 +64,14 @@ export async function changePassword(formData: FormData) {
   })
 
   // Redirect to the appropriate dashboard
-  const { data: profile } = await supabase
+  const { data: profile, error: profileReadError } = await supabase
     .from('users')
     .select('role')
     .eq('id', user.id)
     .single()
+  if (profileReadError) {
+    reportServerError('auth.change_password.read_profile', profileReadError, { actorId: user.id })
+  }
 
   if (profile?.role === 'owner') redirect('/owner')
   if (profile?.role === 'super_admin') redirect('/super-admin')
