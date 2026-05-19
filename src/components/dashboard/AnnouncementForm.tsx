@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
+import { unstable_rethrow, useRouter } from 'next/navigation'
 import NextImage from 'next/image'
 import {
   AlertTriangle,
@@ -21,6 +21,8 @@ import { GlassCard } from './GlassCard'
 import type { AutosaveStatus } from './AutosaveIndicator'
 import type { PostStatus } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
+import { ANNOUNCEMENT_BODY_MAX, ANNOUNCEMENT_TITLE_MAX } from '@/lib/announcements/form'
+import { reportClientError } from '@/lib/client-error-reporting'
 import {
   ANNOUNCEMENT_DISPLAY_FONTS,
   ANNOUNCEMENT_DISPLAY_SIZES,
@@ -66,6 +68,7 @@ export type AnnouncementFormData = {
 interface AnnouncementFormProps {
   initialData: AnnouncementFormData
   categories: CategoryOption[]
+  organizationId?: string | null
   onSave: (formData: FormData) => Promise<{ success: boolean } | void>
   onPublish?: () => Promise<{ success: boolean } | void>
   onSaveAndPublish?: (formData: FormData) => Promise<{ success: boolean } | void>
@@ -76,7 +79,7 @@ interface AnnouncementFormProps {
 
 // ─── Helpers ─────────────────────────────────────────────────
 
-const TITLE_MAX = 120
+const BANNER_MAX_FILE_SIZE = 5 * 1024 * 1024
 
 function isValidUrl(str: string): boolean {
   try {
@@ -106,11 +109,17 @@ function isFutureDateTime(value: string): boolean {
   return !Number.isNaN(date.getTime()) && date.getTime() > Date.now()
 }
 
+function futureDateTimeError(value: string, label: string): string {
+  if (!value) return ''
+  return isFutureDateTime(value) ? '' : `${label} must be in the future or left blank.`
+}
+
 // ─── Component ───────────────────────────────────────────────
 
 export function AnnouncementForm({
   initialData,
   categories,
+  organizationId,
   onSave,
   onPublish,
   onSaveAndPublish,
@@ -146,7 +155,10 @@ export function AnnouncementForm({
   const [urlError, setUrlError] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [bannerSizeError, setBannerSizeError] = useState(false)
+  const [bannerUploadError, setBannerUploadError] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [formError, setFormError] = useState('')
 
   const bodyRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -169,6 +181,11 @@ export function AnnouncementForm({
     displayFont,
     displaySize,
   ])
+
+  useEffect(() => {
+    if (formError) setFormError('')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, body, scheduledPublishAt, pinnedUntil, registrationLink])
 
   // Auto-grow textarea
   useEffect(() => {
@@ -225,6 +242,19 @@ export function AnnouncementForm({
   // ─── Handlers ────────────────────────────────────────────────
 
   async function handleSave() {
+    setFormError('')
+    const hasTimingError =
+      Boolean(futureDateTimeError(scheduledPublishAt, 'Publish time')) ||
+      Boolean(futureDateTimeError(pinnedUntil, 'Pin end time'))
+    if (hasTimingError) {
+      setFormError(
+        futureDateTimeError(scheduledPublishAt, 'Publish time') ||
+          futureDateTimeError(pinnedUntil, 'Pin end time')
+      )
+      setSaveState('error')
+      return
+    }
+
     setIsSaving(true)
     setSaveState('saving')
     try {
@@ -233,7 +263,10 @@ export function AnnouncementForm({
       setSaveState('saved')
       dirtyRef.current = false
       lastSaveRef.current = Date.now()
-    } catch {
+    } catch (error) {
+      unstable_rethrow(error)
+      reportClientError('announcement_form.save', error)
+      setFormError(error instanceof Error ? error.message : 'Could not save announcement.')
       setSaveState('error')
     } finally {
       setIsSaving(false)
@@ -241,6 +274,26 @@ export function AnnouncementForm({
   }
 
   async function handlePublish() {
+    setFormError('')
+    const readyError = getReadyForReviewError()
+    if (readyError) {
+      setFormError(readyError)
+      setSaveState('error')
+      return
+    }
+
+    const hasTimingError =
+      Boolean(futureDateTimeError(scheduledPublishAt, 'Publish time')) ||
+      Boolean(futureDateTimeError(pinnedUntil, 'Pin end time'))
+    if (hasTimingError) {
+      setFormError(
+        futureDateTimeError(scheduledPublishAt, 'Publish time') ||
+          futureDateTimeError(pinnedUntil, 'Pin end time')
+      )
+      setSaveState('error')
+      return
+    }
+
     setIsPublishing(true)
     setSaveState('saving')
     try {
@@ -254,7 +307,10 @@ export function AnnouncementForm({
         setSaveState('saved')
         dirtyRef.current = false
       }
-    } catch {
+    } catch (error) {
+      unstable_rethrow(error)
+      reportClientError('announcement_form.submit', error)
+      setFormError(error instanceof Error ? error.message : 'Could not submit announcement.')
       setSaveState('error')
     } finally {
       setIsPublishing(false)
@@ -268,7 +324,10 @@ export function AnnouncementForm({
       await onUnpublish()
       setStatus('draft')
       setSaveState('saved')
-    } catch {
+    } catch (error) {
+      unstable_rethrow(error)
+      reportClientError('announcement_form.unpublish', error)
+      setFormError(error instanceof Error ? error.message : 'Could not update announcement.')
       setSaveState('error')
     } finally {
       setIsPublishing(false)
@@ -278,7 +337,15 @@ export function AnnouncementForm({
   async function handleDelete() {
     if (!onDelete) return
     startTransition(async () => {
-      await onDelete()
+      try {
+        await onDelete()
+      } catch (error) {
+        unstable_rethrow(error)
+        reportClientError('announcement_form.delete', error)
+        setFormError(error instanceof Error ? error.message : 'Could not delete announcement.')
+        setSaveState('error')
+        setShowDeleteConfirm(false)
+      }
     })
   }
 
@@ -290,18 +357,36 @@ export function AnnouncementForm({
     }
   }
 
+  function getReadyForReviewError(): string {
+    if (!title.trim()) return 'Add a title before submitting for review.'
+    if (!body.trim()) return 'Add announcement body before submitting for review.'
+    return ''
+  }
+
   // ─── Banner upload ───────────────────────────────────────────
 
   async function uploadBanner(file: File) {
+    setBannerSizeError(false)
+    setBannerUploadError('')
+    if (file.size > BANNER_MAX_FILE_SIZE) {
+      setBannerSizeError(true)
+      return
+    }
     setIsUploading(true)
     try {
       const supabase = createClient()
-      const ext = file.name.split('.').pop() ?? 'jpg'
-      const path = `${crypto.randomUUID()}.${ext}`
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
 
-      const { error: uploadError } = await supabase.storage
-        .from('banner-images')
-        .upload(path, file, { upsert: true })
+      if (userError || !user) throw new Error('Sign in again before uploading an image.')
+
+      const ext = (file.name.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+      const organizationSegment = organizationId ?? 'unassigned'
+      const path = `${user.id}/${organizationSegment}/${crypto.randomUUID()}.${ext || 'jpg'}`
+
+      const { error: uploadError } = await supabase.storage.from('banner-images').upload(path, file)
 
       if (uploadError) throw uploadError
 
@@ -310,8 +395,13 @@ export function AnnouncementForm({
       } = supabase.storage.from('banner-images').getPublicUrl(path)
 
       setBannerUrl(publicUrl)
-    } catch (err) {
-      console.error('Banner upload failed:', err)
+    } catch (error) {
+      reportClientError('announcement_form.banner_upload', error, {
+        fileSize: file.size,
+        fileType: file.type || null,
+        organizationId: organizationId ?? null,
+      })
+      setBannerUploadError('Upload failed. Try another image or sign in again.')
     } finally {
       setIsUploading(false)
     }
@@ -343,6 +433,8 @@ export function AnnouncementForm({
   const titleFontClass = getAnnouncementTitleFontClass(displayFont)
   const isScheduled = isFutureDateTime(scheduledPublishAt)
   const isPinned = isFutureDateTime(pinnedUntil)
+  const scheduledPublishError = futureDateTimeError(scheduledPublishAt, 'Publish time')
+  const pinnedUntilError = futureDateTimeError(pinnedUntil, 'Pin end time')
 
   // ─── Render ──────────────────────────────────────────────────
 
@@ -370,8 +462,22 @@ export function AnnouncementForm({
         {onDelete && !isNew && (
           <div className="relative">
             {showDeleteConfirm ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[var(--color-destructive)]">Delete this?</span>
+              <div
+                role="alertdialog"
+                aria-modal="false"
+                aria-labelledby="delete-announcement-title"
+                aria-describedby="delete-announcement-description"
+                className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--color-destructive)]/30 bg-[var(--color-surface)] p-2 shadow-[var(--shadow-soft)]"
+              >
+                <span
+                  id="delete-announcement-title"
+                  className="text-xs font-semibold text-[var(--color-destructive)]"
+                >
+                  Delete this?
+                </span>
+                <span id="delete-announcement-description" className="sr-only">
+                  This permanently deletes the announcement and cannot be undone.
+                </span>
                 <button
                   type="button"
                   onClick={handleDelete}
@@ -434,14 +540,14 @@ export function AnnouncementForm({
               Title
             </label>
             <span className="font-mono text-[15px] text-[var(--color-text-muted)]">
-              {title.length}/{TITLE_MAX}
+              {title.length}/{ANNOUNCEMENT_TITLE_MAX}
             </span>
           </div>
           <input
             id="announcement-title"
             type="text"
             value={title}
-            onChange={(e) => setTitle(e.target.value.slice(0, TITLE_MAX))}
+            onChange={(e) => setTitle(e.target.value.slice(0, ANNOUNCEMENT_TITLE_MAX))}
             placeholder="Announcement title"
             className={cn(
               'w-full py-3 text-xl font-semibold',
@@ -466,9 +572,11 @@ export function AnnouncementForm({
             id="announcement-body"
             ref={bodyRef}
             value={body}
-            onChange={(e) => setBody(e.target.value)}
+            onChange={(e) => setBody(e.target.value.slice(0, ANNOUNCEMENT_BODY_MAX))}
             placeholder="Write the announcement body…"
             rows={6}
+            maxLength={ANNOUNCEMENT_BODY_MAX}
+            aria-describedby="announcement-body-count"
             className={cn(
               'w-full resize-none py-3 text-base leading-relaxed',
               'bg-transparent text-[var(--color-text-primary)]',
@@ -478,7 +586,22 @@ export function AnnouncementForm({
               'transition-colors duration-200'
             )}
           />
+          <div
+            id="announcement-body-count"
+            className="mt-1.5 text-right font-mono text-[15px] text-[var(--color-text-muted)]"
+          >
+            {body.length}/{ANNOUNCEMENT_BODY_MAX}
+          </div>
         </div>
+
+        {formError && (
+          <div
+            role="alert"
+            className="rounded-2xl border border-[var(--color-destructive)]/25 bg-[var(--color-status-rejected-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-destructive)]"
+          >
+            {formError}
+          </div>
+        )}
 
         {/* Category */}
         <div>
@@ -670,6 +793,16 @@ export function AnnouncementForm({
                 <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                   JPG, PNG, or WebP — max 5MB
                 </p>
+                {bannerSizeError && (
+                  <p className="mt-1 text-xs font-semibold text-[var(--color-destructive)]">
+                    File exceeds 5 MB limit. Choose a smaller image.
+                  </p>
+                )}
+                {bannerUploadError && (
+                  <p className="mt-1 text-xs font-semibold text-[var(--color-destructive)]">
+                    {bannerUploadError}
+                  </p>
+                )}
               </div>
             </button>
           )}
@@ -730,7 +863,7 @@ export function AnnouncementForm({
               htmlFor="scheduled-publish-at"
               className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
             >
-              Publish At <span className="tracking-normal normal-case">(optional)</span>
+              Schedule for later <span className="tracking-normal normal-case">(optional)</span>
             </label>
             <div className="relative">
               <Clock
@@ -742,17 +875,37 @@ export function AnnouncementForm({
                 type="datetime-local"
                 value={scheduledPublishAt}
                 onChange={(e) => setScheduledPublishAt(e.target.value)}
+                aria-invalid={Boolean(scheduledPublishError)}
+                aria-describedby={
+                  scheduledPublishError
+                    ? 'scheduled-publish-at-error scheduled-publish-at-help'
+                    : 'scheduled-publish-at-help'
+                }
                 className={cn(
                   'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
                   'bg-transparent text-[var(--color-text-primary)]',
-                  'border border-[var(--color-glass-border)]',
-                  'focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
+                  'border',
+                  scheduledPublishError
+                    ? 'border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30'
+                    : 'border-[var(--color-glass-border)] focus:border-[var(--color-accent)] focus:ring-[var(--color-accent)]/30',
+                  'focus:ring-2 focus:outline-none',
                   'transition-all duration-200'
                 )}
               />
             </div>
-            <p className="mt-1.5 text-xs text-[var(--color-text-muted)]">
-              Leave blank to publish immediately after approval.
+            {scheduledPublishError && (
+              <p
+                id="scheduled-publish-at-error"
+                className="mt-1.5 text-xs text-[var(--color-destructive)]"
+              >
+                {scheduledPublishError}
+              </p>
+            )}
+            <p
+              id="scheduled-publish-at-help"
+              className="mt-1.5 text-xs text-[var(--color-text-muted)]"
+            >
+              Leave blank to go live right after approval.
             </p>
           </div>
 
@@ -773,17 +926,29 @@ export function AnnouncementForm({
                 type="datetime-local"
                 value={pinnedUntil}
                 onChange={(e) => setPinnedUntil(e.target.value)}
+                aria-invalid={Boolean(pinnedUntilError)}
+                aria-describedby={
+                  pinnedUntilError ? 'pinned-until-error pinned-until-help' : 'pinned-until-help'
+                }
                 className={cn(
                   'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
                   'bg-transparent text-[var(--color-text-primary)]',
-                  'border border-[var(--color-glass-border)]',
-                  'focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
+                  'border',
+                  pinnedUntilError
+                    ? 'border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30'
+                    : 'border-[var(--color-glass-border)] focus:border-[var(--color-accent)] focus:ring-[var(--color-accent)]/30',
+                  'focus:ring-2 focus:outline-none',
                   'transition-all duration-200'
                 )}
               />
             </div>
-            <p className="mt-1.5 text-xs text-[var(--color-text-muted)]">
-              Pinned posts stay first on the public feed.
+            {pinnedUntilError && (
+              <p id="pinned-until-error" className="mt-1.5 text-xs text-[var(--color-destructive)]">
+                {pinnedUntilError}
+              </p>
+            )}
+            <p id="pinned-until-help" className="mt-1.5 text-xs text-[var(--color-text-muted)]">
+              Pinned posts stay first on the public board.
             </p>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import type { User } from '@supabase/supabase-js'
+import { reportServerError } from '@/lib/error-reporting'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { UserRole } from '@/lib/types'
 
@@ -51,7 +52,10 @@ export async function ensureAuthUserProfile(user: User): Promise<boolean> {
     .upsert(authUserToProfileInsert(user), { onConflict: 'id', ignoreDuplicates: true })
 
   if (error) {
-    console.error('[ensureAuthUserProfile]', error.message)
+    reportServerError('auth.ensure_user_profile.upsert_failed', error, {
+      userId: user.id,
+      email: user.email ?? null,
+    })
     return false
   }
 
@@ -63,7 +67,7 @@ export async function syncAuthUsersToProfiles(): Promise<{ scanned: number; inse
   const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
 
   if (error) {
-    console.error('[syncAuthUsersToProfiles:listUsers]', error.message)
+    reportServerError('auth.sync_users.list_failed', error)
     return { scanned: 0, inserted: 0 }
   }
 
@@ -79,7 +83,9 @@ export async function syncAuthUsersToProfiles(): Promise<{ scanned: number; inse
     )
 
   if (existingError) {
-    console.error('[syncAuthUsersToProfiles:existing]', existingError.message)
+    reportServerError('auth.sync_users.existing_profiles_query_failed', existingError, {
+      scanned: rows.length,
+    })
     return { scanned: rows.length, inserted: 0 }
   }
 
@@ -89,7 +95,10 @@ export async function syncAuthUsersToProfiles(): Promise<{ scanned: number; inse
 
   const { error: insertError } = await admin.from('users').insert(missingRows)
   if (insertError) {
-    console.error('[syncAuthUsersToProfiles:insert]', insertError.message)
+    reportServerError('auth.sync_users.insert_missing_profiles_failed', insertError, {
+      scanned: rows.length,
+      missing: missingRows.length,
+    })
     return { scanned: rows.length, inserted: 0 }
   }
 

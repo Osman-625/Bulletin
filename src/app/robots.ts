@@ -1,13 +1,14 @@
 import type { MetadataRoute } from 'next'
-
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://bulletininti.vercel.app'
+import { getCanonicalSiteUrl } from '@/lib/site'
 
 export default function robots(): MetadataRoute.Robots {
+  const siteUrl = getCanonicalSiteUrl()
+
   return {
     rules: {
       userAgent: '*',
       allow: '/',
-      disallow: ['/admin/', '/super-admin/', '/owner/', '/dashboard/', '/api/setup'],
+      disallow: ['/admin/', '/super-admin/', '/owner/', '/dashboard/', '/api/setup', '/brand-lab'],
     },
     sitemap: `${siteUrl}/sitemap.xml`,
   }

@@ -9,7 +9,28 @@ import {
   type AppRole,
 } from '@/lib/auth/authz'
 
+const PUBLIC_FILE = /\.[^/]+$/
+
+function shouldBypassProxy(pathname: string) {
+  return (
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/__nextjs_font/') ||
+    pathname.startsWith('/_vercel/') ||
+    pathname.startsWith('/api/') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/robots.txt' ||
+    pathname === '/sitemap.xml' ||
+    PUBLIC_FILE.test(pathname)
+  )
+}
+
 export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  if (shouldBypassProxy(pathname)) {
+    return NextResponse.next()
+  }
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -37,8 +58,6 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser()
-
-  const { pathname } = request.nextUrl
 
   const protectedPaths = ['/dashboard', '/admin', '/super-admin', '/owner', '/change-password']
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p))
@@ -96,5 +115,11 @@ export async function proxy(request: NextRequest) {
   }
 
   return supabaseResponse
+}
+
+export const config = {
+  matcher: [
+    '/((?!api|_next/static|_next/image|__nextjs_font|_vercel|favicon.ico|robots.txt|sitemap.xml|.*\\..*).*)',
+  ],
 }
 

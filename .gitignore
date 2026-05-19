@@ -16,23 +16,47 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
+.env*.local
 
 # Supabase local
 supabase/.branches
 supabase/.temp
 
-# Debug
+# Debug / logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
 test-results/
 playwright-report/
+e2e-results/
 .next-dev-*.log
 .next-dev-*.err.log
 
-# Local generated snapshots
+# Test coverage
+coverage/
+.nyc_output/
+junit.xml
+
+# Local generated snapshots & knowledge graph
 Bulletin/
 graphify-out/
+.graphify_ast.json
+.graphify_python
+.graphify_uncached.txt
+.graphify_detect.json
+.graphify_cached.json
+
+# Generated reports (AI-produced, not source)
+CHECKLIST.md
+CHECKLIST_REPORT.md
+DOCUMENTATION.md
+HANDOFF.md
+
+# Local planning & scratch files
+planning/
+scripts/screenshots
+scripts/test_card_ux.py
 
 # OS
 .DS_Store
@@ -54,6 +78,8 @@ Thumbs.db
 *.tsbuildinfo
 next-env.d.ts
 
+# Turbo
+.turbo/
+
 # Git worktrees
 .worktrees/
-.env*.local

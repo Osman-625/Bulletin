@@ -34,7 +34,7 @@ export function ThemeToggle() {
       role="switch"
       aria-checked={isDark}
       onClick={() => setTheme(isDark ? 'light' : 'dark')}
-      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-label={isDark ? 'Theme: switch to light mode' : 'Theme: switch to dark mode'}
       className="group relative inline-flex h-11 w-[5.75rem] cursor-pointer items-center rounded-full border p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] disabled:pointer-events-none"
       style={{
         background: isDark ? 'var(--color-surface-high)' : 'var(--color-surface-elevated)',

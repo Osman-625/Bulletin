@@ -20,15 +20,21 @@ export default async function LoginPage({
         data-testid="login-card"
         className="animate-fade-up relative grid min-h-[min(640px,calc(100dvh-1.5rem))] w-full overflow-hidden rounded-[1.75rem] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_24px_90px_rgba(30,26,23,0.14)] md:min-h-[720px] lg:h-[800px] lg:grid-cols-[1.08fr_0.92fr]"
       >
-        <BackNavButton aria-label="Go back" className="absolute top-4 left-4 z-20 sm:top-5 sm:left-5" />
+        <BackNavButton
+          aria-label="Go back"
+          className="absolute top-4 left-4 z-20 sm:top-5 sm:left-5"
+        />
         <div className="absolute top-4 right-4 z-20 sm:top-5 sm:right-5">
           <ThemeToggle />
         </div>
 
         <section className="relative flex flex-col justify-between gap-5 bg-[linear-gradient(140deg,var(--color-surface-elevated),var(--color-surface)_58%,var(--color-accent-surface))] px-6 py-6 pt-20 sm:gap-10 sm:px-10 sm:py-10 sm:pt-24 lg:px-14 lg:py-14">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,color-mix(in_oklab,var(--color-accent-inti)_13%,transparent),transparent_24%),radial-gradient(circle_at_88%_82%,rgba(212,148,31,0.12),transparent_26%)]" aria-hidden="true" />
+          <div
+            className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,color-mix(in_oklab,var(--color-accent-inti)_13%,transparent),transparent_24%),radial-gradient(circle_at_88%_82%,rgba(212,148,31,0.12),transparent_26%)]"
+            aria-hidden="true"
+          />
           <div className="relative">
-            <BrandMark size="hero" preload textClassName="hidden sm:block" />
+            <BrandMark size="xl" preload className="gap-4" textClassName="block" />
           </div>
 
           <div className="relative max-w-[34rem]">
@@ -36,12 +42,12 @@ export default async function LoginPage({
               Welcome back
             </h1>
             <p className="mt-4 hidden text-base leading-7 text-[var(--color-text-secondary)] sm:block sm:text-lg lg:mt-5">
-              Sign in to manage announcements, approvals, and campus communications.
+              Sign in to post notices, review submissions, and keep campus informed.
             </p>
           </div>
 
           <p className="hidden text-xs font-semibold tracking-[0.22em] text-[var(--color-text-muted)] uppercase sm:block">
-            Authorized personnel only
+            Independent campus publishing workspace
           </p>
         </section>
 
@@ -52,7 +58,7 @@ export default async function LoginPage({
                 Sign in
               </h2>
               <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
-                Use your Bulletin account credentials.
+                Use your Bulletin username or email address.
               </p>
             </div>
 
@@ -65,7 +71,7 @@ export default async function LoginPage({
                 {error === 'too_many_attempts'
                   ? 'Too many attempts. Please wait a moment and try again.'
                   : error === 'profile_missing'
-                    ? 'This account is missing a Bulletin profile. Contact a super admin.'
+                    ? 'Your account is not fully set up. Contact your administrator.'
                     : 'Invalid email, username, or password. Please try again.'}
               </div>
             )}
@@ -137,10 +143,6 @@ export default async function LoginPage({
             >
               Forgot password?
             </Link>
-
-            <p className="mt-8 text-center text-xs text-[var(--color-text-muted)]">
-              Bulletin System
-            </p>
           </div>
         </section>
       </div>

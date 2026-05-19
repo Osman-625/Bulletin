@@ -12,7 +12,7 @@ import {
   normalizeAnnouncementDisplaySize,
   normalizeAnnouncementUrgency,
 } from '@/lib/announcements/presentation'
-import { toSafeHttpUrl } from '@/lib/announcements/urls'
+import { announcementPath, toSafeHttpUrl } from '@/lib/announcements/urls'
 import type { AnnouncementWithRelations } from '@/lib/types'
 
 export type AnnouncementCardVisual = 'poster' | 'letterbox' | 'stamp' | 'ribbon'
@@ -26,7 +26,8 @@ function stripMarkdown(md: string): string {
     .replace(/\[(.+?)\]\(.+?\)/g, '$1')
     .replace(/^\s*[-*]\s+/gm, '')
     .replace(/\|/g, ' ')
-    .replace(/\n+/g, ' ')
+    .replace(/\r?\n+/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
 }
 
@@ -53,7 +54,7 @@ function daysUntil(expiresAt: string | null): number | null {
 
 function deadlineLabel(expiresAt: string | null) {
   const days = daysUntil(expiresAt)
-  if (!expiresAt || days === null) return 'Open'
+  if (!expiresAt || days === null) return 'No deadline'
   if (days === 1) return '1 day left'
   if (days <= 14) return `${days} days left`
   return formatDate(expiresAt)
@@ -109,7 +110,7 @@ function EventMetaPill({
 }) {
   return (
     <span
-      className="rounded-[0.85rem] border px-3 py-2"
+      className="announcement-meta-pill min-w-0 rounded-[0.75rem] border px-3 py-2"
       style={{
         background: active ? 'var(--color-accent-surface)' : 'var(--color-surface-elevated)',
         borderColor: active
@@ -121,7 +122,7 @@ function EventMetaPill({
         {label}
       </span>
       <span
-        className="mt-1 block truncate text-sm font-bold"
+        className="mt-1 block truncate text-[0.88rem] leading-tight font-bold"
         style={{ color: active ? 'var(--color-accent-inti)' : 'var(--color-text-primary)' }}
       >
         {value}
@@ -156,7 +157,6 @@ function StandardCard({
   visual: AnnouncementCardVisual
 }) {
   const {
-    id,
     title,
     body,
     banner_url,
@@ -177,10 +177,12 @@ function StandardCard({
   const pinned = isAnnouncementPinned(announcement)
   const registrationHref = toSafeHttpUrl(registration_link)
   const deadlineIsActive = isExpiringSoon(expires_at)
+  const hasBadgeRow =
+    urgency !== 'normal' || pinned || Boolean(categories) || Boolean(registrationHref) || expiring
 
   return (
     <Link
-      href={`/announcements/${id}`}
+      href={announcementPath(announcement)}
       data-testid="announcement-card"
       data-image-layout={visual}
       className="card-lift group relative flex h-full min-h-[13rem] flex-col overflow-hidden rounded-[1.25rem] outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
@@ -206,46 +208,58 @@ function StandardCard({
         </div>
       )}
 
-      <div className="flex flex-1 flex-col gap-3 p-4 sm:p-5">
-        <div className="flex flex-wrap items-center gap-2">
-          {urgency !== 'normal' && <StatusChip label={urgencyMeta.label} tone="urgency" />}
-          {pinned && <StatusChip label="Pinned" tone="published" />}
-          {categories && <CategoryChip color={catColor} label={categories.name} />}
-          {registrationHref && !expiring && <StatusChip label="Registration open" tone="open" />}
-          {expiring && <StatusChip label={`Closing ${formatDate(expires_at!)}`} tone="closing" />}
-        </div>
+      <div className="announcement-card-body flex min-h-0 flex-1 flex-col p-4">
+        {hasBadgeRow && (
+          <div className="announcement-card-badges mb-3 flex flex-wrap items-center gap-2">
+            {urgency !== 'normal' && <StatusChip label={urgencyMeta.label} tone="urgency" />}
+            {pinned && <StatusChip label="Pinned" tone="published" />}
+            {categories && <CategoryChip color={catColor} label={categories.name} />}
+            {registrationHref && !expiring && <StatusChip label="Registration open" tone="open" />}
+            {expiring && <StatusChip label={`Closes ${formatDate(expires_at!)}`} tone="closing" />}
+          </div>
+        )}
 
         <h2
-          className={cn(titleFontClass, 'line-clamp-3 leading-[1.08] font-bold tracking-[-0.01em]')}
+          className={cn(
+            titleFontClass,
+            'announcement-card-title line-clamp-3 leading-[1.06] font-bold tracking-[-0.01em]'
+          )}
           style={{ fontSize: CARD_TITLE_SIZES[displaySize], color: 'var(--color-text-primary)' }}
         >
           {title}
         </h2>
 
         <p
-          className="line-clamp-2 flex-1 text-sm leading-6 sm:text-base"
+          className="announcement-card-summary announcement-card-summary-clamp announcement-card-summary-clamp-2 mt-2.5 text-sm leading-6 sm:text-[0.95rem]"
           style={{ color: 'var(--color-text-muted)' }}
         >
           {body ? stripMarkdown(body) : ''}
         </p>
 
-        <div className="grid grid-cols-2 gap-2">
-          <EventMetaPill label="Issued" value={published_at ? formatDate(published_at) : 'Pending'} />
-          <EventMetaPill label="Deadline" value={deadlineLabel(expires_at)} active={deadlineIsActive} />
+        <div className="announcement-card-meta mt-4 grid grid-cols-2 gap-2.5">
+          <EventMetaPill
+            label="Issued"
+            value={published_at ? formatDate(published_at) : 'Pending'}
+          />
+          <EventMetaPill
+            label="Deadline"
+            value={deadlineLabel(expires_at)}
+            active={deadlineIsActive}
+          />
         </div>
 
         <div
-          className="flex items-center justify-between gap-2 border-t pt-3 text-sm"
+          className="announcement-card-footer mt-auto flex items-center justify-between gap-3 border-t pt-3.5 text-sm"
           style={{ borderColor: 'var(--color-border)' }}
         >
           <span
-            className="truncate font-semibold"
+            className="min-w-0 truncate font-semibold"
             style={{ color: 'var(--color-text-muted)' }}
           >
             {organizations?.name}
           </span>
-          <span className="flex-shrink-0 font-mono text-[0.68rem] font-bold uppercase tracking-[0.14em] text-[var(--color-text-muted)]">
-            Open
+          <span className="shrink-0 font-mono text-[0.66rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase transition-colors group-hover:text-[var(--color-accent)] group-hover:underline">
+            Read details
           </span>
         </div>
       </div>
@@ -262,10 +276,7 @@ function standardImagePanelClass(visual: AnnouncementCardVisual) {
   }
 
   if (visual === 'stamp') {
-    return cn(
-      'relative mx-4 mt-4 aspect-[4/3] overflow-hidden rounded-[0.95rem] border',
-      border
-    )
+    return cn('relative mx-4 mt-4 aspect-[4/3] overflow-hidden rounded-[0.95rem] border', border)
   }
 
   if (visual === 'ribbon') {
@@ -293,7 +304,7 @@ function StatusChip({
 }) {
   const styles: Record<typeof tone, CSSProperties> = {
     urgency: {
-      color: 'var(--color-accent-inti)',
+      color: 'var(--color-accent-hover)',
       background: 'var(--color-accent-surface)',
     },
     published: {
@@ -301,17 +312,20 @@ function StatusChip({
       background: 'var(--color-status-published-bg)',
     },
     open: {
-      color: 'var(--color-accent-inti)',
+      color: 'var(--color-accent-hover)',
       background: 'var(--color-accent-surface)',
     },
     closing: {
-      color: 'var(--color-gold)',
-      background: 'rgba(224,160,31,0.14)',
+      color: 'var(--color-text-primary)',
+      background: 'var(--color-deadline-surface)',
     },
   }
 
   return (
-    <span className="rounded-md px-3 py-1.5 text-sm font-bold" style={styles[tone]}>
+    <span
+      className="announcement-card-chip rounded-md px-3 py-1.5 text-sm font-bold"
+      style={styles[tone]}
+    >
       {label}
     </span>
   )
@@ -320,7 +334,7 @@ function StatusChip({
 function CategoryChip({ color, label }: { color: string; label: string }) {
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-bold"
+      className="announcement-card-chip inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-bold"
       style={categoryBadgeStyle(color)}
     >
       <span
@@ -342,7 +356,6 @@ function FeaturedCard({
   visual: AnnouncementCardVisual
 }) {
   const {
-    id,
     title,
     body,
     banner_url,
@@ -363,13 +376,15 @@ function FeaturedCard({
   const pinned = isAnnouncementPinned(announcement)
   const registrationHref = toSafeHttpUrl(registration_link)
   const deadlineIsActive = isExpiringSoon(expires_at)
+  const hasBadgeRow =
+    urgency !== 'normal' || pinned || Boolean(categories) || Boolean(registrationHref) || expiring
 
   return (
     <Link
-      href={`/announcements/${id}`}
+      href={announcementPath(announcement)}
       data-testid="announcement-card"
       data-image-layout={visual}
-      className="card-lift group relative flex h-full min-h-[24rem] flex-col overflow-hidden rounded-[1.45rem] outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      className="featured-announcement-card card-lift group relative flex h-full min-h-[20rem] flex-col overflow-hidden rounded-[1.45rem] outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       style={{
         background: 'var(--color-surface)',
         border: `1px solid var(--color-border)`,
@@ -381,7 +396,7 @@ function FeaturedCard({
         data-card-media={visual}
         className={cn(
           'relative overflow-hidden border-b border-[var(--color-border-subtle)]',
-          visual === 'ribbon' ? 'aspect-[21/9]' : 'aspect-[5/6]'
+          visual === 'ribbon' ? 'aspect-[21/9]' : 'aspect-[16/9] sm:aspect-[16/10]'
         )}
         style={categoryPanelStyle(catColor)}
       >
@@ -406,17 +421,22 @@ function FeaturedCard({
       </div>
 
       {/* Content */}
-      <div className="flex flex-1 flex-col justify-between p-5 sm:p-6">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          {urgency !== 'normal' && <StatusChip label={urgencyMeta.label} tone="urgency" />}
-          {pinned && <StatusChip label="Pinned" tone="published" />}
-          {categories && <CategoryChip color={catColor} label={categories.name} />}
-          {registrationHref && !expiring && <StatusChip label="Registration open" tone="open" />}
-          {expiring && <StatusChip label={`Closing ${formatDate(expires_at!)}`} tone="closing" />}
-        </div>
+      <div className="announcement-card-body flex min-h-0 flex-1 flex-col p-4 sm:p-5">
+        {hasBadgeRow && (
+          <div className="announcement-card-badges mb-4 flex flex-wrap items-center gap-2">
+            {urgency !== 'normal' && <StatusChip label={urgencyMeta.label} tone="urgency" />}
+            {pinned && <StatusChip label="Pinned" tone="published" />}
+            {categories && <CategoryChip color={catColor} label={categories.name} />}
+            {registrationHref && !expiring && <StatusChip label="Registration open" tone="open" />}
+            {expiring && <StatusChip label={`Closes ${formatDate(expires_at!)}`} tone="closing" />}
+          </div>
+        )}
 
         <h2
-          className={cn(titleFontClass, 'mb-3 line-clamp-3 leading-[1.04] font-bold tracking-[-0.01em]')}
+          className={cn(
+            titleFontClass,
+            'announcement-card-title line-clamp-3 leading-[1.04] font-bold tracking-[-0.01em]'
+          )}
           style={{
             fontSize: `min(${FEATURED_TITLE_SIZES[displaySize]}, 2.35rem)`,
             color: 'var(--color-text-primary)',
@@ -426,35 +446,41 @@ function FeaturedCard({
         </h2>
 
         <p
-          className="mb-4 line-clamp-3 flex-1 text-base leading-7"
+          className="announcement-card-summary announcement-card-summary-clamp announcement-card-summary-clamp-2 mt-3 text-base leading-7"
           style={{ color: 'var(--color-text-muted)' }}
         >
           {body ? stripMarkdown(body) : ''}
         </p>
 
-        <div className="mb-5 grid grid-cols-2 gap-2">
-          <EventMetaPill label="Issued" value={published_at ? formatDate(published_at) : 'Pending'} />
-          <EventMetaPill label="Deadline" value={deadlineLabel(expires_at)} active={deadlineIsActive} />
+        <div className="announcement-card-meta mt-5 grid grid-cols-2 gap-2.5">
+          <EventMetaPill
+            label="Issued"
+            value={published_at ? formatDate(published_at) : 'Pending'}
+          />
+          <EventMetaPill
+            label="Deadline"
+            value={deadlineLabel(expires_at)}
+            active={deadlineIsActive}
+          />
         </div>
 
         <div
-          className="flex items-center justify-between gap-2 border-t pt-4"
+          className="announcement-card-footer mt-auto flex items-center justify-between gap-3 border-t pt-4"
           style={{ borderColor: 'var(--color-border)' }}
         >
           <span
-            className="truncate text-sm font-medium"
+            className="min-w-0 truncate text-sm font-medium"
             style={{ color: 'var(--color-text-muted)' }}
           >
             {organizations?.name}
           </span>
           {published_at && (
-            <span className="flex-shrink-0 text-sm" style={{ color: 'var(--color-text-muted)' }}>
+            <span className="shrink-0 text-sm" style={{ color: 'var(--color-text-muted)' }}>
               {formatDate(published_at)}
             </span>
           )}
         </div>
       </div>
-
     </Link>
   )
 }

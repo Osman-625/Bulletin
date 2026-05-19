@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { DashboardSidebar } from './DashboardSidebar'
 import { DashboardTopNav } from './DashboardTopNav'
 
@@ -46,9 +47,15 @@ export function DashboardShell({
   unreadNotificationCount = 0,
 }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const pathname = usePathname()
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setMobileOpen(false), 0)
+    return () => window.clearTimeout(timer)
+  }, [pathname])
 
   return (
-    <div className="min-h-screen bg-[var(--color-canvas)]">
+    <div className="dashboard-canvas min-h-[100dvh] bg-[var(--color-canvas)]">
       <DashboardSidebar
         displayName={displayName}
         role={role}
@@ -61,7 +68,7 @@ export function DashboardShell({
       {/* Mobile overlay backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          className="fixed inset-0 z-30 bg-[rgba(36,24,21,0.42)] backdrop-blur-[2px] md:hidden"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
         />
@@ -76,7 +83,7 @@ export function DashboardShell({
         announcementSearchHref={ANNOUNCEMENT_SEARCH_HREFS[variant]}
       />
 
-      <main className="min-h-screen pt-16 pl-0 transition-[padding-left] duration-200 md:pl-12 lg:pl-72">
+      <main className="min-h-[100dvh] pt-16 pl-0 transition-[padding-left] duration-300 ease-[var(--ease-ui)] md:pl-[4.25rem] xl:pl-[18.5rem]">
         {children}
       </main>
     </div>

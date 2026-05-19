@@ -5,3 +5,7 @@ export function requireEnv(name: string): string {
   }
   return value
 }
+
+export function hasEnv(...names: string[]): boolean {
+  return names.every((name) => Boolean(process.env[name]))
+}

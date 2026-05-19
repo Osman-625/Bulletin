@@ -1,0 +1,10 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bulletin Press Compass mark">
+  <rect width="128" height="128" rx="24" fill="#FFF9EF"/>
+  <rect x="10" y="10" width="108" height="108" rx="18" fill="#F3EEE4" stroke="#D8C9B8" stroke-width="2"/>
+  <circle cx="64" cy="64" r="39" fill="#FFF9EF" stroke="#002147" stroke-width="5"/>
+  <path d="M64 25L73.2 55.6L104 64L73.2 72.4L64 103L54.8 72.4L24 64L54.8 55.6L64 25Z" fill="#C8102E"/>
+  <path d="M64 43L69.3 59.3L86 64L69.3 68.7L64 85L58.7 68.7L42 64L58.7 59.3L64 43Z" fill="#FFF9EF"/>
+  <path d="M33 31H95" stroke="#C98714" stroke-width="4" stroke-linecap="round"/>
+  <path d="M33 97H95" stroke="#C98714" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="64" cy="64" r="5" fill="#002147"/>
+</svg>

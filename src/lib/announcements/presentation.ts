@@ -22,13 +22,13 @@ export const URGENCY_META: Record<
   },
   important: {
     label: 'Important',
-    tone: 'var(--color-gold)',
-    background: 'rgba(212, 148, 31, 0.14)',
+    tone: 'var(--color-text-primary)',
+    background: 'var(--color-deadline-surface)',
     rank: 1,
   },
   urgent: {
     label: 'Urgent',
-    tone: 'var(--color-accent-inti)',
+    tone: 'var(--color-accent-hover)',
     background: 'var(--color-accent-surface)',
     rank: 2,
   },

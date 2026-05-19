@@ -1,4 +1,7 @@
+import 'server-only'
+
 import { revalidatePath } from 'next/cache'
+import { reportServerError } from '@/lib/error-reporting'
 import type { Json } from './database.types'
 import { createServiceClient } from './supabase/server'
 
@@ -32,17 +35,22 @@ export async function logAuditEvent({
     })
 
     if (error) {
-      console.error('[audit] Failed to write audit event', {
+      reportServerError('audit.write_failed', error, {
+        actorId,
         action,
         targetType,
         targetId,
-        message: error.message,
       })
       return
     }
 
     OWNER_AUDIT_PATHS.forEach((path) => revalidatePath(path))
   } catch (error) {
-    console.error('[audit] Failed to write audit event', error)
+    reportServerError('audit.write_unhandled', error, {
+      actorId,
+      action,
+      targetType,
+      targetId,
+    })
   }
 }

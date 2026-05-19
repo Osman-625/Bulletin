@@ -1,10 +1,17 @@
-
 'use server'
 
 import { redirect } from 'next/navigation'
 import { logAuditEvent } from '@/lib/audit'
-import { createClient } from '@/lib/supabase/server'
 import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
+import { reportServerError } from '@/lib/error-reporting'
+import { createClient } from '@/lib/supabase/server'
+
+const INVITE_PUBLISHER_PATH = '/admin/publishers/invite'
+const INVITE_CREATE_ERROR = 'Could not create invite. Try again.'
+
+function inviteErrorHref(message: string) {
+  return `${INVITE_PUBLISHER_PATH}?error=${encodeURIComponent(message)}`
+}
 
 export async function invitePublisher(formData: FormData) {
   const access = await getCurrentAccessContext()
@@ -13,27 +20,51 @@ export async function invitePublisher(formData: FormData) {
 
   const supabase = await createClient()
 
-  const email = (formData.get('email') as string).trim().toLowerCase()
-  const orgIds = formData.getAll('org_ids') as string[]
-  const memberRole = (formData.get('member_role') as string) || 'publisher'
+  const email = ((formData.get('email') as string | null) ?? '').trim().toLowerCase()
+  const orgIds = formData
+    .getAll('org_ids')
+    .filter((orgId): orgId is string => typeof orgId === 'string' && orgId.trim().length > 0)
+  const rawMemberRole = (formData.get('member_role') as string | null) ?? 'publisher'
+  const memberRole = rawMemberRole === 'admin' ? 'admin' : 'publisher'
+
+  if (!email || !email.includes('@')) {
+    redirect(inviteErrorHref('Enter a valid email address.'))
+  }
 
   if (access.role === 'admin' && orgIds.some((orgId) => !access.orgIds.includes(orgId))) {
-    redirect('/admin/publishers/invite?error=You+can+only+invite+publishers+into+your+own+organizations')
+    redirect(
+      '/admin/publishers/invite?error=You+can+only+invite+publishers+into+your+own+organizations'
+    )
   }
 
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + 7)
 
-  const { data, error } = await supabase.from('invitations').insert({
-    email,
-    role: 'publisher',
-    member_role: memberRole as 'publisher' | 'admin',
-    org_ids: orgIds,
-    invited_by: access.userId,
-    expires_at: expiresAt.toISOString(),
-  }).select('id, token').single()
+  const { data, error: invitationError } = await supabase
+    .from('invitations')
+    .insert({
+      email,
+      role: 'publisher',
+      member_role: memberRole,
+      org_ids: orgIds,
+      invited_by: access.userId,
+      expires_at: expiresAt.toISOString(),
+    })
+    .select('id, token')
+    .single()
 
-  if (error) redirect(`/admin/publishers/invite?error=${encodeURIComponent(error.message)}`)
+  if (invitationError || !data) {
+    reportServerError(
+      'admin.publishers.invite.create',
+      invitationError ?? new Error('Invitation insert did not return a row'),
+      {
+        actorId: access.userId,
+        email,
+        memberRole,
+      }
+    )
+    redirect(inviteErrorHref(INVITE_CREATE_ERROR))
+  }
 
   await logAuditEvent({
     actorId: access.userId,

@@ -19,11 +19,7 @@ import type { AnnouncementFormData } from '@/components/dashboard/AnnouncementFo
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('announcements')
-    .select('title')
-    .eq('id', id)
-    .single()
+  const { data } = await supabase.from('announcements').select('title').eq('id', id).single()
   return { title: data ? `Edit: ${data.title} — Bulletin` : 'Edit Announcement — Bulletin' }
 }
 
@@ -46,11 +42,7 @@ export default async function EditAnnouncementPage({
       )
       .eq('id', id)
       .single(),
-    supabase
-      .from('categories')
-      .select('id, name, color')
-      .eq('is_active', true)
-      .order('name'),
+    supabase.from('categories').select('id, name, color').eq('is_active', true).order('name'),
   ])
 
   if (!announcement) notFound()
@@ -86,6 +78,7 @@ export default async function EditAnnouncementPage({
       onPublish={submitForReview.bind(null, id)}
       onUnpublish={unpublishAnnouncement.bind(null, id)}
       onDelete={deleteAnnouncement.bind(null, id)}
+      organizationId={announcement.organization_id}
     />
   )
 }

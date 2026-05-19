@@ -1,11 +1,30 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it, beforeEach } from 'vitest'
-import { readOptionalBannerUrl, readOptionalHttpUrl } from '@/lib/announcements/form'
+import {
+  ANNOUNCEMENT_BODY_MAX,
+  ANNOUNCEMENT_TITLE_MAX,
+  assertAnnouncementReadyForReview,
+  readAnnouncementTextFields,
+  readOptionalBannerUrl,
+  readOptionalHttpUrl,
+} from '@/lib/announcements/form'
 import { toSafeHttpUrl } from '@/lib/announcements/urls'
 
 function formData(key: string, value: string): FormData {
   const form = new FormData()
   form.set(key, value)
   return form
+}
+
+function announcementFormData({ title = '', body = '' }: { title?: string; body?: string }) {
+  const form = new FormData()
+  form.set('title', title)
+  form.set('body', body)
+  return form
+}
+
+function source(path: string) {
+  return readFileSync(path, 'utf8')
 }
 
 describe('announcement form validation helpers', () => {
@@ -61,5 +80,47 @@ describe('announcement form validation helpers', () => {
     expect(toSafeHttpUrl(' https://forms.example.com/a ')).toBe('https://forms.example.com/a')
     expect(toSafeHttpUrl('javascript:alert(1)')).toBeNull()
     expect(toSafeHttpUrl('not-a-url')).toBeNull()
+  })
+
+  it('allows incomplete drafts but trims and defaults empty titles', () => {
+    expect(
+      readAnnouncementTextFields(announcementFormData({ title: '  ', body: ' Draft ' }))
+    ).toEqual({
+      title: 'Untitled Announcement',
+      body: 'Draft',
+    })
+  })
+
+  it('requires title and body before submitting for review', () => {
+    expect(() =>
+      readAnnouncementTextFields(announcementFormData({ title: '', body: 'Details' }), {
+        requireComplete: true,
+      })
+    ).toThrow('Add a title before submitting for review.')
+
+    expect(() => assertAnnouncementReadyForReview('Ready title', '   ')).toThrow(
+      'Add announcement body before submitting for review.'
+    )
+  })
+
+  it('rejects announcement text that exceeds server-side limits', () => {
+    expect(() =>
+      readAnnouncementTextFields(
+        announcementFormData({ title: 'x'.repeat(ANNOUNCEMENT_TITLE_MAX + 1), body: 'Body' })
+      )
+    ).toThrow(`Title must be ${ANNOUNCEMENT_TITLE_MAX} characters or fewer.`)
+
+    expect(() =>
+      readAnnouncementTextFields(
+        announcementFormData({ title: 'Title', body: 'x'.repeat(ANNOUNCEMENT_BODY_MAX + 1) })
+      )
+    ).toThrow(`Body must be ${ANNOUNCEMENT_BODY_MAX} characters or fewer.`)
+  })
+
+  it('uses unique storage filenames without requesting banner upload upserts', () => {
+    const formSource = source('src/components/dashboard/AnnouncementForm.tsx')
+
+    expect(formSource).toContain('crypto.randomUUID()')
+    expect(formSource).not.toContain('upsert: true')
   })
 })

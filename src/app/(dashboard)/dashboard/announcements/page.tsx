@@ -1,15 +1,17 @@
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Archive, CheckCircle2, Clock3, FileText, Plus } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { GlassCard } from '@/components/dashboard/GlassCard'
 import { AnnouncementsClient } from './AnnouncementsClient'
+import { CountUp } from '@/components/dashboard/CountUp'
 import { getCurrentAccessContext } from '@/lib/auth/authz'
 import { shouldScopeAnnouncementsToMembership } from '@/lib/announcements/access'
 import type { AnnouncementRowData } from '@/components/dashboard/AnnouncementRow'
 import type { DbAnnouncement } from '@/lib/types'
 
-export const metadata = { title: 'Announcements — Bulletin' }
+export const metadata = { title: 'Announcements' }
+
+const DASHBOARD_ANNOUNCEMENTS_LIMIT = 250
 
 type QueryRow = Pick<
   DbAnnouncement,
@@ -49,10 +51,12 @@ export default async function AnnouncementsPage({
   let pendingDrafts = 0
   let scheduled = 0
   let archived = 0
+  let totalAnnouncements = 0
 
   let query = supabase
     .from('announcements')
-    .select(`
+    .select(
+      `
       id,
       title,
       status,
@@ -69,8 +73,11 @@ export default async function AnnouncementsPage({
       categories ( id, name, color ),
       organizations ( id, name ),
       author:users!announcements_author_id_fkey ( display_name )
-    `)
+    `,
+      { count: 'exact' }
+    )
     .order('updated_at', { ascending: false })
+    .range(0, DASHBOARD_ANNOUNCEMENTS_LIMIT - 1)
 
   if (scopeToMembership) {
     if (access.orgIds.length === 0) {
@@ -80,7 +87,8 @@ export default async function AnnouncementsPage({
     }
   }
 
-  const { data: rows } = await query
+  const { data: rows, count } = await query
+  totalAnnouncements = count ?? rows?.length ?? 0
 
   if (rows) {
     const rawRows = rows as unknown as QueryRow[]
@@ -118,49 +126,69 @@ export default async function AnnouncementsPage({
   }
 
   const stats = [
-    { label: 'Live Published', value: totalPublished },
-    { label: 'Pending Drafts', value: pendingDrafts },
-    { label: 'Scheduled', value: scheduled },
-    { label: 'Archived', value: archived },
+    { label: 'Live', value: totalPublished, icon: CheckCircle2 },
+    { label: 'Drafts', value: pendingDrafts, icon: FileText },
+    { label: 'Scheduled', value: scheduled, icon: Clock3 },
+    { label: 'Archived', value: archived, icon: Archive },
   ]
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
-      {/* Page header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-4xl font-bold text-[var(--color-text-primary)] tracking-tight">
-            Announcements
-          </h1>
-          <p className="text-[var(--color-text-secondary)] mt-1">
-            {scopeToMembership
-              ? "Manage your organization's updates."
-              : 'Manage announcements across approved organizations.'}
+    <div className="dashboard-page mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+      <section className="grid gap-3 xl:grid-cols-12">
+        <div className="dashboard-command-card rounded-[1.5rem] p-6 sm:p-8 xl:col-span-8">
+          <p className="future-kicker">Announcements</p>
+          <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h1 className="font-display text-4xl leading-none font-extrabold text-[var(--color-text-primary)] sm:text-5xl">
+                Manage campus posts
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-text-secondary)] sm:text-base">
+                {scopeToMembership
+                  ? "Search, filter, and update your organization's announcements."
+                  : 'Search, filter, and update announcements across approved organizations.'}
+              </p>
+            </div>
+            <Link
+              href="/dashboard/announcements/new"
+              className="action-lift inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-[0.95rem] bg-[var(--color-accent)] px-5 text-sm font-semibold text-white shadow-[var(--shadow-button)] sm:w-auto"
+            >
+              <Plus size={16} aria-hidden="true" />
+              New announcement
+            </Link>
+          </div>
+        </div>
+
+        <div className="dashboard-command-card rounded-[1.5rem] p-5 xl:col-span-4">
+          <p className="future-kicker">Total</p>
+          <CountUp
+            value={totalAnnouncements}
+            className="mt-5 block font-mono text-4xl font-bold text-[var(--color-text-primary)]"
+          />
+          <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
+            Total announcements in your workspace.
           </p>
         </div>
-        <Link
-          href="/dashboard/announcements/new"
-          className="flex w-full shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)] sm:w-auto"
-        >
-          <Plus size={16} />
-          New Announcement
-        </Link>
-      </div>
 
-      {/* Stats mini-bento */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {stats.map(({ label, value }) => (
-          <GlassCard key={label} hover={false} className="p-5">
-            <p className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] mb-2">
+        {stats.map(({ label, value, icon: Icon }) => (
+          <div
+            key={label}
+            className="dashboard-command-card rounded-[1.2rem] p-4 sm:p-5 xl:col-span-3"
+          >
+            <Icon size={18} className="text-[var(--color-accent)]" aria-hidden="true" />
+            <CountUp
+              value={value}
+              className="mt-4 block font-mono text-3xl font-bold text-[var(--color-text-primary)]"
+            />
+            <p className="mt-1 text-[0.68rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
               {label}
             </p>
-            <p className="text-3xl font-bold font-mono text-[var(--color-accent)]">{value}</p>
-          </GlassCard>
+          </div>
         ))}
-      </div>
+      </section>
 
-      {/* Client component handles tabs, search, list, pagination */}
-      <AnnouncementsClient announcements={announcements} initialQuery={search?.trim() ?? ''} />
+      <section className="dashboard-command-card mt-3 rounded-[1.5rem] p-4 sm:p-5">
+        <AnnouncementsClient announcements={announcements} initialQuery={search?.trim() ?? ''} />
+      </section>
     </div>
   )
 }

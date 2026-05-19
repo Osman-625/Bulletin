@@ -110,7 +110,7 @@ export function AccountSettingsPage({
             <div>
               <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Profile</h2>
               <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">
-                This name appears in dashboards, audit trails, and announcement workflow screens.
+                This name appears across dashboards and announcement workflow screens.
               </p>
             </div>
           </div>
@@ -178,8 +178,8 @@ export function AccountSettingsPage({
             <div>
               <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Password</h2>
               <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">
-                Use this when you know your current password. Temporary passwords are changed at
-                login.
+                Use this to change your current password. If you received a temporary password, you
+                were already prompted to update it at first login.
               </p>
             </div>
           </div>

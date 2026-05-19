@@ -13,6 +13,11 @@ export function CountUp({ value, duration = 900, className }: CountUpProps) {
   const frameRef = useRef<number>(0)
 
   useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      frameRef.current = requestAnimationFrame(() => setCount(value))
+      return () => cancelAnimationFrame(frameRef.current)
+    }
+
     const start = performance.now()
 
     function tick(now: number) {

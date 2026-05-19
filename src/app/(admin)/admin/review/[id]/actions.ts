@@ -3,9 +3,16 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { logAuditEvent } from '@/lib/audit'
-import { createClient } from '@/lib/supabase/server'
 import { canAccessAdminArea, getCurrentAccessContext } from '@/lib/auth/authz'
+import { reportServerError } from '@/lib/error-reporting'
 import { notifyAnnouncementReviewed } from '@/lib/notifications'
+import { createClient } from '@/lib/supabase/server'
+
+const REVIEW_WRITE_ERROR = 'review_failed'
+
+function redirectWithReviewError(announcementId: string): never {
+  redirect(`/admin/review/${announcementId}?error=${REVIEW_WRITE_ERROR}`)
+}
 
 export async function reviewAnnouncement(announcementId: string, formData: FormData) {
   const access = await getCurrentAccessContext()
@@ -16,12 +23,19 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
   const comment = (formData.get('comment') as string | null)?.trim() || null
   if (action !== 'approve' && action !== 'reject') redirect('/admin/review')
   const supabase = await createClient()
-  const { data: announcement } = await supabase
+  const { data: announcement, error: announcementReadError } = await supabase
     .from('announcements')
     .select('organization_id, status, author_id, title, scheduled_publish_at')
     .eq('id', announcementId)
     .single()
 
+  if (announcementReadError) {
+    reportServerError('admin.review.announcement_read_failed', announcementReadError, {
+      actor_id: access.userId,
+      announcement_id: announcementId,
+    })
+    redirectWithReviewError(announcementId)
+  }
   if (!announcement || announcement.status !== 'submitted') redirect('/admin/review')
   if (access.role === 'admin' && !access.orgIds.includes(announcement.organization_id)) {
     redirect('/admin/review')
@@ -47,7 +61,13 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
         rejection_comment: null,
       })
       .eq('id', announcementId)
-    if (error) throw new Error(error.message)
+    if (error) {
+      reportServerError('admin.review.approve_failed', error, {
+        actor_id: access.userId,
+        announcement_id: announcementId,
+      })
+      redirectWithReviewError(announcementId)
+    }
   } else {
     const { error } = await supabase
       .from('announcements')
@@ -56,7 +76,13 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
         rejection_comment: comment,
       })
       .eq('id', announcementId)
-    if (error) throw new Error(error.message)
+    if (error) {
+      reportServerError('admin.review.reject_failed', error, {
+        actor_id: access.userId,
+        announcement_id: announcementId,
+      })
+      redirectWithReviewError(announcementId)
+    }
   }
 
   const { error: reviewError } = await supabase.from('announcement_reviews').insert({
@@ -65,7 +91,12 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
     action: action === 'approve' ? 'approved' : 'rejected',
     comment,
   })
-  if (reviewError) throw new Error(reviewError.message)
+  if (reviewError) {
+    reportServerError('admin.review.record_insert_failed', reviewError, {
+      actor_id: access.userId,
+      announcement_id: announcementId,
+    })
+  }
 
   await notifyAnnouncementReviewed({
     announcementId,

@@ -36,11 +36,11 @@ type NavItem = {
 }
 
 const publisherNav: NavItem[] = [
-  { href: '/dashboard', label: 'Home', icon: Home, exact: true },
+  { href: '/dashboard', label: 'Overview', icon: Home, exact: true },
   { href: '/dashboard/announcements', label: 'Announcements', icon: Megaphone, exact: true },
-  { href: '/dashboard/announcements/new', label: 'New Announcement', icon: Plus },
+  { href: '/dashboard/announcements/new', label: 'New announcement', icon: Plus },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
-  { href: '/', label: 'Public Announcements', icon: Newspaper, exact: true },
+  { href: '/', label: 'Public board', icon: Newspaper, exact: true },
 ]
 
 function adminNav(pendingCount: number): NavItem[] {
@@ -48,7 +48,7 @@ function adminNav(pendingCount: number): NavItem[] {
     { href: '/admin', label: 'Overview', icon: LayoutDashboard, exact: true },
     {
       href: '/admin/review',
-      label: 'Review Queue',
+      label: 'Review queue',
       icon: ClipboardList,
       badge: pendingCount || undefined,
     },
@@ -57,42 +57,42 @@ function adminNav(pendingCount: number): NavItem[] {
     { href: '/admin/categories', label: 'Categories', icon: Tag },
     { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
     { href: '/admin/settings', label: 'Settings', icon: Settings },
-    { href: '/dashboard', label: 'Publisher Workspace', icon: Megaphone, exact: true },
-    { href: '/', label: 'Public Announcements', icon: Newspaper, exact: true },
+    { href: '/dashboard', label: 'Publisher desk', icon: Megaphone, exact: true },
+    { href: '/', label: 'Public board', icon: Newspaper, exact: true },
   ]
 }
 
 const superAdminNav: NavItem[] = [
   { href: '/super-admin', label: 'Overview', icon: LayoutDashboard, exact: true },
-  { href: '/admin', label: 'Admin Workspace', icon: ClipboardList, exact: true },
-  { href: '/dashboard', label: 'Publisher Workspace', icon: Megaphone, exact: true },
+  { href: '/admin', label: 'Admin desk', icon: ClipboardList, exact: true },
+  { href: '/dashboard', label: 'Publisher desk', icon: Megaphone, exact: true },
   { href: '/super-admin/admins', label: 'Admins', icon: ShieldCheck },
   { href: '/super-admin/categories', label: 'Categories', icon: Tag },
   { href: '/super-admin/users', label: 'Users', icon: UserCog },
   { href: '/super-admin/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/super-admin/settings', label: 'Settings', icon: Settings },
-  { href: '/', label: 'Public Announcements', icon: Newspaper, exact: true },
+  { href: '/', label: 'Public board', icon: Newspaper, exact: true },
 ]
 
 const ownerNav: NavItem[] = [
-  { href: '/owner', label: 'System', icon: LayoutDashboard, exact: true },
-  { href: '/super-admin', label: 'Super Admin Workspace', icon: ShieldCheck, exact: true },
-  { href: '/admin', label: 'Admin Workspace', icon: ClipboardList, exact: true },
-  { href: '/dashboard', label: 'Publisher Workspace', icon: Megaphone, exact: true },
+  { href: '/owner', label: 'Overview', icon: LayoutDashboard, exact: true },
+  { href: '/super-admin', label: 'Super admin desk', icon: ShieldCheck, exact: true },
+  { href: '/admin', label: 'Admin desk', icon: ClipboardList, exact: true },
+  { href: '/dashboard', label: 'Publisher desk', icon: Megaphone, exact: true },
   { href: '/owner/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/owner/resources', label: 'Resources', icon: Activity },
-  { href: '/owner/users', label: 'All Users', icon: Users },
+  { href: '/owner/users', label: 'All users', icon: Users },
   { href: '/owner/categories', label: 'Categories', icon: Tag },
-  { href: '/owner/audit', label: 'Audit Log', icon: ScrollText },
+  { href: '/owner/audit', label: 'Audit log', icon: ScrollText },
   { href: '/owner/settings', label: 'Settings', icon: Settings },
-  { href: '/', label: 'Public Announcements', icon: Newspaper, exact: true },
+  { href: '/', label: 'Public board', icon: Newspaper, exact: true },
 ]
 
 const ROLE_HOME: Record<string, { href: string; label: string; icon: NavItem['icon'] }> = {
   owner: { href: '/owner', label: 'Return to Owner', icon: Crown },
   super_admin: { href: '/super-admin', label: 'Return to Super Admin', icon: ShieldCheck },
   admin: { href: '/admin', label: 'Return to Admin', icon: ClipboardList },
-  publisher: { href: '/dashboard', label: 'Publisher Home', icon: Home },
+  publisher: { href: '/dashboard', label: 'Publisher desk', icon: Home },
 }
 
 const VARIANT_HOME: Record<NonNullable<DashboardSidebarProps['variant']>, string> = {
@@ -127,31 +127,31 @@ function NavLinks({
               href={item.href}
               onClick={onClick}
               className={cn(
-                'flex items-center justify-center gap-3 lg:justify-start',
-                'min-h-11 rounded-xl px-0 text-sm font-medium lg:px-3',
-                'transition-all duration-150',
+                'flex items-center justify-center gap-3 xl:justify-start',
+                'min-h-11 rounded-[0.95rem] border border-transparent px-0 text-sm font-semibold xl:px-3',
+                'transition-[transform,background,border-color,color,box-shadow] duration-200 ease-[var(--ease-ui)] active:scale-[0.98]',
                 isActive
-                  ? 'bg-[var(--color-accent-surface)] text-[var(--color-accent)]'
-                  : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)]'
+                  ? 'border-[color-mix(in_oklab,var(--color-accent-inti)_24%,var(--color-border))] bg-[var(--color-accent-surface)] text-[var(--color-accent)] shadow-[0_8px_18px_rgba(95,61,22,0.08)]'
+                  : 'text-[var(--color-text-secondary)] hover:-translate-y-px hover:bg-[color-mix(in_oklab,var(--color-surface)_70%,transparent)] hover:text-[var(--color-text-primary)]'
               )}
               aria-label={item.label}
             >
               <span className="relative shrink-0">
                 <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
                 {item.badge != null && item.badge > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-accent)] text-[13.5px] font-bold text-white">
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--color-accent)] text-[10px] font-bold text-white">
                     {item.badge > 99 ? '99+' : item.badge}
                   </span>
                 )}
               </span>
-              <span className="hidden truncate lg:inline">{item.label}</span>
+              <span className="hidden truncate xl:inline">{item.label}</span>
               {item.badge != null && item.badge > 0 && (
-                <span className="ml-auto hidden rounded-full bg-[var(--color-accent)] px-1.5 py-0.5 text-[15px] font-bold text-white lg:inline">
+                <span className="ml-auto hidden rounded-full bg-[var(--color-accent)] px-1.5 py-0.5 text-[11px] font-bold text-white xl:inline">
                   {item.badge > 99 ? '99+' : item.badge}
                 </span>
               )}
             </Link>
-            <div className="pointer-events-none absolute top-1/2 left-full z-50 ml-2 -translate-y-1/2 rounded-lg bg-[var(--color-surface-high)] px-2 py-1 text-xs font-medium whitespace-nowrap text-[var(--color-text-primary)] opacity-0 transition-opacity duration-150 group-hover:opacity-100 lg:hidden">
+            <div className="pointer-events-none absolute top-1/2 left-full z-50 ml-2 -translate-y-1/2 rounded-lg bg-[var(--color-surface-high)] px-2 py-1 text-xs font-medium whitespace-nowrap text-[var(--color-text-primary)] opacity-0 shadow-[var(--shadow-soft)] transition-opacity duration-150 group-hover:opacity-100 xl:hidden">
               {item.label}
             </div>
           </div>
@@ -204,28 +204,23 @@ export function DashboardSidebar({
         className={cn(
           'hidden md:flex',
           'fixed inset-y-0 left-0 z-40 flex-col',
-          'w-12 lg:w-72',
-          'bg-[var(--color-header-bg)]/95 backdrop-blur-xl',
+          'w-[4.25rem] xl:w-[18.5rem]',
+          'bg-[var(--color-header-bg)]/88 backdrop-blur-2xl',
           'border-r border-[var(--color-border)]',
-          'overflow-hidden shadow-[8px_0_30px_rgba(36,24,21,0.06)] transition-[width] duration-200'
+          'overflow-hidden shadow-[10px_0_36px_rgba(95,61,22,0.08)] transition-[width] duration-300 ease-[var(--ease-ui)]'
         )}
       >
-        <div className="flex items-center justify-center overflow-hidden border-b border-[var(--color-border)] px-1.5 py-4 lg:justify-start lg:px-5">
-          <BrandMark
-            size="sm"
-            showText
-            textClassName="hidden lg:block"
-            className="lg:gap-3"
-          />
+        <div className="flex items-center justify-center overflow-hidden border-b border-[var(--color-border)] px-2 py-4 xl:justify-start xl:px-5">
+          <BrandMark size="sm" showText textClassName="hidden xl:block" className="xl:gap-3" />
         </div>
 
-        <nav className="flex-1 space-y-1 px-1.5 py-4 lg:px-4">
+        <nav className="min-h-0 flex-1 space-y-1.5 overflow-y-auto px-2 py-4 xl:px-4">
           <NavLinks navItems={visibleNavItems} pathname={pathname} />
         </nav>
 
-        <div className="space-y-2 border-t border-[var(--color-border)] px-1.5 py-4 lg:px-4">
-          <div className="hidden items-center justify-between lg:flex lg:px-3">
-            <div className="hidden min-w-0 lg:block">
+        <div className="space-y-2 border-t border-[var(--color-border)] px-2 py-4 xl:px-4">
+          <div className="hidden items-center justify-between rounded-[1rem] bg-[color-mix(in_oklab,var(--color-surface)_72%,transparent)] px-3 py-3 xl:flex">
+            <div className="hidden min-w-0 xl:block">
               <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
                 {displayName ?? '—'}
               </p>
@@ -244,15 +239,15 @@ export function DashboardSidebar({
             <button
               type="submit"
               className={cn(
-                'flex w-full items-center justify-center gap-2 lg:justify-start',
-                'min-h-11 rounded-xl text-xs lg:px-3',
+                'flex w-full items-center justify-center gap-2 xl:justify-start',
+                'min-h-11 rounded-[0.95rem] text-xs font-semibold xl:px-3',
                 'text-[var(--color-text-muted)] hover:text-[var(--color-destructive)]',
-                'transition-all duration-150 hover:bg-[var(--color-surface-elevated)]'
+                'transition-[transform,background,color] duration-200 hover:-translate-y-px hover:bg-[var(--color-surface-elevated)] active:scale-[0.98]'
               )}
               aria-label="Sign out"
             >
               <LogOut size={14} className="shrink-0" />
-              <span className="hidden lg:inline">Sign out</span>
+              <span className="hidden xl:inline">Sign out</span>
             </button>
           </form>
         </div>
@@ -264,7 +259,7 @@ export function DashboardSidebar({
           'fixed inset-x-0 bottom-0 z-40 md:hidden',
           'bg-[var(--color-canvas)]/95 backdrop-blur-2xl',
           'border-t border-[var(--color-border)]',
-          'rounded-t-2xl transition-[transform,opacity,visibility] duration-300',
+          'rounded-t-[1.5rem] shadow-[0_-18px_44px_rgba(36,24,21,0.18)] transition-[transform,opacity,visibility] duration-300 ease-[var(--ease-ui)]',
           mobileOpen
             ? 'pointer-events-auto visible translate-y-0 opacity-100'
             : 'pointer-events-none invisible translate-y-[calc(100%+1rem)] opacity-0'
@@ -279,7 +274,7 @@ export function DashboardSidebar({
         <div className="border-b border-[var(--color-border)] px-6 pb-3">
           <BrandMark size="sm" />
         </div>
-        <nav className="space-y-1 px-4 py-3">
+        <nav className="max-h-[min(70dvh,32rem)] space-y-1 overflow-y-auto px-4 py-3">
           <NavLinks navItems={visibleNavItems} pathname={pathname} onClick={onMobileClose} />
         </nav>
         <div className="flex items-center justify-between border-t border-[var(--color-border)] px-4 pt-2 pb-6">

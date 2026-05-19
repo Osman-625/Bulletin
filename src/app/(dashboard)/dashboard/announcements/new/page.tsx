@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AnnouncementForm } from '@/components/dashboard/AnnouncementForm'
 import { createAnnouncement, createAndSubmitAnnouncement } from './actions'
+import { getWritableOrganizationId } from '@/lib/announcements/access'
+import { getCurrentAccessContext } from '@/lib/auth/authz'
 import {
   DEFAULT_DISPLAY_FONT,
   DEFAULT_DISPLAY_SIZE,
@@ -12,11 +14,16 @@ import type { AnnouncementFormData } from '@/components/dashboard/AnnouncementFo
 export const metadata = { title: 'New Announcement — Bulletin' }
 
 export default async function NewAnnouncementPage() {
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
   if (!user) redirect('/login')
+
+  const organizationId = await getWritableOrganizationId(supabase, access)
 
   const { data: categories } = await supabase
     .from('categories')
@@ -48,6 +55,7 @@ export default async function NewAnnouncementPage() {
       categories={categories ?? []}
       onSave={createAnnouncement}
       onSaveAndPublish={createAndSubmitAnnouncement}
+      organizationId={organizationId}
       isNew
     />
   )

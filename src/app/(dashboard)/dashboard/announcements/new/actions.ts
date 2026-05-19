@@ -3,9 +3,9 @@
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { logAuditEvent } from '@/lib/audit'
-import { createClient } from '@/lib/supabase/server'
 import { getWritableOrganizationId } from '@/lib/announcements/access'
 import {
+  readAnnouncementTextFields,
   readOptionalBannerUrl,
   readOptionalHttpUrl,
   readOptionalIsoDate,
@@ -16,7 +16,24 @@ import {
   normalizeAnnouncementUrgency,
 } from '@/lib/announcements/presentation'
 import { getCurrentAccessContext } from '@/lib/auth/authz'
+import { reportServerError } from '@/lib/error-reporting'
 import { notifyAnnouncementSubmitted } from '@/lib/notifications'
+import { createClient } from '@/lib/supabase/server'
+
+const ANNOUNCEMENT_SAVE_ERROR = 'Could not save announcement. Try again.'
+const ANNOUNCEMENT_SUBMIT_ERROR = 'Could not submit announcement. Try again.'
+
+type ErrorMetadata = Record<string, string | number | boolean | null | undefined>
+
+function throwAnnouncementActionError(
+  context: string,
+  error: unknown,
+  userMessage: string,
+  metadata: ErrorMetadata = {}
+): never {
+  reportServerError(context, error, metadata)
+  throw new Error(userMessage)
+}
 
 export async function createAnnouncement(formData: FormData) {
   const supabase = await createClient()
@@ -26,8 +43,7 @@ export async function createAnnouncement(formData: FormData) {
   const organizationId = await getWritableOrganizationId(supabase, access)
   if (!organizationId) throw new Error('No organization')
 
-  const title = (formData.get('title') as string) || 'Untitled Announcement'
-  const body = (formData.get('body') as string) || ''
+  const { title, body } = readAnnouncementTextFields(formData)
   const categoryId = formData.get('category_id') as string | null
   const bannerUrl = readOptionalBannerUrl(formData, 'banner_url')
   const registrationLink = readOptionalHttpUrl(formData, 'registration_link', 'Registration link')
@@ -59,7 +75,29 @@ export async function createAnnouncement(formData: FormData) {
     .select('id')
     .single()
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    throwAnnouncementActionError(
+      'dashboard.announcement.create_draft_failed',
+      error,
+      ANNOUNCEMENT_SAVE_ERROR,
+      {
+        actor_id: access.userId,
+        organization_id: organizationId,
+      }
+    )
+  }
+
+  if (!announcement) {
+    throwAnnouncementActionError(
+      'dashboard.announcement.create_draft_missing_row',
+      new Error('Announcement insert returned no row'),
+      ANNOUNCEMENT_SAVE_ERROR,
+      {
+        actor_id: access.userId,
+        organization_id: organizationId,
+      }
+    )
+  }
 
   await logAuditEvent({
     actorId: access.userId,
@@ -89,8 +127,7 @@ export async function createAndSubmitAnnouncement(formData: FormData) {
   const organizationId = await getWritableOrganizationId(supabase, access)
   if (!organizationId) throw new Error('No organization')
 
-  const title = (formData.get('title') as string) || 'Untitled Announcement'
-  const body = (formData.get('body') as string) || ''
+  const { title, body } = readAnnouncementTextFields(formData, { requireComplete: true })
   const categoryId = formData.get('category_id') as string | null
   const bannerUrl = readOptionalBannerUrl(formData, 'banner_url')
   const registrationLink = readOptionalHttpUrl(formData, 'registration_link', 'Registration link')
@@ -123,7 +160,29 @@ export async function createAndSubmitAnnouncement(formData: FormData) {
     .select('id')
     .single()
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    throwAnnouncementActionError(
+      'dashboard.announcement.create_submitted_failed',
+      error,
+      ANNOUNCEMENT_SUBMIT_ERROR,
+      {
+        actor_id: access.userId,
+        organization_id: organizationId,
+      }
+    )
+  }
+
+  if (!announcement) {
+    throwAnnouncementActionError(
+      'dashboard.announcement.create_submitted_missing_row',
+      new Error('Announcement insert returned no row'),
+      ANNOUNCEMENT_SUBMIT_ERROR,
+      {
+        actor_id: access.userId,
+        organization_id: organizationId,
+      }
+    )
+  }
 
   await logAuditEvent({
     actorId: access.userId,

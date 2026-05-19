@@ -13,6 +13,8 @@ import type {
   PublisherWithOrgs,
 } from './types'
 import { sortAnnouncementsForFeed } from './announcements/presentation'
+import { announcementLookupId } from './announcements/urls'
+import { reportServerError } from '@/lib/error-reporting'
 
 const ANNOUNCEMENT_SELECT = `
   *,
@@ -25,6 +27,18 @@ const ANNOUNCEMENT_SELECT_WITH_CATEGORY_FILTER = `
   categories!inner ( id, name, slug, color ),
   organizations ( id, name, slug, logo_url )
 ` as const
+
+const PUBLIC_FEED_LIMIT = 80
+
+function errorCode(error: unknown): string | undefined {
+  if (!error || typeof error !== 'object') return undefined
+  const value = (error as Record<string, unknown>).code
+  return typeof value === 'string' ? value : undefined
+}
+
+function isNoRowsError(error: unknown) {
+  return errorCode(error) === 'PGRST116'
+}
 
 function normalizePublicSearchQuery(query?: string): string {
   return (query ?? '')
@@ -49,6 +63,7 @@ export async function getPublicAnnouncements(
     .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${now}`)
     .or(`expires_at.is.null,expires_at.gt.${now}`)
     .order('published_at', { ascending: false })
+    .limit(PUBLIC_FEED_LIMIT)
 
   if (categorySlug) {
     query = query.eq('categories.slug', categorySlug)
@@ -60,7 +75,10 @@ export async function getPublicAnnouncements(
 
   const { data, error } = await query
   if (error) {
-    console.error('[getPublicAnnouncements]', error.message, error.code)
+    reportServerError('data.public_announcements.query_failed', error, {
+      categorySlug: categorySlug ?? null,
+      hasSearch: Boolean(search),
+    })
     return []
   }
   return sortAnnouncementsForFeed((data ?? []) as AnnouncementWithRelations[])
@@ -69,10 +87,11 @@ export async function getPublicAnnouncements(
 export async function getAnnouncementById(id: string): Promise<AnnouncementWithRelations | null> {
   const supabase = await createClient()
   const now = new Date().toISOString()
+  const lookupId = announcementLookupId(id)
   const { data, error } = await supabase
     .from('announcements')
     .select(ANNOUNCEMENT_SELECT)
-    .eq('id', id)
+    .eq('id', lookupId)
     .eq('status', 'published')
     .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${now}`)
     .or(`expires_at.is.null,expires_at.gt.${now}`)
@@ -91,7 +110,7 @@ export async function getActiveCategories(): Promise<DbCategory[]> {
     .order('name')
 
   if (error) {
-    console.error('[getActiveCategories]', error.message, error.code)
+    reportServerError('data.active_categories.query_failed', error)
     return []
   }
   return (data ?? []) as DbCategory[]
@@ -122,7 +141,15 @@ export async function getSubmittedAnnouncements(): Promise<AnnouncementForReview
     query = query.in('organization_id', access.orgIds)
   }
 
-  const { data } = await query
+  const { data, error: submittedAnnouncementsError } = await query
+  if (submittedAnnouncementsError) {
+    reportServerError('data.submitted_announcements.query_failed', submittedAnnouncementsError, {
+      actorId: access.userId,
+      role: access.role,
+      orgCount: access.orgIds.length,
+    })
+    return []
+  }
   return (data ?? []) as AnnouncementForReview[]
 }
 
@@ -131,7 +158,22 @@ export async function getAnnouncementForReview(id: string): Promise<Announcement
   if (!access || !canAccessAdminArea(access.role)) return null
 
   const supabase = await createClient()
-  const { data } = await supabase.from('announcements').select(REVIEW_SELECT).eq('id', id).single()
+  const { data, error: reviewAnnouncementError } = await supabase
+    .from('announcements')
+    .select(REVIEW_SELECT)
+    .eq('id', id)
+    .single()
+
+  if (reviewAnnouncementError) {
+    if (!isNoRowsError(reviewAnnouncementError)) {
+      reportServerError('data.review_announcement.query_failed', reviewAnnouncementError, {
+        actorId: access.userId,
+        role: access.role,
+        announcementId: id,
+      })
+    }
+    return null
+  }
 
   if (!data) return null
   if (access.role === 'admin' && !access.orgIds.includes(data.organization_id)) return null
@@ -155,17 +197,35 @@ export async function getAllOrganizations() {
     query = query.in('id', access.orgIds)
   }
 
-  const { data } = await query
+  const { data, error: organizationsError } = await query
+  if (organizationsError) {
+    reportServerError('data.organizations.query_failed', organizationsError, {
+      actorId: access.userId,
+      role: access.role,
+      orgCount: access.orgIds.length,
+    })
+    return []
+  }
   return data ?? []
 }
 
 export async function getOrgWithMembers(orgId: string): Promise<OrgWithMembers | null> {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error: orgWithMembersError } = await supabase
     .from('organizations')
     .select('*, organization_members ( user_id, member_role, users ( display_name, email ) )')
     .eq('id', orgId)
     .single()
+
+  if (orgWithMembersError) {
+    if (!isNoRowsError(orgWithMembersError)) {
+      reportServerError('data.organization_with_members.query_failed', orgWithMembersError, {
+        organizationId: orgId,
+      })
+    }
+    return null
+  }
+
   return data as OrgWithMembers | null
 }
 
@@ -174,13 +234,22 @@ export async function getAllPublishers(): Promise<PublisherWithOrgs[]> {
   if (!access || !canAccessAdminArea(access.role)) return []
 
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error: publishersError } = await supabase
     .from('users')
     .select(
       '*, organization_members ( organization_id, member_role, organizations ( name, slug ) )'
     )
     .eq('role', 'publisher')
     .order('created_at', { ascending: false })
+
+  if (publishersError) {
+    reportServerError('data.publishers.query_failed', publishersError, {
+      actorId: access.userId,
+      role: access.role,
+      orgCount: access.orgIds.length,
+    })
+    return []
+  }
 
   if (access.role !== 'admin') return (data ?? []) as PublisherWithOrgs[]
 
@@ -238,10 +307,10 @@ export async function getAdminStats() {
   }
 
   const [
-    { count: pendingReview },
-    { count: publishedThisMonth },
-    { count: totalOrgs },
-    { data: publishers },
+    pendingReviewResult,
+    publishedThisMonthResult,
+    totalOrgsResult,
+    adminStatsPublishersResult,
   ] = await Promise.all([
     pendingReviewQuery,
     publishedThisMonthQuery,
@@ -251,6 +320,24 @@ export async function getAdminStats() {
       .select('id, role, organization_members ( organization_id )')
       .eq('role', 'publisher'),
   ])
+
+  const { count: pendingReview, error: pendingReviewError } = pendingReviewResult
+  const { count: publishedThisMonth, error: publishedThisMonthError } = publishedThisMonthResult
+  const { count: totalOrgs, error: totalOrgsError } = totalOrgsResult
+  const { data: publishers, error: adminStatsPublishersError } = adminStatsPublishersResult
+  const adminStatsError =
+    pendingReviewError ?? publishedThisMonthError ?? totalOrgsError ?? adminStatsPublishersError
+
+  if (adminStatsError) {
+    reportServerError('data.admin_stats.query_failed', adminStatsError, {
+      actorId: access.userId,
+      role: access.role,
+      pendingReviewFailed: Boolean(pendingReviewError),
+      publishedThisMonthFailed: Boolean(publishedThisMonthError),
+      totalOrgsFailed: Boolean(totalOrgsError),
+      publishersFailed: Boolean(adminStatsPublishersError),
+    })
+  }
 
   const totalPublishers =
     access.role === 'admin'
@@ -274,11 +361,20 @@ export async function getVisibleUsersForAdmin() {
   if (!access || !canAccessAdminArea(access.role)) return []
 
   const supabase = await createServiceClient()
-  const { data } = await supabase
+  const { data, error: visibleUsersError } = await supabase
     .from('users')
     .select('*, organization_members ( organization_id )')
     .in('role', ['admin', 'publisher'])
     .order('created_at', { ascending: false })
+
+  if (visibleUsersError) {
+    reportServerError('data.visible_users.query_failed', visibleUsersError, {
+      actorId: access.userId,
+      role: access.role,
+      orgCount: access.orgIds.length,
+    })
+    return []
+  }
 
   if (!data) return []
   if (access.role !== 'admin') return data
@@ -304,22 +400,28 @@ export async function getVisibleUsersForAdmin() {
 
 export async function getAllAdmins() {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error: adminsError } = await supabase
     .from('users')
     .select('*')
     .in('role', ['admin', 'super_admin'])
     .order('created_at', { ascending: false })
+
+  if (adminsError) {
+    reportServerError('data.admins.query_failed', adminsError)
+    return []
+  }
+
   return data ?? []
 }
 
 export async function getPlatformStats() {
   const supabase = await createClient()
   const [
-    { count: totalAnnouncements },
-    { count: publishedCount },
-    { count: pendingReview },
-    { count: totalOrgs },
-    { count: totalUsers },
+    totalAnnouncementsResult,
+    publishedCountResult,
+    pendingReviewResult,
+    totalOrgsResult,
+    totalUsersResult,
   ] = await Promise.all([
     supabase.from('announcements').select('*', { count: 'exact', head: true }),
     supabase
@@ -333,6 +435,29 @@ export async function getPlatformStats() {
     supabase.from('organizations').select('*', { count: 'exact', head: true }),
     supabase.from('users').select('*', { count: 'exact', head: true }),
   ])
+
+  const { count: totalAnnouncements, error: totalAnnouncementsError } = totalAnnouncementsResult
+  const { count: publishedCount, error: publishedCountError } = publishedCountResult
+  const { count: pendingReview, error: platformPendingReviewError } = pendingReviewResult
+  const { count: totalOrgs, error: platformTotalOrgsError } = totalOrgsResult
+  const { count: totalUsers, error: totalUsersError } = totalUsersResult
+  const platformStatsError =
+    totalAnnouncementsError ??
+    publishedCountError ??
+    platformPendingReviewError ??
+    platformTotalOrgsError ??
+    totalUsersError
+
+  if (platformStatsError) {
+    reportServerError('data.platform_stats.query_failed', platformStatsError, {
+      totalAnnouncementsFailed: Boolean(totalAnnouncementsError),
+      publishedCountFailed: Boolean(publishedCountError),
+      pendingReviewFailed: Boolean(platformPendingReviewError),
+      totalOrgsFailed: Boolean(platformTotalOrgsError),
+      totalUsersFailed: Boolean(totalUsersError),
+    })
+  }
+
   return {
     totalAnnouncements: totalAnnouncements ?? 0,
     publishedCount: publishedCount ?? 0,

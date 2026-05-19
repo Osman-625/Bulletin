@@ -1,5 +1,6 @@
 'use server'
 
+import { reportServerError } from '@/lib/error-reporting'
 import { createClient } from '@/lib/supabase/server'
 
 export async function recordAnnouncementView(announcementId: string) {
@@ -11,6 +12,8 @@ export async function recordAnnouncementView(announcementId: string) {
   })
 
   if (error) {
-    console.error('[recordAnnouncementView]', error.message, error.code)
+    reportServerError('public.announcement_view.increment_failed', error, {
+      announcementId,
+    })
   }
 }

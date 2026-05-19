@@ -21,7 +21,7 @@ test.describe('Public feed', () => {
     expect(cardTitle).toBeTruthy()
 
     const keyword = cardTitle!.split(' ')[0]
-    await page.getByPlaceholder(/search announcements/i).fill(keyword)
+    await page.getByPlaceholder(/search/i).fill(keyword)
     await page.getByRole('button', { name: /^search$/i }).click()
     await expect(page).toHaveURL(new RegExp(`q=${encodeURIComponent(keyword)}`, 'i'))
     const cards = page.locator('[data-testid="announcement-card"]')
@@ -55,6 +55,7 @@ test.describe('Public feed', () => {
     expect(categorySlug).toBeTruthy()
 
     await filterBtn.click()
+    await expect(page).toHaveURL(new RegExp(`category=${encodeURIComponent(categorySlug!)}`))
     await page.getByPlaceholder(/search/i).fill('a')
     await page.getByRole('button', { name: /^search$/i }).click()
     await expect(page).toHaveURL(/category=.*q=|q=.*category=/)

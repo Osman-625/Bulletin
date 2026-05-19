@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Atkinson_Hyperlegible, Bricolage_Grotesque, Geist_Mono } from 'next/font/google'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { Providers } from './providers'
+import { getCanonicalSiteUrl } from '@/lib/site'
 import './globals.css'
 
 const atkinsonHyperlegible = Atkinson_Hyperlegible({
@@ -25,11 +26,12 @@ const bricolageGrotesque = Bricolage_Grotesque({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL(getCanonicalSiteUrl()),
   title: {
     default: 'Bulletin',
     template: '%s — Bulletin',
   },
-  description: 'University announcements for INTI International University.',
+  description: 'Independent campus announcements for the INTI community.',
 }
 
 export default function RootLayout({
@@ -43,7 +45,7 @@ export default function RootLayout({
       className={`${atkinsonHyperlegible.variable} ${geistMono.variable} ${bricolageGrotesque.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="flex min-h-full flex-col" suppressHydrationWarning>
+      <body className="flex min-h-full flex-col">
         <Providers>{children}</Providers>
         <SpeedInsights />
       </body>
