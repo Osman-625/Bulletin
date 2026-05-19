@@ -6,7 +6,6 @@ import AnnouncementCard from '@/components/announcements/AnnouncementCard'
 import type { AnnouncementCardVisual } from '@/components/announcements/AnnouncementCard'
 import CategoryFilter from '@/components/announcements/CategoryFilter'
 import { BrandMark } from '@/components/layout/BrandMark'
-import { announcementPath } from '@/lib/announcements/urls'
 import {
   URGENCY_META,
   isAnnouncementPinned,
@@ -96,13 +95,10 @@ export default async function PublicFeedPage({
     year: 'numeric',
   })
 
-  const pinnedHero = announcements.find((announcement) => isAnnouncementPinned(announcement))
-  const featured =
-    pinnedHero ?? announcements.find((announcement) => announcement.banner_url) ?? announcements[0]
+  const pinnedHero = announcements.find((a) => isAnnouncementPinned(a))
+  const featured = pinnedHero ?? announcements.find((a) => a.banner_url) ?? announcements[0]
   const featuredIsPinned = featured ? isAnnouncementPinned(featured) : false
-  const rest = featured
-    ? announcements.filter((announcement) => announcement.id !== featured.id)
-    : announcements
+  const rest = featured ? announcements.filter((a) => a.id !== featured.id) : announcements
   const boardSections = buildAnnouncementSections(rest, activeSort)
   const activeCategory = category ? topics.find((cat) => cat.slug === category)?.name : null
   const clearSearchHref = buildFeedHref({ category, sort: activeSort })
@@ -110,136 +106,255 @@ export default async function PublicFeedPage({
     const days = daysUntilDeadline(a.expires_at)
     return days !== null && days <= 7
   }).length
-  const latestAnnouncement = announcements[0] ?? null
 
   return (
     <div className="future-warm-plane min-h-[100dvh]">
-      <main className="w-full px-3 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-8">
-        <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-4 md:gap-5 lg:gap-6">
-          <section
-            className="grid gap-3 md:grid-cols-[minmax(0,1.45fr)_minmax(15rem,0.75fr)] lg:grid-cols-12"
-            aria-labelledby="public-feed-title"
-          >
-            <div className="public-page-reveal future-bento-cell rounded-[1.25rem] p-4 sm:p-5 md:p-6 lg:col-span-8 lg:min-h-[26rem] lg:p-8 xl:min-h-[28rem]">
-              <div className="mb-4 flex flex-wrap items-center gap-3 sm:mb-5">
-                <span className="future-kicker">INTI campus board</span>
-                <span
-                  className="h-1.5 w-1.5 rounded-full bg-[var(--color-gold)]"
-                  aria-hidden="true"
-                />
-                <span className="font-mono text-[0.7rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
-                  Clubs / Careers / Student Life / Workshops
-                </span>
-              </div>
-
-              <h1
-                id="public-feed-title"
-                className="font-display max-w-[44rem] text-4xl leading-[0.95] font-extrabold text-[var(--color-text-primary)] sm:text-5xl md:text-6xl lg:text-8xl"
-              >
-                Campus Bulletin
-              </h1>
-
-              <p className="mt-4 max-w-[38rem] text-xl leading-[1.12] font-bold text-[var(--color-text-primary)] sm:text-2xl md:text-3xl">
-                What&apos;s happening around INTI, in one place.
-              </p>
-              <p className="mt-3 max-w-[39rem] text-sm leading-6 text-[var(--color-text-muted)] sm:text-base sm:leading-7">
-                Official notices, student club posts, deadlines, and campus events — all in one
-                public board. Fast to scan between classes, easy to search by topic.
-              </p>
-
-              <div className="mt-5 hidden gap-3 sm:grid sm:grid-cols-3">
-                <CampusMetric value={announcements.length} label="Live notices" />
-                <CampusMetric value={topics.length} label="Topics" />
-                <CampusMetric value={today} label="Today" wide />
-              </div>
+      {/* ── Masthead ──────────────────────────────────────── */}
+      <section
+        className="public-page-reveal border-b border-[var(--color-border)] px-4 py-10 sm:px-6 sm:py-12 lg:px-8 lg:py-14"
+        aria-labelledby="public-feed-title"
+      >
+        <div className="mx-auto flex max-w-[1280px] flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+          {/* Left: headline + tagline */}
+          <div>
+            <div className="mb-4 flex flex-wrap items-center gap-3">
+              <span className="future-kicker">INTI campus board</span>
+              <span
+                className="h-1.5 w-1.5 rounded-full bg-[var(--color-gold)]"
+                aria-hidden="true"
+              />
+              <span className="font-mono text-[0.65rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
+                Clubs · Careers · Student Life · Workshops
+              </span>
             </div>
-
-            <aside
-              className="public-page-reveal future-bento-cell hidden rounded-[1.25rem] p-5 delay-2 md:block lg:col-span-4 lg:p-6"
-              aria-label="Live board summary"
+            <h1
+              id="public-feed-title"
+              className="font-display text-5xl leading-[0.9] font-extrabold tracking-[-0.02em] text-[var(--color-text-primary)] sm:text-6xl lg:text-[5.5rem]"
             >
-              <div className="flex h-full min-h-[18rem] flex-col justify-between">
-                <div>
-                  <p className="future-kicker">Live board</p>
-                  <p className="font-display mt-3 max-w-[18rem] text-3xl leading-[1.05] font-bold text-[var(--color-text-primary)] sm:text-4xl">
-                    What&apos;s happening right now.
-                  </p>
-                </div>
-                <div className="mt-6 grid gap-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div
-                      className="rounded-[1.15rem] bg-[var(--color-surface)]/72 p-4"
-                      style={{ border: '1px solid var(--color-border-subtle)' }}
-                    >
-                      <p className="font-mono text-3xl leading-none font-bold text-[var(--color-text-primary)]">
-                        {announcements.length}
-                      </p>
-                      <p className="mt-2 font-mono text-[0.65rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
-                        Live notices
-                      </p>
-                    </div>
-                    <div
-                      className="rounded-[1.15rem] bg-[var(--color-surface)]/72 p-4"
-                      style={{ border: '1px solid var(--color-border-subtle)' }}
-                    >
-                      <p className="font-mono text-3xl leading-none font-bold text-[var(--color-accent-inti)]">
-                        {closingThisWeek}
-                      </p>
-                      <p className="mt-2 font-mono text-[0.65rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
-                        Closing this week
-                      </p>
-                    </div>
-                  </div>
-                  {latestAnnouncement && (
-                    <Link
-                      href={announcementPath(latestAnnouncement)}
-                      className="block rounded-[1.15rem] bg-[var(--color-surface)]/72 p-4 transition-colors duration-200 hover:bg-[var(--color-surface-elevated)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
-                      style={{ border: '1px solid var(--color-border-subtle)' }}
-                    >
-                      <p className="font-mono text-[0.65rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
-                        Latest notice
-                      </p>
-                      <p className="mt-1 line-clamp-2 text-sm leading-snug font-bold text-[var(--color-text-primary)]">
-                        {latestAnnouncement.title}
-                      </p>
-                    </Link>
-                  )}
-                  <Link
-                    href="#announcements"
-                    className="action-lift inline-flex min-h-11 items-center justify-center rounded-[1rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
-                  >
-                    View all notices
-                  </Link>
-                </div>
-              </div>
-            </aside>
-          </section>
+              Campus
+              <br />
+              Bulletin
+            </h1>
+            <p className="mt-5 max-w-[36rem] text-base leading-7 text-[var(--color-text-muted)] sm:text-lg">
+              Official notices, student club posts, deadlines, and campus events — all in one public
+              board.
+            </p>
+          </div>
 
-          <section
-            className="mobile-search-dock public-page-reveal z-20 grid gap-2 delay-3 md:grid-cols-[minmax(0,1.15fr)_minmax(16rem,0.85fr)] lg:grid-cols-[minmax(0,1.15fr)_minmax(20rem,0.85fr)]"
-            aria-label="Search and filters"
-          >
-            <div className="future-bento-cell rounded-[1.05rem] p-2.5 shadow-[var(--shadow-soft)] sm:p-3 lg:shadow-none">
-              <form
-                action="/"
-                className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"
-              >
+          {/* Right: live metrics */}
+          <div className="hidden sm:flex sm:flex-col sm:items-end sm:gap-1">
+            <p className="font-mono text-[0.65rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
+              {today}
+            </p>
+            <div className="mt-2 flex items-baseline gap-3">
+              <span className="font-display text-6xl font-bold text-[var(--color-text-primary)] tabular-nums">
+                {announcements.length}
+              </span>
+              <span className="text-base font-medium text-[var(--color-text-muted)]">
+                active notices
+              </span>
+            </div>
+            {closingThisWeek > 0 && (
+              <p className="mt-1 font-mono text-sm font-bold text-[var(--color-accent-inti)]">
+                {closingThisWeek} closing this week
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Content: sidebar + main ───────────────────────── */}
+      <div className="mx-auto max-w-[1280px] px-4 py-6 sm:px-6 sm:py-8 lg:flex lg:gap-10 lg:px-8 lg:py-10 xl:gap-14">
+        {/* ── Sidebar (desktop only) ─────────────────────── */}
+        <aside
+          className="hidden lg:block lg:w-56 lg:flex-shrink-0 xl:w-64"
+          aria-label="Filters and sort order"
+        >
+          <div className="sticky top-24 flex flex-col gap-8">
+            {/* Search */}
+            <div>
+              <h2 className="future-kicker mb-3">Search</h2>
+              <form action="/" className="flex flex-col gap-2">
                 {category && <input type="hidden" name="category" value={category} />}
                 {activeSort !== 'priority' && (
                   <input type="hidden" name="sort" value={activeSort} />
                 )}
-                <label htmlFor="announcement-search" className="sr-only">
+                <label htmlFor="sidebar-search" className="sr-only">
                   Search announcements
                 </label>
                 <input
-                  id="announcement-search"
+                  id="sidebar-search"
+                  name="q"
+                  type="search"
+                  defaultValue={search}
+                  placeholder="Search notices..."
+                  className="input-inti min-h-11 w-full rounded-[0.875rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 text-sm text-[var(--color-text-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] outline-none placeholder:text-[var(--color-text-muted)]"
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    className="action-lift min-h-9 flex-1 rounded-[0.875rem] bg-[var(--color-accent-inti)] px-4 text-sm font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+                  >
+                    Search
+                  </button>
+                  {search && (
+                    <Link
+                      href={clearSearchHref}
+                      className="inline-flex min-h-9 items-center rounded-[0.875rem] border border-[var(--color-border)] px-3 text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+                    >
+                      Clear
+                    </Link>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            {/* Sort */}
+            <nav aria-label="Sort order">
+              <h2 className="future-kicker mb-3">Sort by</h2>
+              <div className="flex flex-col gap-0.5">
+                {BOARD_SORT_OPTIONS.map((option) => {
+                  const active = option.sort === activeSort
+                  return (
+                    <Link
+                      key={option.sort}
+                      href={buildFeedHref({ category, q: search, sort: option.sort })}
+                      className="flex items-center justify-between rounded-[0.75rem] px-3 py-2.5 text-sm font-semibold transition-colors duration-200"
+                      style={{
+                        background: active ? 'var(--color-text-primary)' : 'transparent',
+                        color: active ? 'var(--color-canvas)' : 'var(--color-text-muted)',
+                      }}
+                      aria-current={active ? 'true' : undefined}
+                    >
+                      {option.label}
+                      {active && (
+                        <span className="font-mono text-[0.5rem] font-bold tracking-wider uppercase opacity-60">
+                          Active
+                        </span>
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
+            </nav>
+
+            {/* Categories */}
+            <nav aria-label="Filter by topic">
+              <h2 className="future-kicker mb-3">Topics</h2>
+              <div className="flex flex-col gap-0.5">
+                <Link
+                  href={buildFeedHref({ sort: activeSort, q: search })}
+                  className="flex items-center gap-2.5 rounded-[0.75rem] px-3 py-2 text-sm font-semibold transition-colors duration-200"
+                  style={{
+                    background: !category ? 'var(--color-surface-elevated)' : 'transparent',
+                    color: !category ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
+                    borderLeft: !category
+                      ? '3px solid var(--color-accent-inti)'
+                      : '3px solid transparent',
+                    paddingLeft: '0.625rem',
+                  }}
+                >
+                  All topics
+                </Link>
+                {topics.map((cat) => {
+                  const catColor = cat.color ?? '#C8102E'
+                  const isActive = category === cat.slug
+                  return (
+                    <Link
+                      key={cat.id}
+                      href={buildFeedHref({ category: cat.slug, sort: activeSort, q: search })}
+                      className="flex items-center gap-2.5 rounded-[0.75rem] py-2 text-sm font-semibold transition-colors duration-200"
+                      style={{
+                        background: isActive
+                          ? `color-mix(in oklab, ${catColor} 10%, var(--color-surface))`
+                          : 'transparent',
+                        color: isActive ? 'var(--color-text-primary)' : 'var(--color-text-muted)',
+                        borderLeft: isActive ? `3px solid ${catColor}` : '3px solid transparent',
+                        paddingLeft: '0.625rem',
+                        paddingRight: '0.75rem',
+                      }}
+                      aria-current={isActive ? 'true' : undefined}
+                    >
+                      <span
+                        className="h-2 w-2 flex-shrink-0 rounded-full"
+                        style={{ background: catColor }}
+                        aria-hidden="true"
+                      />
+                      {cat.name}
+                    </Link>
+                  )
+                })}
+              </div>
+            </nav>
+
+            {/* Live stats panel */}
+            <div
+              className="rounded-[1rem] border p-4"
+              style={{
+                borderColor: 'var(--color-border)',
+                background: 'var(--color-surface)',
+                boxShadow: 'var(--shadow-soft)',
+              }}
+            >
+              <p className="future-kicker mb-3">Live board</p>
+              <div>
+                <p className="font-display text-4xl font-bold text-[var(--color-text-primary)] tabular-nums">
+                  {announcements.length}
+                </p>
+                <p className="mt-1 text-xs font-medium text-[var(--color-text-muted)]">
+                  active notices
+                </p>
+              </div>
+              {closingThisWeek > 0 && (
+                <div
+                  className="mt-3 border-t pt-3"
+                  style={{ borderColor: 'var(--color-border-subtle)' }}
+                >
+                  <p className="font-display text-4xl font-bold text-[var(--color-accent-inti)] tabular-nums">
+                    {closingThisWeek}
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-[var(--color-text-muted)]">
+                    closing this week
+                  </p>
+                </div>
+              )}
+              <div
+                className="mt-3 border-t pt-3"
+                style={{ borderColor: 'var(--color-border-subtle)' }}
+              >
+                <p className="text-xs font-medium text-[var(--color-text-muted)]">
+                  {topics.length} topics · updated live
+                </p>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        {/* ── Main content ───────────────────────────────── */}
+        <main id="announcements" className="min-w-0 flex-1">
+          {/* Mobile controls (hidden on desktop) */}
+          <section
+            className="public-page-reveal mb-6 grid gap-2 delay-3 lg:hidden"
+            aria-label="Search and filters"
+          >
+            <div className="future-bento-cell rounded-[1.05rem] p-2.5 shadow-[var(--shadow-soft)]">
+              <form action="/" className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                {category && <input type="hidden" name="category" value={category} />}
+                {activeSort !== 'priority' && (
+                  <input type="hidden" name="sort" value={activeSort} />
+                )}
+                <label htmlFor="mobile-search" className="sr-only">
+                  Search announcements
+                </label>
+                <input
+                  id="mobile-search"
                   name="q"
                   type="search"
                   defaultValue={search}
                   placeholder="Search clubs, workshops, deadlines..."
-                  className="input-inti min-h-12 min-w-0 rounded-[1rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-base text-[var(--color-text-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] transition-[border-color,background,box-shadow] duration-300 ease-[var(--ease-ui)] outline-none placeholder:text-[var(--color-text-muted)]"
+                  className="input-inti min-h-12 rounded-[1rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 text-base text-[var(--color-text-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.42)] outline-none placeholder:text-[var(--color-text-muted)]"
                 />
-                <div className="grid grid-cols-[1fr_auto] gap-2 sm:flex">
+                <div className="flex gap-2">
                   <button
                     type="submit"
                     className="action-lift min-h-12 rounded-[1rem] bg-[var(--color-accent-inti)] px-5 text-base font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
@@ -249,7 +364,7 @@ export default async function PublicFeedPage({
                   {search && (
                     <Link
                       href={clearSearchHref}
-                      className="inline-flex min-h-12 items-center rounded-[1rem] border border-[var(--color-border)] px-4 text-base font-semibold text-[var(--color-text-muted)] transition-[border-color,color,transform] duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 hover:border-[var(--color-accent-inti)] hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] active:scale-[0.98]"
+                      className="inline-flex min-h-12 items-center rounded-[1rem] border border-[var(--color-border)] px-4 text-base font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
                     >
                       Clear
                     </Link>
@@ -258,136 +373,128 @@ export default async function PublicFeedPage({
               </form>
             </div>
 
-            <div className="future-bento-cell rounded-[1.05rem] p-2.5 shadow-[var(--shadow-soft)] sm:p-3 lg:shadow-none">
+            <div className="future-bento-cell rounded-[1.05rem] p-2.5 shadow-[var(--shadow-soft)]">
               <Suspense fallback={<FilterSkeleton />}>
                 <CategoryFilter categories={topics} />
               </Suspense>
             </div>
+
+            {/* Mobile sort row */}
+            <div className="future-bento-cell flex gap-1.5 rounded-[1.05rem] p-2.5">
+              {BOARD_SORT_OPTIONS.map((option) => {
+                const active = option.sort === activeSort
+                return (
+                  <Link
+                    key={option.sort}
+                    href={buildFeedHref({ category, q: search, sort: option.sort })}
+                    className="flex-1 rounded-[0.75rem] py-2 text-center text-sm font-semibold transition-colors"
+                    style={{
+                      background: active ? 'var(--color-text-primary)' : 'var(--color-surface)',
+                      color: active ? 'var(--color-canvas)' : 'var(--color-text-muted)',
+                      border: `1px solid ${active ? 'var(--color-text-primary)' : 'var(--color-border)'}`,
+                    }}
+                    aria-current={active ? 'true' : undefined}
+                  >
+                    {option.label}
+                  </Link>
+                )
+              })}
+            </div>
           </section>
 
-          <BoardOrderControls
-            activeSort={activeSort}
-            category={category}
-            search={search}
-            activeCategory={activeCategory}
-            count={announcements.length}
-          />
+          {/* Content heading */}
+          <div className="public-page-reveal mb-6 flex flex-wrap items-baseline justify-between gap-3 delay-4">
+            <div>
+              <p className="future-kicker">Campus notices</p>
+              <h2 className="font-display mt-1 text-2xl leading-none font-bold text-[var(--color-text-primary)] sm:text-3xl">
+                {activeCategory ?? 'All announcements'}
+              </h2>
+            </div>
+            <p className="text-sm font-semibold text-[var(--color-text-muted)]">
+              {announcements.length} {announcements.length === 1 ? 'notice' : 'notices'}
+            </p>
+          </div>
 
           {announcements.length === 0 ? (
             <EmptyState category={activeCategory} search={search} />
           ) : (
-            <section
-              id="announcements"
-              className="public-page-reveal delay-4"
-              aria-label="Announcement feed"
-            >
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <p className="future-kicker">Campus notices</p>
-                  <h2 className="font-display mt-1 text-3xl leading-none font-bold text-[var(--color-text-primary)]">
-                    Announcements
-                  </h2>
-                </div>
-                <p className="text-sm font-semibold text-[var(--color-text-muted)]">
-                  {activeCategory ?? 'All topics'} · {announcements.length} notices
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-12 md:gap-14">
-                {featured && (
-                  <div className="grid gap-4 xl:grid-cols-3 xl:items-stretch">
-                    <article
-                      className="public-page-reveal hero-poster-card xl:col-span-2"
-                      data-bento-tile="featured"
-                    >
-                      <p className="future-kicker mb-2">
-                        {featuredIsPinned ? 'Pinned notice' : 'Featured notice'}
-                      </p>
-                      <AnnouncementCard
-                        announcement={featured}
-                        featured
-                        visual={imageBentoVariant(featured, 0, true)}
-                      />
-                    </article>
-
-                    <BoardStructurePanel
-                      activeSort={activeSort}
-                      featuredIsPinned={featuredIsPinned}
+            <div className="flex flex-col gap-10 md:gap-14">
+              {/* Featured notice */}
+              {featured && (
+                <div className="public-page-reveal">
+                  <p className="future-kicker mb-2">
+                    {featuredIsPinned ? 'Pinned notice' : 'Featured notice'}
+                  </p>
+                  <article className="hero-poster-card" data-bento-tile="featured">
+                    <AnnouncementCard
+                      announcement={featured}
+                      featured
+                      visual={imageBentoVariant(featured, 0, true)}
                     />
-                  </div>
-                )}
+                  </article>
+                </div>
+              )}
 
-                {boardSections.every((section) => section.items.length === 0) ? (
-                  <div className="dense-bento-item future-bento-cell rounded-[1.25rem] px-6 py-10 text-base text-[var(--color-text-muted)] xl:max-w-[31rem]">
-                    No more announcements match this view.
-                  </div>
-                ) : (
-                  boardSections.map((section, sectionIndex) =>
-                    section.items.length > 0 ? (
-                      <section
-                        key={section.id}
-                        className="public-page-reveal dense-bento-section"
-                        aria-labelledby={`board-section-${section.id}`}
-                        style={{ animationDelay: `${0.34 + sectionIndex * 0.06}s` }}
-                      >
-                        <div className="dense-bento-section-heading mb-4 flex items-end justify-between gap-4">
-                          <div>
-                            <p id={`board-section-${section.id}`} className="future-kicker">
-                              {section.label} ({section.items.length})
-                            </p>
-                            <p className="mt-1 max-w-[34rem] text-sm leading-6 text-[var(--color-text-muted)]">
-                              {section.summary}
-                            </p>
-                          </div>
-                          {sectionIndex === 0 && (
-                            <Link
-                              href="/#announcements"
-                              className="hidden text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)] sm:inline"
-                            >
-                              Browse board
-                            </Link>
-                          )}
+              {/* Board sections */}
+              {boardSections.every((s) => s.items.length === 0) ? (
+                <div className="future-bento-cell rounded-[1.25rem] px-6 py-10 text-base text-[var(--color-text-muted)]">
+                  No more announcements match this view.
+                </div>
+              ) : (
+                boardSections.map((section, sectionIndex) =>
+                  section.items.length > 0 ? (
+                    <section
+                      key={section.id}
+                      className="public-page-reveal dense-bento-section"
+                      aria-labelledby={`board-section-${section.id}`}
+                      style={{ animationDelay: `${0.34 + sectionIndex * 0.06}s` }}
+                    >
+                      <div className="dense-bento-section-heading mb-4 flex items-end justify-between gap-4">
+                        <div>
+                          <p id={`board-section-${section.id}`} className="future-kicker">
+                            {section.label} ({section.items.length})
+                          </p>
+                          <p className="mt-1 max-w-[34rem] text-sm leading-6 text-[var(--color-text-muted)]">
+                            {section.summary}
+                          </p>
                         </div>
+                      </div>
 
-                        <div className={sectionBoardClass(section.items.length)}>
-                          {section.items.map((announcement, index) => (
-                            <article
-                              key={announcement.id}
-                              className={[
-                                bentoTileClass(
-                                  section.id,
-                                  announcement,
-                                  index,
-                                  section.items.length
-                                ),
-                                isUrgentCard(announcement) ? 'urgent-bento-item' : '',
-                              ]
-                                .filter(Boolean)
-                                .join(' ')}
-                              data-bento-tile={section.id}
-                              style={{
-                                animationDelay: `${0.38 + (sectionIndex * 4 + index) * 0.045}s`,
-                              }}
-                            >
-                              <AnnouncementCard
-                                announcement={announcement}
-                                visual={imageBentoVariant(announcement, index + sectionIndex * 2)}
-                              />
-                            </article>
-                          ))}
-                        </div>
-                      </section>
-                    ) : null
-                  )
-                )}
-              </div>
-            </section>
+                      <div className={sectionBoardClass(section.items.length)}>
+                        {section.items.map((announcement, index) => (
+                          <article
+                            key={announcement.id}
+                            className={[
+                              bentoTileClass(section.id, announcement, index, section.items.length),
+                              isUrgentCard(announcement) ? 'urgent-bento-item' : '',
+                            ]
+                              .filter(Boolean)
+                              .join(' ')}
+                            data-bento-tile={section.id}
+                            style={{
+                              animationDelay: `${0.38 + (sectionIndex * 4 + index) * 0.045}s`,
+                            }}
+                          >
+                            <AnnouncementCard
+                              announcement={announcement}
+                              visual={imageBentoVariant(announcement, index + sectionIndex * 2)}
+                            />
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  ) : null
+                )
+              )}
+            </div>
           )}
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   )
 }
+
+// ── Utility functions (unchanged) ─────────────────────────────────────────────
 
 function normalizeBoardSort(value?: string): BoardSort {
   return BOARD_SORTS.includes(value as BoardSort) ? (value as BoardSort) : 'priority'
@@ -574,154 +681,6 @@ function isUrgentCard(announcement: AnnouncementWithRelations): boolean {
   const rank = URGENCY_META[normalizeAnnouncementUrgency(announcement.urgency)].rank
   const days = daysUntilDeadline(announcement.expires_at)
   return rank > 0 || (days !== null && days <= 5)
-}
-
-function BoardOrderControls({
-  activeSort,
-  category,
-  search,
-  activeCategory,
-  count,
-}: {
-  activeSort: BoardSort
-  category?: string
-  search: string
-  activeCategory?: string | null
-  count: number
-}) {
-  const activeOption = BOARD_SORT_OPTIONS.find((option) => option.sort === activeSort)!
-
-  return (
-    <section
-      className="public-page-reveal future-bento-cell hidden gap-4 rounded-[1.35rem] p-4 delay-4 lg:grid lg:grid-cols-[minmax(16rem,0.55fr)_minmax(0,1fr)] lg:items-center"
-      aria-labelledby="board-order-title"
-    >
-      <div>
-        <p className="future-kicker">{activeOption.eyebrow}</p>
-        <h2
-          id="board-order-title"
-          className="font-display mt-2 text-3xl leading-none font-bold text-[var(--color-text-primary)]"
-        >
-          {activeOption.label}
-        </h2>
-        <p className="mt-2 max-w-[30rem] text-sm leading-6 text-[var(--color-text-muted)]">
-          {activeCategory ?? 'All topics'} · {count} visible notices
-        </p>
-      </div>
-
-      <nav className="grid gap-2 sm:grid-cols-3" aria-label="Sort order">
-        {BOARD_SORT_OPTIONS.map((option) => {
-          const active = option.sort === activeSort
-
-          return (
-            <Link
-              key={option.sort}
-              href={buildFeedHref({ category, q: search, sort: option.sort })}
-              data-sort={option.sort}
-              aria-current={active ? 'true' : undefined}
-              className="group min-h-24 rounded-[1rem] border p-4 transition-[background,border-color,box-shadow,transform,color] duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] active:scale-[0.99]"
-              style={{
-                background: active ? 'var(--color-text-primary)' : 'var(--color-surface)',
-                borderColor: active ? 'var(--color-text-primary)' : 'var(--color-border)',
-                boxShadow: active ? 'var(--shadow-button-hover)' : 'none',
-                color: active ? 'var(--color-canvas)' : 'var(--color-text-primary)',
-              }}
-            >
-              <span className="font-mono text-[0.64rem] font-bold tracking-[0.16em] uppercase opacity-70">
-                {option.eyebrow}
-              </span>
-              <span className="mt-2 block text-base leading-tight font-bold">{option.label}</span>
-              <span className="mt-1 block text-xs leading-5 opacity-72">{option.summary}</span>
-            </Link>
-          )
-        })}
-      </nav>
-    </section>
-  )
-}
-
-function BoardStructurePanel({
-  activeSort,
-  featuredIsPinned,
-}: {
-  activeSort: BoardSort
-  featuredIsPinned: boolean
-}) {
-  const rows = [
-    {
-      label: featuredIsPinned ? 'Pinned first' : 'Featured first',
-      summary: featuredIsPinned ? 'Pinned notices are promoted first.' : 'A useful notice leads.',
-    },
-    { label: 'New today', summary: 'Fresh notices from today.' },
-    { label: 'Closing soon', summary: 'Deadlines move up when selected.' },
-    { label: 'Plan ahead', summary: 'Upcoming notices with time to plan.' },
-  ]
-
-  return (
-    <aside
-      className="future-bento-cell hidden rounded-[1.35rem] p-5 xl:flex xl:flex-col xl:justify-between"
-      aria-label="Board order structure"
-    >
-      <div>
-        <p className="future-kicker">Board order</p>
-        <h3 className="font-display mt-2 text-3xl leading-none font-bold text-[var(--color-text-primary)]">
-          How we sort this board
-        </h3>
-        <p className="mt-3 text-sm leading-6 text-[var(--color-text-muted)]">
-          Sorted by: {BOARD_SORT_OPTIONS.find((option) => option.sort === activeSort)?.label}
-        </p>
-      </div>
-
-      <div className="mt-6 grid gap-2">
-        {rows.map((row) => (
-          <div
-            key={row.label}
-            className="rounded-[0.95rem] border bg-[var(--color-surface)] px-4 py-3"
-            style={{ borderColor: 'var(--color-border-subtle)' }}
-          >
-            <p className="text-base leading-tight font-bold text-[var(--color-text-primary)]">
-              {row.label}
-            </p>
-            <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">{row.summary}</p>
-          </div>
-        ))}
-      </div>
-    </aside>
-  )
-}
-
-function CampusMetric({
-  value,
-  label,
-  wide = false,
-}: {
-  value: number | string
-  label: string
-  wide?: boolean
-}) {
-  return (
-    <div
-      className={
-        wide
-          ? 'rounded-[1.15rem] bg-[var(--color-surface)]/72 p-4 sm:col-span-1'
-          : 'rounded-[1.15rem] bg-[var(--color-surface)]/72 p-4'
-      }
-      style={{ border: '1px solid var(--color-border-subtle)' }}
-    >
-      <p
-        className={
-          wide
-            ? 'font-mono text-sm leading-5 font-bold text-[var(--color-text-primary)] sm:text-base'
-            : 'font-mono text-3xl leading-none font-bold text-[var(--color-text-primary)]'
-        }
-      >
-        {value}
-      </p>
-      <p className="mt-2 font-mono text-[0.65rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
-        {label}
-      </p>
-    </div>
-  )
 }
 
 function FilterSkeleton() {
