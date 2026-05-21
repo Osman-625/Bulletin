@@ -176,7 +176,7 @@ export default async function OwnerPage() {
         {/* Publish rate ring */}
         <GlassCard
           hover={false}
-          className="col-span-6 flex flex-col items-center justify-center gap-3 p-6 lg:col-span-3"
+          className="col-span-12 flex flex-col items-center justify-center gap-3 p-6 sm:col-span-6 lg:col-span-3"
         >
           <div className="relative h-24 w-24">
             <svg viewBox="0 0 36 36" className="h-24 w-24 -rotate-90">
@@ -214,7 +214,7 @@ export default async function OwnerPage() {
         {/* Pending */}
         <GlassCard
           hover={false}
-          className="col-span-6 flex flex-col justify-center p-6 lg:col-span-2"
+          className="col-span-12 flex flex-col justify-center p-6 sm:col-span-6 lg:col-span-2"
         >
           <p
             className={`font-mono text-4xl font-bold`}
@@ -233,7 +233,7 @@ export default async function OwnerPage() {
           { label: 'Published', value: publishedCount ?? 0 },
           { label: 'Organizations', value: totalOrgs ?? 0 },
         ].map(({ label, value }) => (
-          <GlassCard key={label} hover={false} className="col-span-4 p-5">
+          <GlassCard key={label} hover={false} className="col-span-12 p-5 sm:col-span-4">
             <CountUp
               value={value}
               className="font-mono text-3xl font-bold text-[var(--color-accent)]"
@@ -259,7 +259,17 @@ export default async function OwnerPage() {
           </div>
           <div className="space-y-3">
             {(recentAudit ?? []).length === 0 ? (
-              <p className="text-xs text-[var(--color-text-muted)]">No activity recorded yet.</p>
+              <div
+                role="status"
+                className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-5 text-sm"
+              >
+                <p className="font-semibold text-[var(--color-text-primary)]">
+                  No audit activity yet
+                </p>
+                <p className="mt-1 text-[var(--color-text-secondary)]">
+                  Create, review, and account changes will appear here when they are recorded.
+                </p>
+              </div>
             ) : (
               (recentAudit ?? []).map((entry, i) => {
                 const actor =
@@ -295,9 +305,9 @@ export default async function OwnerPage() {
 
         {/* Quick links */}
         <div className="col-span-12 lg:col-span-7">
-          <div className="grid h-full grid-cols-2 gap-4">
+          <div className="grid h-full grid-cols-1 gap-4 sm:grid-cols-2">
             {quickLinks.map(({ href, label, icon: Icon, desc }) => (
-              <Link key={href} href={href}>
+              <Link key={href} href={href} className="block h-full">
                 <GlassCard hover className="group flex h-full items-center gap-4 p-5">
                   <div
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"

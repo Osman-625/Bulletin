@@ -11,7 +11,7 @@ import {
   type AppRole,
   type ScopedUser,
 } from '@/lib/auth/authz'
-import { getVisibleUsersForAdmin } from '@/lib/data'
+import { getVisibleUsersForAdminPage } from '@/lib/data'
 import { reportServerError } from '@/lib/error-reporting'
 import { createServiceClient } from '@/lib/supabase/server'
 
@@ -35,6 +35,63 @@ const USER_DELETE_ERROR = 'Could not delete user. Try again.'
 
 function userErrorHref(message: string) {
   return `${ADMIN_USERS_PATH}?error=${encodeURIComponent(message)}`
+}
+
+function adminUsersHref({ role, page }: { role?: string; page?: number }) {
+  const params = new URLSearchParams()
+  if (role) params.set('role', role)
+  if (page && page > 1) params.set('page', String(page))
+  const query = params.toString()
+  return query ? `${ADMIN_USERS_PATH}?${query}` : ADMIN_USERS_PATH
+}
+
+function UserPagination({
+  page,
+  totalPages,
+  role,
+}: {
+  page: number
+  totalPages: number
+  role?: string
+}) {
+  if (totalPages <= 1) return null
+  const previousPage = Math.max(1, page - 1)
+  const nextPage = Math.min(totalPages, page + 1)
+
+  return (
+    <nav
+      aria-label="User pagination"
+      className="flex flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p className="text-sm text-[var(--color-text-secondary)]">
+        Page {page} of {totalPages}
+      </p>
+      <div className="flex items-center gap-2">
+        <Link
+          href={adminUsersHref({ role, page: previousPage })}
+          aria-disabled={page <= 1}
+          className={`inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
+            page <= 1
+              ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
+              : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+          }`}
+        >
+          Previous
+        </Link>
+        <Link
+          href={adminUsersHref({ role, page: nextPage })}
+          aria-disabled={page >= totalPages}
+          className={`inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
+            page >= totalPages
+              ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
+              : 'bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]'
+          }`}
+        >
+          Next
+        </Link>
+      </div>
+    </nav>
+  )
 }
 
 async function getTargetUser(
@@ -201,9 +258,10 @@ export default async function AdminUsersPage({
     edit?: string
     confirm?: string
     error?: string
+    page?: string
   }>
 }) {
-  const { role: filterRole, msg, edit, confirm, error } = await searchParams
+  const { role: filterRole, msg, edit, confirm, error, page } = await searchParams
   const access = await getCurrentAccessContext()
   if (!access) redirect('/login')
   if (!canAccessAdminArea(access.role)) redirect(getDefaultAppPath(access.role))
@@ -214,18 +272,18 @@ export default async function AdminUsersPage({
     orgIds: access.orgIds,
   }
 
-  const allUsers = await getVisibleUsersForAdmin()
-  let users = allUsers
-  if (filterRole && ROLE_LABELS[filterRole]) {
-    users = users.filter((user) => user.role === filterRole)
-  }
-
-  const roleCounts = allUsers.reduce<Record<string, number>>((acc, user) => {
-    acc[user.role as string] = (acc[user.role as string] ?? 0) + 1
-    return acc
-  }, {})
-
-  const base = filterRole ? `/admin/users?role=${filterRole}` : '/admin/users'
+  const visibleUsersPage = await getVisibleUsersForAdminPage({ role: filterRole, page })
+  const users = visibleUsersPage.items as Array<{
+    id: string
+    email: string
+    display_name: string
+    role: AppRole
+    organization_members?: Array<{ organization_id: string }>
+    force_password_change?: boolean
+    created_at: string
+  }>
+  const roleCounts = visibleUsersPage.roleCounts
+  const base = adminUsersHref({ role: filterRole, page: visibleUsersPage.page })
   const separator = base.includes('?') ? '&' : '?'
 
   return (
@@ -236,7 +294,8 @@ export default async function AdminUsersPage({
             Users
           </h1>
           <p className="mt-1 text-[var(--color-text-secondary)]">
-            {users.length} users{filterRole ? ` - ${ROLE_LABELS[filterRole] ?? filterRole}` : ''}
+            {visibleUsersPage.total} users
+            {filterRole ? ` - ${ROLE_LABELS[filterRole] ?? filterRole}` : ''}
           </p>
         </div>
         <Link
@@ -261,7 +320,7 @@ export default async function AdminUsersPage({
 
       <div className="flex flex-wrap gap-2">
         {[
-          { key: '', label: `All (${allUsers.length})` },
+          { key: '', label: `All (${visibleUsersPage.allTotal})` },
           ...Object.keys(ROLE_LABELS).map((role) => ({
             key: role,
             label: `${ROLE_LABELS[role]} (${roleCounts[role] ?? 0})`,
@@ -269,7 +328,7 @@ export default async function AdminUsersPage({
         ].map(({ key, label }) => (
           <a
             key={key}
-            href={key ? `/admin/users?role=${key}` : '/admin/users'}
+            href={adminUsersHref({ role: key || undefined })}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               filterRole === key || (!filterRole && !key)
                 ? 'bg-[var(--color-accent)] text-white'
@@ -282,6 +341,28 @@ export default async function AdminUsersPage({
       </div>
 
       <div className="space-y-2">
+        {users.length === 0 && (
+          <GlassCard hover={false} className="p-8">
+            <div role="status" className="mx-auto max-w-md text-center">
+              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                No users match this view
+              </p>
+              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                {filterRole
+                  ? `There are no ${ROLE_LABELS[filterRole] ?? filterRole} users in your scope.`
+                  : 'No users are visible in your admin scope yet.'}
+              </p>
+              {filterRole && (
+                <Link
+                  href="/admin/users"
+                  className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-[var(--color-surface-elevated)] px-4 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+                >
+                  Clear the role filter
+                </Link>
+              )}
+            </div>
+          </GlassCard>
+        )}
         {users.map((user) => {
           const role = user.role as AppRole
           const isEditing = edit === user.id
@@ -439,6 +520,11 @@ export default async function AdminUsersPage({
           )
         })}
       </div>
+      <UserPagination
+        page={visibleUsersPage.page}
+        totalPages={visibleUsersPage.totalPages}
+        role={filterRole}
+      />
     </div>
   )
 }

@@ -1,5 +1,7 @@
 export const ANNOUNCEMENT_TITLE_MAX = 120
 export const ANNOUNCEMENT_BODY_MAX = 5000
+export const BANNER_MAX_FILE_SIZE_MB = 5
+export const BANNER_MAX_FILE_SIZE_BYTES = BANNER_MAX_FILE_SIZE_MB * 1024 * 1024
 
 type AnnouncementTextOptions = {
   requireComplete?: boolean

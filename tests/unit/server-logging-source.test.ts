@@ -6,6 +6,7 @@ const structuredServerLogFiles = [
   'src/lib/data.ts',
   'src/lib/notifications.ts',
   'src/lib/auth/sync-users.ts',
+  'src/lib/owner/resources.ts',
   'src/app/sitemap.ts',
   'src/app/(public)/announcements/[id]/actions.ts',
 ] as const
@@ -33,5 +34,20 @@ describe('structured server logging source guards', () => {
     expect(audit).toContain('action,')
     expect(audit).toContain('targetType,')
     expect(audit).toContain('targetId,')
+  })
+
+  it('logs owner external resource API failures without exposing bearer tokens', () => {
+    const resources = source('src/lib/owner/resources.ts')
+
+    expect(resources).toContain('owner.resources.announcements_query_failed')
+    expect(resources).toContain('owner.resources.password_resets_count_failed')
+    expect(resources).toContain('owner.resources.banner_storage_list_failed')
+    expect(resources).toContain('owner.resources.external_api_failed')
+    expect(resources).toContain('owner.resources.external_api_unhandled')
+    expect(resources).toContain("import { unstable_rethrow } from 'next/navigation'")
+    expect(resources).toContain('unstable_rethrow(error)')
+    expect(resources).toContain('hostname: url.hostname')
+    expect(resources).toContain('pathname: url.pathname')
+    expect(resources).not.toContain('Authorization: `Bearer ${token}`')
   })
 })

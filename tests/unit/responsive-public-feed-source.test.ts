@@ -30,7 +30,7 @@ describe('public feed responsive adaptation source guards', () => {
     expect(publicHome).not.toContain(
       'sticky bottom-[calc(env(safe-area-inset-bottom,0px)+0.75rem)]'
     )
-    expect(publicHome).toContain('hidden public-page-reveal future-bento-cell')
+    expect(publicHome).toContain('public-page-reveal future-bento-cell hidden')
     expect(publicHome).toContain('lg:grid-cols-[minmax(16rem,0.55fr)_minmax(0,1fr)]')
   })
 
@@ -38,7 +38,7 @@ describe('public feed responsive adaptation source guards', () => {
     const publicHome = source('src/app/(public)/page.tsx')
     const globals = source('src/app/globals.css')
 
-    expect(publicHome).toContain('hidden public-page-reveal future-bento-cell')
+    expect(publicHome).toContain('public-page-reveal future-bento-cell hidden')
     expect(publicHome).toContain('md:block')
     expect(publicHome).not.toContain('border-l-4')
     expect(publicHome).toContain('urgent-bento-item')

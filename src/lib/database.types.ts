@@ -363,6 +363,27 @@ export type Database = {
           },
         ]
       }
+      rate_limit_buckets: {
+        Row: {
+          key: string
+          count: number
+          reset_at: string
+          updated_at: string
+        }
+        Insert: {
+          key: string
+          count?: number
+          reset_at: string
+          updated_at?: string
+        }
+        Update: {
+          key?: string
+          count?: number
+          reset_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       org_category_permissions: {
         Row: {
           org_id: string
@@ -529,6 +550,20 @@ export type Database = {
       increment_announcement_view: {
         Args: { p_announcement_id: string }
         Returns: void
+      }
+      hit_rate_limit: {
+        Args: {
+          p_key: string
+          p_limit: number
+          p_window_ms: number
+          p_now?: string
+        }
+        Returns: {
+          limited: boolean
+          remaining: number
+          reset_at: string
+          retry_after_seconds: number
+        }[]
       }
     }
     Enums: {

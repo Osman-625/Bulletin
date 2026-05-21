@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { logAuditEvent } from '@/lib/audit'
 import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
+import { readCategoryFormData } from '@/lib/categories/validation'
 import { reportServerError } from '@/lib/error-reporting'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -28,13 +29,11 @@ async function requireAdminAccess() {
 async function createCategory(formData: FormData) {
   'use server'
   const access = await requireAdminAccess()
+  const parsed = readCategoryFormData(formData)
+  if (!parsed.ok) redirect(categoryErrorHref(parsed.error))
+
   const supabase = await createClient()
-  const name = (formData.get('name') as string).trim()
-  const slug = name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-  const color = formData.get('color') as string
+  const { name, slug, color } = parsed.data
   const { data: category, error } = await supabase
     .from('categories')
     .insert({ name, slug, color, is_active: true })
@@ -58,13 +57,11 @@ async function createCategory(formData: FormData) {
 async function updateCategory(id: string, formData: FormData) {
   'use server'
   const access = await requireAdminAccess()
+  const parsed = readCategoryFormData(formData)
+  if (!parsed.ok) redirect(categoryErrorHref(parsed.error))
+
   const supabase = await createClient()
-  const name = (formData.get('name') as string).trim()
-  const slug = name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-  const color = formData.get('color') as string
+  const { name, slug, color } = parsed.data
   const { error } = await supabase.from('categories').update({ name, slug, color }).eq('id', id)
   if (error) {
     reportServerError('admin.categories.update', error, {
@@ -186,6 +183,7 @@ export default async function AdminCategoriesPage({
   const { error, edit } = await searchParams
   const supabase = await createServiceClient()
   const { data: categories } = await supabase.from('categories').select('*').order('name')
+  const hasCategories = (categories?.length ?? 0) > 0
 
   const announcementCounts: Record<string, number> = {}
   if (categories?.length) {
@@ -265,114 +263,130 @@ export default async function AdminCategoriesPage({
 
       {/* Category list */}
       <div className="space-y-2">
-        {(categories ?? []).map((cat) => {
-          const isEditing = edit === cat.id
-          const linkCount = announcementCounts[cat.id] ?? 0
+        {hasCategories ? (
+          (categories ?? []).map((cat) => {
+            const isEditing = edit === cat.id
+            const linkCount = announcementCounts[cat.id] ?? 0
 
-          return (
-            <GlassCard
-              key={cat.id}
-              hover={false}
-              className={isEditing ? 'ring-1 ring-[var(--color-accent)]' : ''}
-            >
-              {!isEditing ? (
-                <div className="flex items-center gap-4 px-5 py-3">
-                  <span
-                    className="h-4 w-4 shrink-0 rounded-full"
-                    style={{ background: cat.color ?? '#C8102E' }}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-[var(--color-text-primary)]">
-                      {cat.name}
-                    </p>
-                    <p className="font-mono text-xs text-[var(--color-text-muted)]">
-                      {cat.slug} {linkCount > 0 ? `· ${linkCount} linked` : ''}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <form
-                      action={async () => {
-                        'use server'
-                        await toggleCategory(cat.id, !cat.is_active)
-                      }}
-                    >
-                      <button
-                        type="submit"
-                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                          cat.is_active
-                            ? 'bg-[var(--color-status-published-bg)] text-[var(--color-status-published-text)] hover:opacity-80'
-                            : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] hover:opacity-80'
-                        }`}
+            return (
+              <GlassCard
+                key={cat.id}
+                hover={false}
+                className={isEditing ? 'ring-1 ring-[var(--color-accent)]' : ''}
+              >
+                {!isEditing ? (
+                  <div className="flex items-center gap-4 px-5 py-3">
+                    <span
+                      className="h-4 w-4 shrink-0 rounded-full"
+                      style={{ background: cat.color ?? '#C8102E' }}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                        {cat.name}
+                      </p>
+                      <p className="font-mono text-xs text-[var(--color-text-muted)]">
+                        {cat.slug} {linkCount > 0 ? `· ${linkCount} linked` : ''}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <form
+                        action={async () => {
+                          'use server'
+                          await toggleCategory(cat.id, !cat.is_active)
+                        }}
                       >
-                        {cat.is_active ? 'Active' : 'Inactive'}
-                      </button>
-                    </form>
-                    <a
-                      href={`/admin/categories?edit=${cat.id}`}
-                      className="rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
-                    >
-                      Edit
-                    </a>
-                    {linkCount === 0 ? (
-                      <form action={deleteCategory.bind(null, cat.id)}>
                         <button
                           type="submit"
-                          className="rounded-lg px-3 py-1 text-xs font-medium text-[var(--color-destructive)] transition-colors hover:bg-[var(--color-status-rejected-bg)]"
+                          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                            cat.is_active
+                              ? 'bg-[var(--color-status-published-bg)] text-[var(--color-status-published-text)] hover:opacity-80'
+                              : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] hover:opacity-80'
+                          }`}
                         >
-                          Delete
+                          {cat.is_active ? 'Active' : 'Inactive'}
                         </button>
                       </form>
-                    ) : (
-                      <span className="rounded-lg px-3 py-1 text-xs font-medium text-[var(--color-text-muted)]">
-                        {linkCount} linked
-                      </span>
-                    )}
+                      <a
+                        href={`/admin/categories?edit=${cat.id}`}
+                        className="rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+                      >
+                        Edit
+                      </a>
+                      {linkCount === 0 ? (
+                        <form action={deleteCategory.bind(null, cat.id)}>
+                          <button
+                            type="submit"
+                            className="rounded-lg px-3 py-1 text-xs font-medium text-[var(--color-destructive)] transition-colors hover:bg-[var(--color-status-rejected-bg)]"
+                          >
+                            Delete
+                          </button>
+                        </form>
+                      ) : (
+                        <span className="rounded-lg px-3 py-1 text-xs font-medium text-[var(--color-text-muted)]">
+                          {linkCount} linked
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="p-5">
-                  <form action={updateCategory.bind(null, cat.id)} className="flex items-end gap-3">
-                    <div className="flex-1 space-y-1.5">
-                      <label className="block text-xs font-medium text-[var(--color-text-secondary)]">
-                        Name
-                      </label>
-                      <input
-                        name="name"
-                        type="text"
-                        required
-                        defaultValue={cat.name}
-                        className="input-inti w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] focus:outline-none"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-medium text-[var(--color-text-secondary)]">
-                        Color
-                      </label>
-                      <input
-                        name="color"
-                        type="color"
-                        defaultValue={cat.color ?? '#C8102E'}
-                        className="h-[42px] w-16 cursor-pointer rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      className="shrink-0 rounded-xl bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)]"
+                ) : (
+                  <div className="p-5">
+                    <form
+                      action={updateCategory.bind(null, cat.id)}
+                      className="flex items-end gap-3"
                     >
-                      Save
-                    </button>
-                    <a
-                      href="/admin/categories"
-                      className="shrink-0 rounded-xl bg-[var(--color-surface-elevated)] px-5 py-2.5 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
-                    >
-                      Cancel
-                    </a>
-                  </form>
-                </div>
-              )}
-            </GlassCard>
-          )
-        })}
+                      <div className="flex-1 space-y-1.5">
+                        <label className="block text-xs font-medium text-[var(--color-text-secondary)]">
+                          Name
+                        </label>
+                        <input
+                          name="name"
+                          type="text"
+                          required
+                          defaultValue={cat.name}
+                          className="input-inti w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] focus:outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-medium text-[var(--color-text-secondary)]">
+                          Color
+                        </label>
+                        <input
+                          name="color"
+                          type="color"
+                          defaultValue={cat.color ?? '#C8102E'}
+                          className="h-[42px] w-16 cursor-pointer rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        className="shrink-0 rounded-xl bg-[var(--color-accent)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)]"
+                      >
+                        Save
+                      </button>
+                      <a
+                        href="/admin/categories"
+                        className="shrink-0 rounded-xl bg-[var(--color-surface-elevated)] px-5 py-2.5 text-sm font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+                      >
+                        Cancel
+                      </a>
+                    </form>
+                  </div>
+                )}
+              </GlassCard>
+            )
+          })
+        ) : (
+          <GlassCard hover={false} className="p-8">
+            <div role="status" className="mx-auto max-w-md text-center">
+              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                No categories yet
+              </p>
+              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                Create the first category above so publishers can classify announcements.
+              </p>
+            </div>
+          </GlassCard>
+        )}
       </div>
     </div>
   )

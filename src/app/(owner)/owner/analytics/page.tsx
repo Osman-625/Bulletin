@@ -17,8 +17,15 @@ export default async function OwnerAnalyticsPage() {
     supabase.from('users').select('role, created_at'),
     supabase.from('announcements').select('status'),
     supabase.from('announcements').select('organizations(name), status').eq('status', 'published'),
-    supabase.from('announcements').select('categories(name, color), status').eq('status', 'published'),
-    supabase.from('users').select('display_name, role, created_at, email').order('created_at', { ascending: false }).limit(10),
+    supabase
+      .from('announcements')
+      .select('categories(name, color), status')
+      .eq('status', 'published'),
+    supabase
+      .from('users')
+      .select('display_name, role, created_at, email')
+      .order('created_at', { ascending: false })
+      .limit(10),
   ])
 
   const roleCounts = (users ?? []).reduce<Record<string, number>>((acc, u) => {
@@ -33,20 +40,26 @@ export default async function OwnerAnalyticsPage() {
   }, {})
 
   const orgCounts = (byOrg ?? []).reduce<Record<string, number>>((acc, r) => {
-    const name = (r as { organizations?: { name?: string } | null }).organizations?.name ?? 'Unknown'
+    const name =
+      (r as { organizations?: { name?: string } | null }).organizations?.name ?? 'Unknown'
     acc[name] = (acc[name] ?? 0) + 1
     return acc
   }, {})
-  const sortedOrgs = Object.entries(orgCounts).sort((a, b) => b[1] - a[1]).slice(0, 8)
+  const sortedOrgs = Object.entries(orgCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
 
-  const catCounts = (byCategory ?? []).reduce<Record<string, { count: number; color: string }>>((acc, r) => {
-    const catRow = r as { categories?: unknown }
-    const cat = catRow.categories as { name: string; color: string | null } | null
-    if (!cat) return acc
-    if (!acc[cat.name]) acc[cat.name] = { count: 0, color: cat.color ?? '#C8102E' }
-    acc[cat.name].count++
-    return acc
-  }, {})
+  const catCounts = (byCategory ?? []).reduce<Record<string, { count: number; color: string }>>(
+    (acc, r) => {
+      const catRow = r as { categories?: unknown }
+      const cat = catRow.categories as { name: string; color: string | null } | null
+      if (!cat) return acc
+      if (!acc[cat.name]) acc[cat.name] = { count: 0, color: cat.color ?? '#C8102E' }
+      acc[cat.name].count++
+      return acc
+    },
+    {}
+  )
   const sortedCats = Object.entries(catCounts).sort((a, b) => b[1].count - a[1].count)
 
   const totalAnnouncements = Object.values(statusCounts).reduce((s, n) => s + n, 0)
@@ -59,14 +72,18 @@ export default async function OwnerAnalyticsPage() {
   ]
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+    <div className="mx-auto max-w-5xl space-y-8 px-6 py-8">
       <div>
-        <h1 className="text-3xl font-bold text-[var(--color-text-primary)] tracking-tight">Platform Analytics</h1>
-        <p className="text-[var(--color-text-secondary)] mt-1">Full system view — all roles, all data.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
+          Platform Analytics
+        </h1>
+        <p className="mt-1 text-[var(--color-text-secondary)]">
+          Full system view — all roles, all data.
+        </p>
       </div>
 
       {/* Top stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {[
           { label: 'Total Users', value: totalUsers },
           { label: 'Total Announcements', value: totalAnnouncements },
@@ -74,34 +91,46 @@ export default async function OwnerAnalyticsPage() {
           { label: 'Pending Review', value: statusCounts['submitted'] ?? 0 },
         ].map(({ label, value }) => (
           <GlassCard key={label} hover={false} className="p-5">
-            <CountUp value={value} className="text-3xl font-bold font-mono text-[var(--color-accent)]" />
-            <p className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] mt-1">{label}</p>
+            <CountUp
+              value={value}
+              className="font-mono text-3xl font-bold text-[var(--color-accent)]"
+            />
+            <p className="mt-1 text-xs tracking-widest text-[var(--color-text-muted)] uppercase">
+              {label}
+            </p>
           </GlassCard>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Users by role */}
         <div>
-          <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Users by Role</h2>
-          <GlassCard hover={false} className="p-6 space-y-4">
+          <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">
+            Users by Role
+          </h2>
+          <GlassCard hover={false} className="space-y-4 p-6">
             {roleRows.map(({ role, label, color }) => {
               const count = roleCounts[role] ?? 0
               const pct = totalUsers > 0 ? Math.round((count / totalUsers) * 100) : 0
               return (
                 <div key={role}>
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="mb-1.5 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
                       <span className="text-sm text-[var(--color-text-primary)]">{label}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-mono font-bold text-[var(--color-text-primary)]">{count}</span>
+                      <span className="font-mono text-sm font-bold text-[var(--color-text-primary)]">
+                        {count}
+                      </span>
                       <span className="text-xs text-[var(--color-text-muted)]">{pct}%</span>
                     </div>
                   </div>
                   <div className="h-1.5 rounded-full bg-[var(--color-surface-elevated)]">
-                    <div className="h-1.5 rounded-full transition-all duration-700" style={{ width: `${pct}%`, background: color }} />
+                    <div
+                      className="h-1.5 rounded-full transition-all duration-700"
+                      style={{ width: `${pct}%`, background: color }}
+                    />
                   </div>
                 </div>
               )
@@ -111,17 +140,24 @@ export default async function OwnerAnalyticsPage() {
 
         {/* Announcements by status */}
         <div>
-          <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">By Status</h2>
+          <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">By Status</h2>
           <div className="grid grid-cols-3 gap-3">
             {['published', 'submitted', 'draft', 'rejected', 'archived', 'expired'].map((s) => (
               <GlassCard key={s} hover={false} className="p-4">
-                <CountUp value={statusCounts[s] ?? 0} className="text-2xl font-bold font-mono text-[var(--color-text-primary)]" />
-                <p className="text-[15px] uppercase tracking-wider text-[var(--color-text-muted)] mt-1">{s}</p>
+                <CountUp
+                  value={statusCounts[s] ?? 0}
+                  className="font-mono text-2xl font-bold text-[var(--color-text-primary)]"
+                />
+                <p className="mt-1 text-[15px] tracking-wider text-[var(--color-text-muted)] uppercase">
+                  {s}
+                </p>
                 {totalAnnouncements > 0 && (
                   <div className="mt-2 h-0.5 rounded-full bg-[var(--color-surface-elevated)]">
                     <div
                       className="h-0.5 rounded-full bg-[var(--color-accent)]"
-                      style={{ width: `${Math.round(((statusCounts[s] ?? 0) / totalAnnouncements) * 100)}%` }}
+                      style={{
+                        width: `${Math.round(((statusCounts[s] ?? 0) / totalAnnouncements) * 100)}%`,
+                      }}
                     />
                   </div>
                 )}
@@ -131,66 +167,121 @@ export default async function OwnerAnalyticsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Top orgs */}
-        {sortedOrgs.length > 0 && (
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Most Active Organizations</h2>
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <div>
+          <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">
+            Most Active Organizations
+          </h2>
+          {sortedOrgs.length > 0 ? (
             <div className="space-y-2">
               {sortedOrgs.map(([name, count], i) => (
-                <GlassCard key={name} hover={false} className="px-5 py-3 flex items-center gap-4">
-                  <span className="text-sm font-mono text-[var(--color-text-muted)] w-5 shrink-0">{i + 1}</span>
-                  <p className="flex-1 text-sm font-medium text-[var(--color-text-primary)] truncate">{name}</p>
-                  <CountUp value={count} className="text-sm font-bold font-mono text-[var(--color-text-primary)]" />
+                <GlassCard key={name} hover={false} className="flex items-center gap-4 px-5 py-3">
+                  <span className="w-5 shrink-0 font-mono text-sm text-[var(--color-text-muted)]">
+                    {i + 1}
+                  </span>
+                  <p className="flex-1 truncate text-sm font-medium text-[var(--color-text-primary)]">
+                    {name}
+                  </p>
+                  <CountUp
+                    value={count}
+                    className="font-mono text-sm font-bold text-[var(--color-text-primary)]"
+                  />
                   <p className="text-xs text-[var(--color-text-muted)]">published</p>
                 </GlassCard>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <GlassCard hover={false} className="p-6">
+              <div role="status" className="text-sm">
+                <p className="font-semibold text-[var(--color-text-primary)]">
+                  No organization activity yet
+                </p>
+                <p className="mt-1 text-[var(--color-text-secondary)]">
+                  Published announcement counts will appear after organizations start posting.
+                </p>
+              </div>
+            </GlassCard>
+          )}
+        </div>
 
-        {/* Top categories */}
-        {sortedCats.length > 0 && (
-          <div>
-            <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Top Categories</h2>
+        <div>
+          <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">
+            Top Categories
+          </h2>
+          {sortedCats.length > 0 ? (
             <div className="space-y-2">
               {sortedCats.map(([name, { count, color }]) => (
-                <GlassCard key={name} hover={false} className="px-5 py-3 flex items-center gap-4">
-                  <span className="h-3 w-3 rounded-full shrink-0" style={{ background: color }} />
-                  <p className="flex-1 text-sm font-medium text-[var(--color-text-primary)]">{name}</p>
-                  <CountUp value={count} className="text-sm font-bold font-mono text-[var(--color-text-primary)]" />
+                <GlassCard key={name} hover={false} className="flex items-center gap-4 px-5 py-3">
+                  <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: color }} />
+                  <p className="flex-1 text-sm font-medium text-[var(--color-text-primary)]">
+                    {name}
+                  </p>
+                  <CountUp
+                    value={count}
+                    className="font-mono text-sm font-bold text-[var(--color-text-primary)]"
+                  />
                 </GlassCard>
               ))}
             </div>
-          </div>
-        )}
+          ) : (
+            <GlassCard hover={false} className="p-6">
+              <div role="status" className="text-sm">
+                <p className="font-semibold text-[var(--color-text-primary)]">
+                  No published categories yet
+                </p>
+                <p className="mt-1 text-[var(--color-text-secondary)]">
+                  Category rankings will appear after announcements are published.
+                </p>
+              </div>
+            </GlassCard>
+          )}
+        </div>
       </div>
 
-      {/* Recently joined */}
-      {(recentUsers ?? []).length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Recently Joined</h2>
+      <div>
+        <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">
+          Recently Joined
+        </h2>
+        {(recentUsers ?? []).length > 0 ? (
           <div className="space-y-2">
             {(recentUsers ?? []).map((u) => (
-              <GlassCard key={u.display_name + u.created_at} hover={false} className="px-5 py-3 flex items-center gap-4">
-                <div className="h-7 w-7 rounded-full bg-[var(--color-surface-elevated)] flex items-center justify-center shrink-0">
+              <GlassCard
+                key={u.display_name + u.created_at}
+                hover={false}
+                className="flex items-center gap-4 px-5 py-3"
+              >
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-elevated)]">
                   <span className="text-xs font-bold text-[var(--color-text-secondary)]">
                     {u.display_name.charAt(0).toUpperCase()}
                   </span>
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-sm text-[var(--color-text-primary)]">{u.display_name}</p>
                   <p className="text-xs text-[var(--color-text-muted)]">{u.email}</p>
                 </div>
-                <span className="text-[15px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">{(u.role as string).replace('_', ' ')}</span>
-                <p className="text-xs font-mono text-[var(--color-text-muted)] shrink-0">
-                  {new Date(u.created_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' })}
+                <span className="text-[15px] font-medium tracking-wider text-[var(--color-text-muted)] uppercase">
+                  {(u.role as string).replace('_', ' ')}
+                </span>
+                <p className="shrink-0 font-mono text-xs text-[var(--color-text-muted)]">
+                  {new Date(u.created_at).toLocaleDateString('en-MY', {
+                    day: 'numeric',
+                    month: 'short',
+                  })}
                 </p>
               </GlassCard>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <GlassCard hover={false} className="p-6">
+            <div role="status" className="text-sm">
+              <p className="font-semibold text-[var(--color-text-primary)]">No recent users yet</p>
+              <p className="mt-1 text-[var(--color-text-secondary)]">
+                New account activity will appear here after users join.
+              </p>
+            </div>
+          </GlassCard>
+        )}
+      </div>
     </div>
   )
 }

@@ -13,8 +13,33 @@ export function IdleLogout() {
   const countdownRef = useRef<number | null>(null)
   const hasSessionRef = useRef(false)
   const signingOutRef = useRef(false)
+  const showWarningRef = useRef(false)
+  const dialogRef = useRef<HTMLDivElement | null>(null)
+  const stayButtonRef = useRef<HTMLButtonElement | null>(null)
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null)
   const [showWarning, setShowWarning] = useState(false)
   const [secondsRemaining, setSecondsRemaining] = useState(IDLE_WARNING_MS / 1000)
+
+  useEffect(() => {
+    showWarningRef.current = showWarning
+  }, [showWarning])
+
+  useEffect(() => {
+    if (!showWarning) return
+
+    previousFocusedElementRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
+
+    const focusTimer = window.setTimeout(() => {
+      stayButtonRef.current?.focus()
+    }, 0)
+
+    return () => {
+      window.clearTimeout(focusTimer)
+      previousFocusedElementRef.current?.focus()
+      previousFocusedElementRef.current = null
+    }
+  }, [showWarning])
 
   useEffect(() => {
     const supabase = createClient()
@@ -63,7 +88,8 @@ export function IdleLogout() {
       )
     }
 
-    function handleActivity() {
+    function handleActivity(event: Event) {
+      if (showWarningRef.current && event.type === 'keydown') return
       scheduleIdleTimer()
     }
 
@@ -102,8 +128,39 @@ export function IdleLogout() {
   }, [])
 
   function stayLoggedIn() {
-    const event = new Event('keydown')
+    const event = new Event('pointerdown')
     window.dispatchEvent(event)
+  }
+
+  function handleDialogKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      stayLoggedIn()
+      return
+    }
+
+    if (event.key === 'Tab') {
+      const focusableElements = Array.from(
+        dialogRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+        ) ?? []
+      ).filter(
+        (element) => !element.hasAttribute('disabled') && !element.getAttribute('aria-hidden')
+      )
+
+      if (focusableElements.length === 0) return
+
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault()
+        lastElement.focus()
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault()
+        firstElement.focus()
+      }
+    }
   }
 
   if (!showWarning) return null
@@ -114,10 +171,12 @@ export function IdleLogout() {
       role="presentation"
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="idle-timeout-title"
         aria-describedby="idle-timeout-description"
+        onKeyDown={handleDialogKeyDown}
         className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-soft)]"
       >
         <h2
@@ -133,6 +192,7 @@ export function IdleLogout() {
           You&apos;ll be logged out in {secondsRemaining} seconds.
         </p>
         <button
+          ref={stayButtonRef}
           type="button"
           onClick={stayLoggedIn}
           className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2"

@@ -6,6 +6,7 @@ import AnnouncementCard from '@/components/announcements/AnnouncementCard'
 import type { AnnouncementCardVisual } from '@/components/announcements/AnnouncementCard'
 import CategoryFilter from '@/components/announcements/CategoryFilter'
 import { BrandMark } from '@/components/layout/BrandMark'
+import { PublicFeedAnalytics } from '@/components/analytics/PublicFeedAnalytics'
 import { announcementPath } from '@/lib/announcements/urls'
 import {
   URGENCY_META,
@@ -76,18 +77,20 @@ const BOARD_SECTION_META: Record<
 export default async function PublicFeedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; q?: string; sort?: string }>
+  searchParams: Promise<{ category?: string; q?: string; sort?: string; page?: string }>
 }) {
-  const { category, q, sort } = await searchParams
+  const { category, q, sort, page } = await searchParams
   const search = q?.trim() ?? ''
   const activeSort = normalizeBoardSort(sort)
 
-  const [allAnnouncements, categories] = await Promise.all([
-    getPublicAnnouncements(category, search),
+  const [announcementPage, categories] = await Promise.all([
+    getPublicAnnouncements(category, search, page),
     getActiveCategories(),
   ])
+  const allAnnouncements = announcementPage.items
   const announcements = sortAnnouncementsForPublicBoard(allAnnouncements, activeSort)
   const topics = derivePublicTopics(categories, allAnnouncements)
+  const totalAnnouncements = announcementPage.total
 
   const today = new Date().toLocaleDateString('en-MY', {
     weekday: 'long',
@@ -111,9 +114,23 @@ export default async function PublicFeedPage({
     return days !== null && days <= 7
   }).length
   const latestAnnouncement = announcements[0] ?? null
+  const visibleStart =
+    allAnnouncements.length > 0 ? (announcementPage.page - 1) * announcementPage.pageSize + 1 : 0
+  const visibleEnd =
+    allAnnouncements.length > 0
+      ? Math.min(visibleStart + allAnnouncements.length - 1, announcementPage.total)
+      : 0
 
   return (
     <div className="future-warm-plane min-h-[100dvh]">
+      <PublicFeedAnalytics
+        category={category ?? null}
+        searchLength={search.length}
+        sort={activeSort}
+        page={announcementPage.page}
+        visibleCount={announcements.length}
+        total={totalAnnouncements}
+      />
       <main className="w-full px-3 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-8">
         <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-4 md:gap-5 lg:gap-6">
           <section
@@ -148,7 +165,7 @@ export default async function PublicFeedPage({
               </p>
 
               <div className="mt-5 hidden gap-3 sm:grid sm:grid-cols-3">
-                <CampusMetric value={announcements.length} label="Live notices" />
+                <CampusMetric value={totalAnnouncements} label="Live notices" />
                 <CampusMetric value={topics.length} label="Topics" />
                 <CampusMetric value={today} label="Today" wide />
               </div>
@@ -172,7 +189,7 @@ export default async function PublicFeedPage({
                       style={{ border: '1px solid var(--color-border-subtle)' }}
                     >
                       <p className="font-mono text-3xl leading-none font-bold text-[var(--color-text-primary)]">
-                        {announcements.length}
+                        {totalAnnouncements}
                       </p>
                       <p className="mt-2 font-mono text-[0.65rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                         Live notices
@@ -270,7 +287,7 @@ export default async function PublicFeedPage({
             category={category}
             search={search}
             activeCategory={activeCategory}
-            count={announcements.length}
+            count={totalAnnouncements}
           />
 
           {announcements.length === 0 ? (
@@ -289,7 +306,7 @@ export default async function PublicFeedPage({
                   </h2>
                 </div>
                 <p className="text-sm font-semibold text-[var(--color-text-muted)]">
-                  {activeCategory ?? 'All topics'} · {announcements.length} notices
+                  {activeCategory ?? 'All topics'} · {totalAnnouncements} notices
                 </p>
               </div>
 
@@ -381,6 +398,19 @@ export default async function PublicFeedPage({
                   )
                 )}
               </div>
+
+              {announcementPage.totalPages > 1 && (
+                <FeedPagination
+                  page={announcementPage.page}
+                  totalPages={announcementPage.totalPages}
+                  visibleStart={visibleStart}
+                  visibleEnd={visibleEnd}
+                  total={announcementPage.total}
+                  category={category}
+                  search={search}
+                  activeSort={activeSort}
+                />
+              )}
             </section>
           )}
         </div>
@@ -453,11 +483,22 @@ function sortAnnouncementsForPublicBoard(
   })
 }
 
-function buildFeedHref({ category, q, sort }: { category?: string; q?: string; sort: BoardSort }) {
+function buildFeedHref({
+  category,
+  q,
+  sort,
+  page,
+}: {
+  category?: string
+  q?: string
+  sort: BoardSort
+  page?: number
+}) {
   const params = new URLSearchParams()
   if (category) params.set('category', category)
   if (q) params.set('q', q)
   if (sort !== 'priority') params.set('sort', sort)
+  if (page && page > 1) params.set('page', String(page))
   const query = params.toString()
   return query ? `/?${query}` : '/'
 }
@@ -637,6 +678,78 @@ function BoardOrderControls({
         })}
       </nav>
     </section>
+  )
+}
+
+function FeedPagination({
+  page,
+  totalPages,
+  visibleStart,
+  visibleEnd,
+  total,
+  category,
+  search,
+  activeSort,
+}: {
+  page: number
+  totalPages: number
+  visibleStart: number
+  visibleEnd: number
+  total: number
+  category?: string
+  search: string
+  activeSort: BoardSort
+}) {
+  return (
+    <nav
+      className="mt-8 flex flex-col gap-3 rounded-[1.15rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+      aria-label="Announcement pagination"
+    >
+      <p className="text-sm text-[var(--color-text-muted)]">
+        Showing{' '}
+        <span className="font-semibold text-[var(--color-text-primary)]">{visibleStart}</span> to{' '}
+        <span className="font-semibold text-[var(--color-text-primary)]">{visibleEnd}</span> of{' '}
+        <span className="font-semibold text-[var(--color-text-primary)]">{total}</span>
+      </p>
+
+      <div className="flex items-center gap-2">
+        {page > 1 ? (
+          <Link
+            href={buildFeedHref({ category, q: search, sort: activeSort, page: page - 1 })}
+            className="action-lift inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border)] px-3 text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+          >
+            Previous
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            className="inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-muted)] opacity-55"
+          >
+            Previous
+          </span>
+        )}
+
+        <span className="rounded-[0.85rem] bg-[var(--color-surface-elevated)] px-3 py-2 font-mono text-xs font-bold text-[var(--color-text-muted)]">
+          {page} / {totalPages}
+        </span>
+
+        {page < totalPages ? (
+          <Link
+            href={buildFeedHref({ category, q: search, sort: activeSort, page: page + 1 })}
+            className="action-lift inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border)] px-3 text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+          >
+            Next
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            className="inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-muted)] opacity-55"
+          >
+            Next
+          </span>
+        )}
+      </div>
+    </nav>
   )
 }
 

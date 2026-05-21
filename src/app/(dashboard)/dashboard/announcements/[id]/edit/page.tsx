@@ -79,6 +79,7 @@ export default async function EditAnnouncementPage({
       onUnpublish={unpublishAnnouncement.bind(null, id)}
       onDelete={deleteAnnouncement.bind(null, id)}
       organizationId={announcement.organization_id}
+      backHref="/dashboard/announcements"
     />
   )
 }

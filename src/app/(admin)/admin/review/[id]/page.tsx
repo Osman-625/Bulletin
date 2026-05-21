@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import { ArrowLeft, ExternalLink } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { StatusBadge } from '@/components/dashboard/StatusBadge'
+import { BackNavButton } from '@/components/navigation/BackNavButton'
 import { getAnnouncementForReview } from '@/lib/data'
 import { toSafeHttpUrl } from '@/lib/announcements/urls'
 import { reviewAnnouncement } from './actions'
@@ -27,12 +27,12 @@ export default async function ReviewDetailPage({
 
   return (
     <div className="dashboard-page mx-auto max-w-6xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
-      <Link
-        href="/admin/review"
+      <BackNavButton
+        fallbackHref="/admin/review"
         className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[0.9rem] px-3 text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)]"
       >
-        <ArrowLeft size={14} /> Back to queue
-      </Link>
+        Back to queue
+      </BackNavButton>
 
       <div className="grid gap-3 lg:grid-cols-12">
         <GlassCard hover={false} className="dashboard-command-card overflow-hidden lg:col-span-7">

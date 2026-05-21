@@ -1,4 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { unstable_rethrow } from 'next/navigation'
+import { reportServerError } from '@/lib/error-reporting'
 
 type ResourceMetric = {
   label: string
@@ -72,28 +74,34 @@ type SupabaseHealthService = {
 export async function getOwnerResourceOverview(
   supabase: SupabaseClient
 ): Promise<OwnerResourceOverview> {
-  const [
-    { data: viewRows },
-    { count: pendingPasswordResets },
-    bannerStorage,
-    vercel,
-    supabaseExternal,
-  ] = await Promise.all([
-    supabase
-      .from('announcements')
-      .select(
-        'id, title, status, view_count, published_at, registration_link, categories(name, color), organizations(name)'
-      )
-      .order('view_count', { ascending: false })
-      .limit(1000),
-    supabase
-      .from('password_reset_requests')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending'),
-    getBannerStorageSummary(supabase),
-    getVercelResourceCard(),
-    getSupabaseResourceCard(),
-  ])
+  const [announcementResult, passwordResetResult, bannerStorage, vercel, supabaseExternal] =
+    await Promise.all([
+      supabase
+        .from('announcements')
+        .select(
+          'id, title, status, view_count, published_at, registration_link, categories(name, color), organizations(name)'
+        )
+        .order('view_count', { ascending: false })
+        .limit(1000),
+      supabase
+        .from('password_reset_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending'),
+      getBannerStorageSummary(supabase),
+      getVercelResourceCard(),
+      getSupabaseResourceCard(),
+    ])
+
+  if (announcementResult.error) {
+    reportServerError('owner.resources.announcements_query_failed', announcementResult.error)
+  }
+
+  if (passwordResetResult.error) {
+    reportServerError('owner.resources.password_resets_count_failed', passwordResetResult.error)
+  }
+
+  const viewRows = announcementResult.data
+  const pendingPasswordResets = passwordResetResult.count
 
   const announcements = ((viewRows ?? []) as unknown as AnnouncementViewRow[]).map((row) => ({
     ...row,
@@ -134,6 +142,9 @@ async function getBannerStorageSummary(supabase: SupabaseClient) {
   })
 
   if (error) {
+    reportServerError('owner.resources.banner_storage_list_failed', error, {
+      bucket: 'banner-images',
+    })
     return {
       files: 0,
       bytes: 0,
@@ -311,15 +322,26 @@ async function getSupabaseResourceCard(): Promise<ExternalResourceCard> {
 async function fetchJson<T>(url: URL, token: string) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 4500)
+  const headers = new Headers()
+  headers.set('Authorization', `Bearer ${token}`)
 
   try {
     const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers,
       cache: 'no-store',
       signal: controller.signal,
     })
 
     if (!response.ok) {
+      reportServerError(
+        'owner.resources.external_api_failed',
+        new Error(`External API returned ${response.status}`),
+        {
+          hostname: url.hostname,
+          pathname: url.pathname,
+          status: response.status,
+        }
+      )
       return {
         ok: false as const,
         message: `API returned ${response.status}. Check token permissions and project identifiers.`,
@@ -328,6 +350,11 @@ async function fetchJson<T>(url: URL, token: string) {
 
     return { ok: true as const, data: (await response.json()) as T }
   } catch (error) {
+    unstable_rethrow(error)
+    reportServerError('owner.resources.external_api_unhandled', error, {
+      hostname: url.hostname,
+      pathname: url.pathname,
+    })
     return {
       ok: false as const,
       message:

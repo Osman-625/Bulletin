@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { CountUp } from '@/components/dashboard/CountUp'
 import { GlassCard } from '@/components/dashboard/GlassCard'
+import { BackNavButton } from '@/components/navigation/BackNavButton'
 import { createServiceClient } from '@/lib/supabase/server'
 import {
   type ExternalResourceCard,
@@ -54,13 +55,12 @@ export default async function OwnerResourcesPage() {
             Supabase resource signals.
           </p>
         </div>
-        <Link
-          href="/owner/analytics"
+        <BackNavButton
+          fallbackHref="/owner/analytics"
           className="inline-flex min-h-11 w-fit items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
         >
           Back to analytics
-          <ArrowUpRight size={14} aria-hidden="true" />
-        </Link>
+        </BackNavButton>
       </header>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -231,8 +231,15 @@ function TopAnnouncements({ overview }: { overview: OwnerResourceOverview }) {
       </h2>
       <div className="space-y-2">
         {overview.topAnnouncements.length === 0 ? (
-          <GlassCard hover={false} className="p-6 text-sm text-[var(--color-text-muted)]">
-            No tracked views yet.
+          <GlassCard hover={false} className="p-6">
+            <div role="status" className="text-sm">
+              <p className="font-semibold text-[var(--color-text-primary)]">
+                No tracked announcement views yet
+              </p>
+              <p className="mt-1 text-[var(--color-text-secondary)]">
+                Announcement rankings will appear after public detail pages receive visits.
+              </p>
+            </div>
           </GlassCard>
         ) : (
           overview.topAnnouncements.map((announcement, index) => (
@@ -332,7 +339,14 @@ function DistributionPanel({
       <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">{title}</h2>
       <GlassCard hover={false} className="p-5">
         {rows.length === 0 ? (
-          <p className="text-sm text-[var(--color-text-muted)]">No view data yet.</p>
+          <div role="status" className="text-sm">
+            <p className="font-semibold text-[var(--color-text-primary)]">
+              No view distribution yet
+            </p>
+            <p className="mt-1 text-[var(--color-text-secondary)]">
+              View distribution will appear after announcements receive tracked visits.
+            </p>
+          </div>
         ) : (
           <div className="space-y-4">
             {rows.map((row) => (

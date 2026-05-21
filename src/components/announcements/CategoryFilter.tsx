@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
+import { captureProductEvent } from '@/lib/product-analytics'
 import type { DbCategory } from '@/lib/types'
 
 export default function CategoryFilter({ categories }: { categories: DbCategory[] }) {
@@ -9,9 +10,15 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
   const active = searchParams.get('category') ?? ''
 
   function select(slug: string) {
+    captureProductEvent('public_feed_category_selected', {
+      category: slug || 'all',
+      previous_category: active || 'all',
+    })
+
     const params = new URLSearchParams(searchParams.toString())
     if (slug) params.set('category', slug)
     else params.delete('category')
+    params.delete('page')
     const query = params.toString()
     router.push(query ? `/?${query}` : '/')
   }

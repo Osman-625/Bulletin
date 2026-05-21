@@ -16,7 +16,7 @@ import {
   normalizeAnnouncementDisplaySize,
   normalizeAnnouncementUrgency,
 } from '@/lib/announcements/presentation'
-import { getCurrentAccessContext } from '@/lib/auth/authz'
+import { canAccessAdminArea, getCurrentAccessContext } from '@/lib/auth/authz'
 import { reportServerError } from '@/lib/error-reporting'
 import { notifyAnnouncementSubmitted } from '@/lib/notifications'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -193,6 +193,9 @@ export async function updateAnnouncement(id: string, formData: FormData) {
 export async function publishAnnouncement(id: string) {
   const supabase = await createClient()
   const announcement = await verifyAnnouncementAccess(supabase, id)
+  if (!canAccessAdminArea(announcement.actorRole)) {
+    throw new Error('Unauthorized')
+  }
 
   const now = new Date().toISOString()
   const scheduledPublishAt =

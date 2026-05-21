@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { AutosaveIndicator } from './AutosaveIndicator'
 import { StatusBadge } from './StatusBadge'
@@ -33,6 +33,34 @@ export function ActionBar({
   publishLabel = 'Submit for Review',
 }: ActionBarProps) {
   const [showUnpublishConfirm, setShowUnpublishConfirm] = useState(false)
+  const unpublishConfirmRef = useRef<HTMLDivElement | null>(null)
+  const unpublishCancelRef = useRef<HTMLButtonElement | null>(null)
+  const unpublishTriggerRef = useRef<HTMLButtonElement | null>(null)
+
+  useEffect(() => {
+    if (!showUnpublishConfirm) return
+
+    const focusTimer = window.setTimeout(() => {
+      unpublishCancelRef.current?.focus()
+    }, 0)
+
+    return () => window.clearTimeout(focusTimer)
+  }, [showUnpublishConfirm])
+
+  function closeUnpublishConfirm() {
+    setShowUnpublishConfirm(false)
+
+    window.setTimeout(() => {
+      unpublishTriggerRef.current?.focus()
+    }, 0)
+  }
+
+  function handleUnpublishConfirmKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeUnpublishConfirm()
+    }
+  }
 
   function handleConfirmUnpublish() {
     if (!onUnpublish) return
@@ -63,10 +91,12 @@ export function ActionBar({
             {onUnpublish &&
               (showUnpublishConfirm ? (
                 <div
+                  ref={unpublishConfirmRef}
                   role="alertdialog"
                   aria-modal="false"
                   aria-labelledby="unpublish-confirm-title"
                   aria-describedby="unpublish-confirm-description"
+                  onKeyDown={handleUnpublishConfirmKeyDown}
                   className="flex w-full flex-col gap-2 rounded-xl border border-[var(--color-destructive)]/30 bg-[var(--color-surface)] p-3 sm:w-auto sm:flex-row sm:items-center"
                 >
                   <div className="min-w-0">
@@ -85,8 +115,9 @@ export function ActionBar({
                   </div>
                   <div className="flex items-center gap-2 sm:ml-2">
                     <button
+                      ref={unpublishCancelRef}
                       type="button"
-                      onClick={() => setShowUnpublishConfirm(false)}
+                      onClick={closeUnpublishConfirm}
                       className={cn(
                         'min-h-11 rounded-xl px-4 text-sm font-medium transition-all duration-150',
                         'border border-[var(--color-glass-border)] text-[var(--color-text-secondary)]',
@@ -112,6 +143,7 @@ export function ActionBar({
                 </div>
               ) : (
                 <button
+                  ref={unpublishTriggerRef}
                   type="button"
                   onClick={() => setShowUnpublishConfirm(true)}
                   disabled={isPublishing}

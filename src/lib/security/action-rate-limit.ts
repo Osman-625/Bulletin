@@ -1,5 +1,6 @@
 import { headers } from 'next/headers'
-import { checkRateLimit, rateLimitKey } from './rate-limit'
+import { checkPersistentRateLimit } from './persistent-rate-limit'
+import { rateLimitKey } from './rate-limit'
 
 const AUTH_LIMIT = 5
 const AUTH_WINDOW_MS = 60_000
@@ -18,7 +19,7 @@ export async function checkActionRateLimit(scope: string, identifier?: string | 
   }
 
   const headerStore = await headers()
-  return checkRateLimit(rateLimitKey(scope, headerStore, identifier), {
+  return checkPersistentRateLimit(rateLimitKey(scope, headerStore, identifier), {
     limit: AUTH_LIMIT,
     windowMs: AUTH_WINDOW_MS,
   })

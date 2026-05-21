@@ -1,14 +1,16 @@
 'use client'
 
-import { useMemo, useState, type ChangeEvent, type ComponentType } from 'react'
+import Link from 'next/link'
+import { type ComponentType } from 'react'
 import { Archive, CheckCircle2, FileText, PenLine, Search } from 'lucide-react'
 import { AnnouncementRow } from '@/components/dashboard/AnnouncementRow'
 import type { AnnouncementRowData } from '@/components/dashboard/AnnouncementRow'
 import { cn } from '@/lib/utils'
 
-type Tab = 'all' | 'published' | 'drafts' | 'pending' | 'archived'
+export type AnnouncementTab = 'all' | 'published' | 'drafts' | 'pending' | 'archived'
+export type AnnouncementTabCounts = Record<AnnouncementTab, number>
 
-const TABS: { id: Tab; label: string; icon: ComponentType<{ size?: number }> }[] = [
+const TABS: { id: AnnouncementTab; label: string; icon: ComponentType<{ size?: number }> }[] = [
   { id: 'all', label: 'All', icon: FileText },
   { id: 'published', label: 'Live', icon: CheckCircle2 },
   { id: 'drafts', label: 'Drafts', icon: PenLine },
@@ -16,15 +18,19 @@ const TABS: { id: Tab; label: string; icon: ComponentType<{ size?: number }> }[]
   { id: 'archived', label: 'Archive', icon: Archive },
 ]
 
-const PAGE_SIZE = 10
-
 interface AnnouncementsClientProps {
   announcements: AnnouncementRowData[]
-  initialQuery?: string
+  activeTab: AnnouncementTab
+  search: string
+  page: number
+  pageSize: number
+  totalPages: number
+  totalResults: number
+  tabCounts: AnnouncementTabCounts
 }
 
-function EmptyState({ tab, query }: { tab: Tab; query: string }) {
-  const messages: Record<Tab, { title: string; body: string }> = {
+function EmptyState({ tab, query }: { tab: AnnouncementTab; query: string }) {
+  const messages: Record<AnnouncementTab, { title: string; body: string }> = {
     all: {
       title: 'No announcements yet',
       body: 'Create the first announcement for this workspace.',
@@ -51,94 +57,64 @@ function EmptyState({ tab, query }: { tab: Tab; query: string }) {
         {query.trim() ? 'No matching announcements' : title}
       </h3>
       <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--color-text-muted)]">
-        {query.trim()
-          ? `Nothing matched "${query.trim()}". Try a title, topic, or organization.`
-          : body}
+        {query.trim() ? `Nothing matched "${query.trim()}". Try a broader search.` : body}
       </p>
     </div>
   )
 }
 
+function dashboardAnnouncementsHref({
+  tab,
+  search,
+  page,
+}: {
+  tab?: AnnouncementTab
+  search?: string
+  page?: number
+}) {
+  const params = new URLSearchParams()
+  if (tab && tab !== 'all') params.set('tab', tab)
+  if (search) params.set('search', search)
+  if (page && page > 1) params.set('page', String(page))
+  const query = params.toString()
+  return query ? `/dashboard/announcements?${query}` : '/dashboard/announcements'
+}
+
+function visiblePaginationPages(page: number, totalPages: number) {
+  const windowSize = 5
+  const start = Math.max(1, Math.min(page - 2, totalPages - windowSize + 1))
+  const end = Math.min(totalPages, start + windowSize - 1)
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index)
+}
+
 export function AnnouncementsClient({
   announcements,
-  initialQuery = '',
+  activeTab,
+  search,
+  page,
+  pageSize,
+  totalPages,
+  totalResults,
+  tabCounts,
 }: AnnouncementsClientProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('all')
-  const [query, setQuery] = useState(initialQuery)
-  const [page, setPage] = useState(1)
-  const [animKey, setAnimKey] = useState(0)
-
-  const counts = useMemo(
-    () => ({
-      all: announcements.length,
-      published: announcements.filter((a) => a.status === 'published').length,
-      drafts: announcements.filter((a) => a.status === 'draft').length,
-      pending: announcements.filter((a) => a.status === 'submitted' || a.status === 'rejected')
-        .length,
-      archived: announcements.filter((a) => a.status === 'archived' || a.status === 'expired')
-        .length,
-    }),
-    [announcements]
-  )
-
-  const filtered = useMemo(() => {
-    let items = announcements
-
-    if (activeTab === 'published') {
-      items = items.filter((a) => a.status === 'published')
-    } else if (activeTab === 'drafts') {
-      items = items.filter((a) => a.status === 'draft')
-    } else if (activeTab === 'pending') {
-      items = items.filter((a) => a.status === 'submitted' || a.status === 'rejected')
-    } else if (activeTab === 'archived') {
-      items = items.filter((a) => a.status === 'archived' || a.status === 'expired')
-    }
-
-    if (query.trim()) {
-      const normalizedQuery = query.toLowerCase()
-      items = items.filter(
-        (a) =>
-          a.title.toLowerCase().includes(normalizedQuery) ||
-          a.categories?.name.toLowerCase().includes(normalizedQuery) ||
-          a.organizations?.name.toLowerCase().includes(normalizedQuery) ||
-          a.rejection_comment?.toLowerCase().includes(normalizedQuery)
-      )
-    }
-
-    return items
-  }, [announcements, activeTab, query])
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const clampedPage = Math.min(page, totalPages)
-  const startIdx = (clampedPage - 1) * PAGE_SIZE
-  const endIdx = Math.min(startIdx + PAGE_SIZE, filtered.length)
-  const pageItems = filtered.slice(startIdx, endIdx)
-
-  function changeTab(tab: Tab) {
-    setActiveTab(tab)
-    setPage(1)
-    setAnimKey((key) => key + 1)
-  }
-
-  function handleSearch(e: ChangeEvent<HTMLInputElement>) {
-    setQuery(e.target.value)
-    setPage(1)
-  }
+  const startIdx = announcements.length > 0 ? (page - 1) * pageSize + 1 : 0
+  const endIdx =
+    announcements.length > 0 ? Math.min(startIdx + announcements.length - 1, totalResults) : 0
+  const paginationPages = visiblePaginationPages(page, totalPages)
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex [scrollbar-width:none] gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {TABS.map((tab) => {
             const Icon = tab.icon
             const active = activeTab === tab.id
 
             return (
-              <button
+              <Link
                 key={tab.id}
-                type="button"
-                onClick={() => changeTab(tab.id)}
-                aria-pressed={active}
+                href={dashboardAnnouncementsHref({ tab: tab.id, search })}
+                aria-current={active ? 'page' : undefined}
                 className={cn(
                   'tab-lift inline-flex min-h-11 shrink-0 items-center gap-2 rounded-[0.95rem] border px-3 text-sm font-semibold',
                   active
@@ -146,58 +122,69 @@ export function AnnouncementsClient({
                     : 'border-[var(--color-border)] bg-[color-mix(in_oklab,var(--color-surface)_74%,transparent)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
                 )}
               >
-                <Icon size={14} />
+                <Icon size={14} aria-hidden="true" />
                 {tab.label}
                 <span className="rounded-full bg-[color-mix(in_oklab,var(--color-surface-high)_54%,transparent)] px-1.5 py-0.5 font-mono text-[0.68rem] text-[var(--color-text-muted)]">
-                  {counts[tab.id]}
+                  {tabCounts[tab.id]}
                 </span>
-              </button>
+              </Link>
             )
           })}
         </div>
 
-        <label className="relative block w-full lg:w-[22rem]">
-          <span className="sr-only">Search announcements</span>
-          <Search
-            size={16}
-            className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--color-text-muted)]"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            value={query}
-            onChange={handleSearch}
-            placeholder="Search title, topic, organization"
-            className={cn(
-              'input-inti min-h-11 w-full rounded-[0.95rem] border border-[var(--color-border)] bg-[color-mix(in_oklab,var(--color-surface)_78%,transparent)] pr-4 pl-10 text-sm',
-              'text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]',
-              'transition-[border-color,box-shadow,background] duration-200'
-            )}
-          />
-        </label>
+        <form
+          action="/dashboard/announcements"
+          className="grid w-full gap-2 sm:grid-cols-[minmax(0,1fr)_auto] xl:w-[32rem]"
+        >
+          {activeTab !== 'all' && <input type="hidden" name="tab" value={activeTab} />}
+          <label className="relative block min-w-0">
+            <span className="sr-only">Search announcements</span>
+            <Search
+              size={16}
+              className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-[var(--color-text-muted)]"
+              aria-hidden="true"
+            />
+            <input
+              type="search"
+              name="search"
+              defaultValue={search}
+              placeholder="Search title or feedback"
+              className={cn(
+                'input-inti min-h-11 w-full rounded-[0.95rem] border border-[var(--color-border)] bg-[color-mix(in_oklab,var(--color-surface)_78%,transparent)] pr-4 pl-10 text-sm',
+                'text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]',
+                'transition-[border-color,box-shadow,background] duration-200'
+              )}
+            />
+          </label>
+          <button
+            type="submit"
+            className="inline-flex min-h-11 items-center justify-center rounded-[0.95rem] bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition-transform hover:-translate-y-0.5 active:translate-y-0"
+          >
+            Search
+          </button>
+        </form>
       </div>
 
       <div className="flex items-center justify-between gap-3 border-t border-[var(--color-border-subtle)] pt-4">
         <p className="text-sm text-[var(--color-text-muted)]">
-          <span className="font-semibold text-[var(--color-text-primary)]">{filtered.length}</span>{' '}
-          result{filtered.length === 1 ? '' : 's'} in this view
+          <span className="font-semibold text-[var(--color-text-primary)]">{totalResults}</span>{' '}
+          result{totalResults === 1 ? '' : 's'} in this view
         </p>
-        {query.trim() && (
-          <button
-            type="button"
-            onClick={() => setQuery('')}
-            className="min-h-9 rounded-[0.8rem] px-3 text-sm font-semibold text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent-surface)]"
+        {search.trim() && (
+          <Link
+            href={dashboardAnnouncementsHref({ tab: activeTab })}
+            className="min-h-9 rounded-[0.8rem] px-3 py-2 text-sm font-semibold text-[var(--color-accent)] transition-colors hover:bg-[var(--color-accent-surface)]"
           >
             Clear search
-          </button>
+          </Link>
         )}
       </div>
 
-      {pageItems.length === 0 ? (
-        <EmptyState tab={activeTab} query={query} />
+      {announcements.length === 0 ? (
+        <EmptyState tab={activeTab} query={search} />
       ) : (
-        <div className="space-y-3" key={animKey}>
-          {pageItems.map((announcement, index) => (
+        <div className="space-y-3">
+          {announcements.map((announcement, index) => (
             <AnnouncementRow
               key={announcement.id}
               announcement={announcement}
@@ -210,34 +197,59 @@ export function AnnouncementsClient({
         </div>
       )}
 
-      {filtered.length > PAGE_SIZE && (
-        <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
+      {totalPages > 1 && (
+        <nav
+          className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center sm:justify-between"
+          aria-label="Announcement pagination"
+        >
           <p className="text-sm text-[var(--color-text-muted)]">
             Showing{' '}
-            <span className="font-semibold text-[var(--color-text-primary)]">{startIdx + 1}</span>{' '}
-            to <span className="font-semibold text-[var(--color-text-primary)]">{endIdx}</span> of{' '}
-            <span className="font-semibold text-[var(--color-text-primary)]">
-              {filtered.length}
-            </span>
+            <span className="font-semibold text-[var(--color-text-primary)]">{startIdx}</span> to{' '}
+            <span className="font-semibold text-[var(--color-text-primary)]">{endIdx}</span> of{' '}
+            <span className="font-semibold text-[var(--color-text-primary)]">{totalResults}</span>
           </p>
           <div className="flex flex-wrap items-center gap-1.5">
-            {Array.from({ length: totalPages }, (_, index) => index + 1).map((paginationPage) => (
-              <button
-                key={paginationPage}
-                type="button"
-                onClick={() => setPage(paginationPage)}
-                className={cn(
-                  'flex h-10 w-10 items-center justify-center rounded-[0.85rem] border font-mono text-sm font-semibold transition-[transform,background,border-color,color] duration-200 active:scale-[0.98]',
-                  paginationPage === clampedPage
-                    ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
-                    : 'border-[var(--color-border)] bg-[color-mix(in_oklab,var(--color-surface)_72%,transparent)] text-[var(--color-text-muted)] hover:-translate-y-px hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]'
-                )}
+            {page > 1 && (
+              <Link
+                href={dashboardAnnouncementsHref({ tab: activeTab, search, page: page - 1 })}
+                className="flex h-10 items-center justify-center rounded-[0.85rem] border border-[var(--color-border)] bg-[color-mix(in_oklab,var(--color-surface)_72%,transparent)] px-3 text-sm font-semibold text-[var(--color-text-muted)] transition-[transform,background,border-color,color] duration-200 hover:-translate-y-px hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)] active:scale-[0.98]"
               >
-                {paginationPage}
-              </button>
-            ))}
+                Previous
+              </Link>
+            )}
+            {paginationPages.map((paginationPage) => {
+              const active = paginationPage === page
+
+              return (
+                <Link
+                  key={paginationPage}
+                  href={dashboardAnnouncementsHref({
+                    tab: activeTab,
+                    search,
+                    page: paginationPage,
+                  })}
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    'flex h-10 w-10 items-center justify-center rounded-[0.85rem] border font-mono text-sm font-semibold transition-[transform,background,border-color,color] duration-200 active:scale-[0.98]',
+                    active
+                      ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
+                      : 'border-[var(--color-border)] bg-[color-mix(in_oklab,var(--color-surface)_72%,transparent)] text-[var(--color-text-muted)] hover:-translate-y-px hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]'
+                  )}
+                >
+                  {paginationPage}
+                </Link>
+              )
+            })}
+            {page < totalPages && (
+              <Link
+                href={dashboardAnnouncementsHref({ tab: activeTab, search, page: page + 1 })}
+                className="flex h-10 items-center justify-center rounded-[0.85rem] border border-[var(--color-border)] bg-[color-mix(in_oklab,var(--color-surface)_72%,transparent)] px-3 text-sm font-semibold text-[var(--color-text-muted)] transition-[transform,background,border-color,color] duration-200 hover:-translate-y-px hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)] active:scale-[0.98]"
+              >
+                Next
+              </Link>
+            )}
           </div>
-        </div>
+        </nav>
       )}
     </div>
   )

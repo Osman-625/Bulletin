@@ -1,26 +1,23 @@
 import { reportServerError } from '@/lib/error-reporting'
 import { createServiceClient } from '@/lib/supabase/server'
-import { checkRateLimit, rateLimitKey } from '@/lib/security/rate-limit'
+import { checkPersistentRateLimit } from '@/lib/security/persistent-rate-limit'
+import { rateLimitKey } from '@/lib/security/rate-limit'
 import { NextResponse } from 'next/server'
 
 const SETUP_WRITE_ERROR = 'Setup failed. Check server logs and try again.'
-const DEFAULT_SETUP_OWNER_EMAIL = 'osman_owner@bulletin.internal'
-const DEFAULT_SETUP_OWNER_USERNAME = 'osman_owner'
+const SETUP_CONFIG_ERROR = 'Setup route configuration is incomplete.'
 
 function readSetupOwnerConfig() {
-  const configuredEmail = process.env.SETUP_OWNER_EMAIL?.trim()
-  const configuredUsername = process.env.SETUP_OWNER_USERNAME?.trim()
-  const email =
-    configuredEmail || (process.env.NODE_ENV !== 'production' ? DEFAULT_SETUP_OWNER_EMAIL : '')
-  const username =
-    configuredUsername ||
-    (process.env.NODE_ENV !== 'production' ? DEFAULT_SETUP_OWNER_USERNAME : email.split('@')[0])
+  const email = process.env.SETUP_OWNER_EMAIL?.trim()
+  const username = process.env.SETUP_OWNER_USERNAME?.trim()
+  const tempPassword = process.env.SETUP_OWNER_TEMP_PASSWORD?.trim()
 
-  if (!email) return null
+  if (!email || !username || !tempPassword || tempPassword.length < 12) return null
 
   return {
     email,
-    username: username || email.split('@')[0],
+    username,
+    tempPassword,
   }
 }
 
@@ -36,8 +33,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
+  if (process.env.VERCEL_ENV === 'production') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   if (process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'test') {
-    const rateLimit = checkRateLimit(rateLimitKey('setup', request.headers), {
+    const rateLimit = await checkPersistentRateLimit(rateLimitKey('setup', request.headers), {
       limit: 5,
       windowMs: 60_000,
     })
@@ -49,19 +50,14 @@ export async function POST(request: Request) {
     }
   }
 
-  const secret =
-    process.env.SETUP_SECRET ??
-    (process.env.NODE_ENV !== 'production' ? 'test-setup-secret' : undefined)
+  const secret = process.env.SETUP_SECRET?.trim()
   if (!secret || request.headers.get('x-setup-secret') !== secret) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const owner = readSetupOwnerConfig()
   if (!owner) {
-    return setupFailed(
-      'setup.owner_config_missing',
-      new Error('SETUP_OWNER_EMAIL is required when setup route is enabled in production')
-    )
+    return NextResponse.json({ error: SETUP_CONFIG_ERROR }, { status: 412 })
   }
 
   const supabase = await createServiceClient()
@@ -78,10 +74,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Setup already complete' }, { status: 409 })
   }
 
-  const array = new Uint8Array(16)
-  crypto.getRandomValues(array)
-  const tempPassword = Array.from(array, (b) => b.toString(16).padStart(2, '0')).join('')
-
   const { data: existingUser, error: existingUserReadError } = await supabase
     .from('users')
     .select('id')
@@ -95,7 +87,7 @@ export async function POST(request: Request) {
   if (existingUser) {
     const { error: existingAuthUpdateError } = await supabase.auth.admin.updateUserById(
       existingUser.id,
-      { password: tempPassword }
+      { password: owner.tempPassword }
     )
     if (existingAuthUpdateError) {
       return setupFailed('setup.existing_user_auth_update_failed', existingAuthUpdateError)
@@ -113,14 +105,13 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       username: owner.username,
-      temp_password: tempPassword,
-      note: 'Log in and change your password immediately.',
+      note: 'Log in with the configured setup password and change it immediately.',
     })
   }
 
   const { data: authData, error: authCreateError } = await supabase.auth.admin.createUser({
     email: owner.email,
-    password: tempPassword,
+    password: owner.tempPassword,
     email_confirm: true,
     user_metadata: { display_name: owner.username },
   })
@@ -148,7 +139,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ok: true,
     username: owner.username,
-    temp_password: tempPassword,
-    note: 'Log in and change your password immediately.',
+    note: 'Log in with the configured setup password and change it immediately.',
   })
 }

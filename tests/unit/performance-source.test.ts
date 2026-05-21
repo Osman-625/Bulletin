@@ -6,14 +6,56 @@ function source(path: string) {
 }
 
 describe('performance source guards', () => {
-  it('bounds public and dashboard announcement queries', () => {
+  it('paginates public announcements at the Supabase query boundary', () => {
     const data = source('src/lib/data.ts')
-    const dashboard = source('src/app/(dashboard)/dashboard/announcements/page.tsx')
+    const publicPage = source('src/app/(public)/page.tsx')
 
-    expect(data).toContain('PUBLIC_FEED_LIMIT')
-    expect(data).toContain('.limit(PUBLIC_FEED_LIMIT)')
-    expect(dashboard).toContain('DASHBOARD_ANNOUNCEMENTS_LIMIT')
-    expect(dashboard).toContain('.range(0, DASHBOARD_ANNOUNCEMENTS_LIMIT - 1)')
+    expect(data).toContain('PUBLIC_FEED_PAGE_SIZE')
+    expect(data).toContain("count: 'exact'")
+    expect(data).toContain('.range(from, to)')
+    expect(publicPage).toContain('page?: string')
+    expect(publicPage).toContain('announcementPage.items')
+    expect(publicPage).toContain('FeedPagination')
+  })
+
+  it('paginates dashboard announcements with server-side tab and search filters', () => {
+    const dashboard = source('src/app/(dashboard)/dashboard/announcements/page.tsx')
+    const dashboardClient = source(
+      'src/app/(dashboard)/dashboard/announcements/AnnouncementsClient.tsx'
+    )
+
+    expect(dashboard).toContain('DASHBOARD_ANNOUNCEMENTS_PAGE_SIZE')
+    expect(dashboard).toContain('tab?: string')
+    expect(dashboard).toContain('page?: string')
+    expect(dashboard).toContain('normalizedSearch')
+    expect(dashboard).toContain('.range(from, to)')
+    expect(dashboard).not.toContain('DASHBOARD_ANNOUNCEMENTS_LIMIT')
+    expect(dashboardClient).toContain('dashboardAnnouncementsHref')
+    expect(dashboardClient).not.toContain('useState')
+    expect(dashboardClient).not.toContain('filtered.slice')
+  })
+
+  it('paginates admin, owner, and super-admin user management at the Supabase query boundary', () => {
+    const data = source('src/lib/data.ts')
+    const adminUsers = source('src/app/(admin)/admin/users/page.tsx')
+    const ownerUsers = source('src/app/(owner)/owner/users/page.tsx')
+    const superAdminUsers = source('src/app/(super-admin)/super-admin/users/page.tsx')
+
+    expect(data).toContain('USER_MANAGEMENT_PAGE_SIZE')
+    expect(data).toContain('getVisibleUsersForAdminPage')
+    expect(data).toContain('organization_members!inner')
+    expect(data).toContain('.range(from, to)')
+    expect(adminUsers).toContain('page?: string')
+    expect(adminUsers).toContain('visibleUsersPage.items')
+    expect(adminUsers).toContain('UserPagination')
+    expect(ownerUsers).toContain('OWNER_USERS_PAGE_SIZE')
+    expect(ownerUsers).toContain("select('*', { count: 'exact' })")
+    expect(ownerUsers).toContain('.range(from, to)')
+    expect(ownerUsers).toContain('UserPagination')
+    expect(superAdminUsers).toContain('SUPER_ADMIN_USERS_PAGE_SIZE')
+    expect(superAdminUsers).toContain("select('*', { count: 'exact' })")
+    expect(superAdminUsers).toContain('.range(from, to)')
+    expect(superAdminUsers).toContain('UserPagination')
   })
 
   it('keeps the internal brand lab out of public discovery', () => {

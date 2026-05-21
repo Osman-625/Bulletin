@@ -2,16 +2,23 @@ import Link from 'next/link'
 import { Archive, CheckCircle2, Clock3, FileText, Plus } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { AnnouncementsClient } from './AnnouncementsClient'
+import {
+  AnnouncementsClient,
+  type AnnouncementTab,
+  type AnnouncementTabCounts,
+} from './AnnouncementsClient'
 import { CountUp } from '@/components/dashboard/CountUp'
 import { getCurrentAccessContext } from '@/lib/auth/authz'
 import { shouldScopeAnnouncementsToMembership } from '@/lib/announcements/access'
+import { reportServerError } from '@/lib/error-reporting'
 import type { AnnouncementRowData } from '@/components/dashboard/AnnouncementRow'
 import type { DbAnnouncement } from '@/lib/types'
 
 export const metadata = { title: 'Announcements' }
 
-const DASHBOARD_ANNOUNCEMENTS_LIMIT = 250
+const DASHBOARD_ANNOUNCEMENTS_PAGE_SIZE = 20
+const EMPTY_ORG_ID = '00000000-0000-0000-0000-000000000000'
+const DASHBOARD_TABS: AnnouncementTab[] = ['all', 'published', 'drafts', 'pending', 'archived']
 
 type QueryRow = Pick<
   DbAnnouncement,
@@ -34,29 +41,54 @@ type QueryRow = Pick<
   author: { display_name: string } | null
 }
 
+type SearchParams = {
+  search?: string
+  tab?: string
+  page?: string
+}
+
+function normalizeDashboardTab(value?: string): AnnouncementTab {
+  return DASHBOARD_TABS.includes(value as AnnouncementTab) ? (value as AnnouncementTab) : 'all'
+}
+
+function normalizeDashboardPage(value?: string) {
+  const parsed = Number.parseInt(value ?? '1', 10)
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+}
+
+function cleanDashboardSearch(value?: string) {
+  return (value ?? '')
+    .replace(/[%,()'"]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80)
+}
+
 export default async function AnnouncementsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string }>
+  searchParams: Promise<SearchParams>
 }) {
-  const { search } = await searchParams
+  const { search, tab, page } = await searchParams
   const access = await getCurrentAccessContext()
   if (!access) redirect('/login')
 
   const supabase = await createClient()
   const scopeToMembership = shouldScopeAnnouncementsToMembership(access)
+  const scopedOrgIds = scopeToMembership
+    ? access.orgIds.length > 0
+      ? access.orgIds
+      : [EMPTY_ORG_ID]
+    : null
+  const normalizedSearch = cleanDashboardSearch(search)
+  const activeTab = normalizeDashboardTab(tab)
+  const currentPage = normalizeDashboardPage(page)
+  const from = (currentPage - 1) * DASHBOARD_ANNOUNCEMENTS_PAGE_SIZE
+  const to = from + DASHBOARD_ANNOUNCEMENTS_PAGE_SIZE - 1
+  const nowIso = new Date().toISOString()
 
-  let announcements: AnnouncementRowData[] = []
-  let totalPublished = 0
-  let pendingDrafts = 0
-  let scheduled = 0
-  let archived = 0
-  let totalAnnouncements = 0
-
-  let query = supabase
-    .from('announcements')
-    .select(
-      `
+  let query = supabase.from('announcements').select(
+    `
       id,
       title,
       status,
@@ -74,62 +106,118 @@ export default async function AnnouncementsPage({
       organizations ( id, name ),
       author:users!announcements_author_id_fkey ( display_name )
     `,
-      { count: 'exact' }
-    )
-    .order('updated_at', { ascending: false })
-    .range(0, DASHBOARD_ANNOUNCEMENTS_LIMIT - 1)
+    { count: 'exact' }
+  )
 
-  if (scopeToMembership) {
-    if (access.orgIds.length === 0) {
-      query = query.eq('organization_id', '00000000-0000-0000-0000-000000000000')
-    } else {
-      query = query.in('organization_id', access.orgIds)
-    }
+  if (scopedOrgIds) {
+    query = query.in('organization_id', scopedOrgIds)
   }
 
-  const { data: rows, count } = await query
-  totalAnnouncements = count ?? rows?.length ?? 0
+  if (activeTab === 'published') {
+    query = query.eq('status', 'published')
+  } else if (activeTab === 'drafts') {
+    query = query.eq('status', 'draft')
+  } else if (activeTab === 'pending') {
+    query = query.in('status', ['submitted', 'rejected'])
+  } else if (activeTab === 'archived') {
+    query = query.in('status', ['archived', 'expired'])
+  }
 
-  if (rows) {
-    const rawRows = rows as unknown as QueryRow[]
-    const nowMs = new Date().getTime()
-    announcements = rawRows.map((r) => ({
-      id: r.id,
-      title: r.title,
-      status: r.status as AnnouncementRowData['status'],
-      urgency: r.urgency,
-      banner_url: r.banner_url,
-      published_at: r.published_at,
-      scheduled_publish_at: r.scheduled_publish_at,
-      pinned_until: r.pinned_until,
-      rejection_comment: r.rejection_comment,
-      view_count: r.view_count ?? 0,
-      updated_at: r.updated_at,
-      categories: r.categories,
-      organizations: r.organizations,
-      author: r.author,
-    }))
+  if (normalizedSearch) {
+    query = query.or(
+      `title.ilike.%${normalizedSearch}%,body.ilike.%${normalizedSearch}%,rejection_comment.ilike.%${normalizedSearch}%`
+    )
+  }
 
-    totalPublished = rawRows.filter(
-      (r) =>
-        r.status === 'published' &&
-        (r.scheduled_publish_at === null || new Date(r.scheduled_publish_at).getTime() <= nowMs)
-    ).length
-    pendingDrafts = rawRows.filter((r) => r.status === 'draft').length
-    scheduled = rawRows.filter(
-      (r) =>
-        r.status === 'published' &&
-        r.scheduled_publish_at !== null &&
-        new Date(r.scheduled_publish_at).getTime() > nowMs
-    ).length
-    archived = rawRows.filter((r) => r.status === 'archived').length
+  function countQuery() {
+    let countRequest = supabase.from('announcements').select('id', { count: 'exact', head: true })
+    if (scopedOrgIds) countRequest = countRequest.in('organization_id', scopedOrgIds)
+    return countRequest
+  }
+
+  const [
+    announcementsResult,
+    totalCountResult,
+    publishedCountResult,
+    liveCountResult,
+    draftCountResult,
+    scheduledCountResult,
+    archivedCountResult,
+    pendingCountResult,
+  ] = await Promise.all([
+    query.order('updated_at', { ascending: false }).range(from, to),
+    countQuery(),
+    countQuery().eq('status', 'published'),
+    countQuery()
+      .eq('status', 'published')
+      .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`),
+    countQuery().eq('status', 'draft'),
+    countQuery().eq('status', 'published').gt('scheduled_publish_at', nowIso),
+    countQuery().in('status', ['archived', 'expired']),
+    countQuery().in('status', ['submitted', 'rejected']),
+  ])
+
+  const { data: rows, count, error: announcementsError } = announcementsResult
+  const countsError =
+    totalCountResult.error ??
+    publishedCountResult.error ??
+    liveCountResult.error ??
+    draftCountResult.error ??
+    scheduledCountResult.error ??
+    archivedCountResult.error ??
+    pendingCountResult.error
+
+  if (announcementsError) {
+    reportServerError('dashboard.announcements.query_failed', announcementsError, {
+      actorId: access.userId,
+      role: access.role,
+      tab: activeTab,
+      hasSearch: Boolean(normalizedSearch),
+      page: currentPage,
+    })
+  }
+
+  if (countsError) {
+    reportServerError('dashboard.announcement_counts.query_failed', countsError, {
+      actorId: access.userId,
+      role: access.role,
+      orgCount: access.orgIds.length,
+    })
+  }
+
+  const announcements: AnnouncementRowData[] = ((rows ?? []) as unknown as QueryRow[]).map((r) => ({
+    id: r.id,
+    title: r.title,
+    status: r.status as AnnouncementRowData['status'],
+    urgency: r.urgency,
+    banner_url: r.banner_url,
+    published_at: r.published_at,
+    scheduled_publish_at: r.scheduled_publish_at,
+    pinned_until: r.pinned_until,
+    rejection_comment: r.rejection_comment,
+    view_count: r.view_count ?? 0,
+    updated_at: r.updated_at,
+    categories: r.categories,
+    organizations: r.organizations,
+    author: r.author,
+  }))
+
+  const totalAnnouncements = totalCountResult.count ?? 0
+  const totalResults = count ?? rows?.length ?? 0
+  const totalPages = Math.max(1, Math.ceil(totalResults / DASHBOARD_ANNOUNCEMENTS_PAGE_SIZE))
+  const tabCounts: AnnouncementTabCounts = {
+    all: totalAnnouncements,
+    published: publishedCountResult.count ?? 0,
+    drafts: draftCountResult.count ?? 0,
+    pending: pendingCountResult.count ?? 0,
+    archived: archivedCountResult.count ?? 0,
   }
 
   const stats = [
-    { label: 'Live', value: totalPublished, icon: CheckCircle2 },
-    { label: 'Drafts', value: pendingDrafts, icon: FileText },
-    { label: 'Scheduled', value: scheduled, icon: Clock3 },
-    { label: 'Archived', value: archived, icon: Archive },
+    { label: 'Live', value: liveCountResult.count ?? 0, icon: CheckCircle2 },
+    { label: 'Drafts', value: draftCountResult.count ?? 0, icon: FileText },
+    { label: 'Scheduled', value: scheduledCountResult.count ?? 0, icon: Clock3 },
+    { label: 'Archived', value: archivedCountResult.count ?? 0, icon: Archive },
   ]
 
   return (
@@ -187,7 +275,16 @@ export default async function AnnouncementsPage({
       </section>
 
       <section className="dashboard-command-card mt-3 rounded-[1.5rem] p-4 sm:p-5">
-        <AnnouncementsClient announcements={announcements} initialQuery={search?.trim() ?? ''} />
+        <AnnouncementsClient
+          announcements={announcements}
+          activeTab={activeTab}
+          search={normalizedSearch}
+          page={currentPage}
+          pageSize={DASHBOARD_ANNOUNCEMENTS_PAGE_SIZE}
+          totalPages={totalPages}
+          totalResults={totalResults}
+          tabCounts={tabCounts}
+        />
       </section>
     </div>
   )

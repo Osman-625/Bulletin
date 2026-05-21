@@ -74,6 +74,14 @@ Thumbs.db
 # Vercel
 .vercel
 
+# Sentry (wizard-generated, never commit auth tokens)
+sentry.properties
+
+# ZAP local scan output (CI uploads to Artifacts, not local files)
+zap_*.html
+zap_*.json
+zap_*.xml
+
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts

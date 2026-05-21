@@ -72,6 +72,7 @@
   --color-accent-inti: var(--color-accent-inti);
   --color-accent-hover: var(--color-accent-hover);
   --color-accent-surface: var(--color-accent-surface);
+  --color-focus: var(--color-focus);
   --color-gold: var(--color-gold);
   --color-navy: var(--color-navy);
   --color-header-bg: var(--color-header-bg);
@@ -133,6 +134,7 @@
   --color-accent-inti: #d91234;
   --color-accent-hover: #ac0d28;
   --color-accent-surface: rgba(217, 18, 52, 0.1);
+  --color-focus: #d91234;
   --color-deadline-surface: rgba(224, 160, 31, 0.14);
   --color-gold: #e0a01f;
   --color-navy: #0b365f;
@@ -215,6 +217,7 @@
   --color-accent-inti: #e8203a;
   --color-accent-hover: #ff3d52;
   --color-accent-surface: rgba(232, 32, 58, 0.1);
+  --color-focus: #ff3d52;
   --color-deadline-surface: rgba(245, 166, 35, 0.12);
   --color-gold: #f5a623;
   --color-navy: #7fb2e7;

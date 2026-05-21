@@ -39,11 +39,75 @@ const USER_CREATE_ERROR = 'Could not create user. Try again.'
 const USER_UPDATE_ERROR = 'Could not update user. Try again.'
 const PASSWORD_RESET_ERROR = 'Could not reset password. Try again.'
 const USER_DELETE_ERROR = 'Could not delete user. Try again.'
+const OWNER_USERS_PAGE_SIZE = 24
 
 function userErrorHref(message: string, add = false) {
   const key = add ? 'err' : 'error'
   const prefix = add ? `${OWNER_USERS_PATH}?add=true&` : `${OWNER_USERS_PATH}?`
   return `${prefix}${key}=${encodeURIComponent(message)}`
+}
+
+function parseUsersPage(pageInput?: string | number | null) {
+  const parsedPage =
+    typeof pageInput === 'number' ? pageInput : Number.parseInt(pageInput ?? '1', 10)
+  return Number.isFinite(parsedPage) && parsedPage > 0 ? Math.floor(parsedPage) : 1
+}
+
+function ownerUsersHref({ role, page }: { role?: string; page?: number }) {
+  const params = new URLSearchParams()
+  if (role) params.set('role', role)
+  if (page && page > 1) params.set('page', String(page))
+  const query = params.toString()
+  return query ? `${OWNER_USERS_PATH}?${query}` : OWNER_USERS_PATH
+}
+
+function UserPagination({
+  page,
+  totalPages,
+  role,
+}: {
+  page: number
+  totalPages: number
+  role?: string
+}) {
+  if (totalPages <= 1) return null
+  const previousPage = Math.max(1, page - 1)
+  const nextPage = Math.min(totalPages, page + 1)
+
+  return (
+    <nav
+      aria-label="User pagination"
+      className="flex flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p className="text-sm text-[var(--color-text-secondary)]">
+        Page {page} of {totalPages}
+      </p>
+      <div className="flex items-center gap-2">
+        <a
+          href={ownerUsersHref({ role, page: previousPage })}
+          aria-disabled={page <= 1}
+          className={`inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
+            page <= 1
+              ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
+              : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+          }`}
+        >
+          Previous
+        </a>
+        <a
+          href={ownerUsersHref({ role, page: nextPage })}
+          aria-disabled={page >= totalPages}
+          className={`inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
+            page >= totalPages
+              ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
+              : 'bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]'
+          }`}
+        >
+          Next
+        </a>
+      </div>
+    </nav>
+  )
 }
 
 async function createUser(formData: FormData) {
@@ -289,9 +353,10 @@ export default async function OwnerUsersPage({
     add?: string
     err?: string
     error?: string
+    page?: string
   }>
 }) {
-  const { role: filterRole, msg, edit, confirm, add, err, error } = await searchParams
+  const { role: filterRole, msg, edit, confirm, add, err, error, page } = await searchParams
   const isAdding = add === 'true'
   const access = await getCurrentAccessContext()
   if (!access) redirect('/login')
@@ -303,15 +368,45 @@ export default async function OwnerUsersPage({
   const supabase = await createServiceClient()
   const myId = access.userId
 
-  let query = supabase.from('users').select('*').order('created_at', { ascending: false })
-  if (filterRole && ROLE_LABELS[filterRole]) query = query.eq('role', filterRole as AppRole)
-  const { data: users } = await query
-  const { data: allUsers } = await supabase.from('users').select('role')
+  const usersPage = parseUsersPage(page)
+  const from = (usersPage - 1) * OWNER_USERS_PAGE_SIZE
+  const to = from + OWNER_USERS_PAGE_SIZE - 1
 
-  const roleCounts = (allUsers ?? []).reduce<Record<string, number>>((acc, u) => {
-    acc[u.role as string] = (acc[u.role as string] ?? 0) + 1
-    return acc
-  }, {})
+  let query = supabase
+    .from('users')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false })
+  if (filterRole && ROLE_LABELS[filterRole]) query = query.eq('role', filterRole as AppRole)
+  const { data: usersData, count: usersTotal, error: usersError } = await query.range(from, to)
+  if (usersError) {
+    reportServerError('owner.users.list_query', usersError, {
+      actorId: access.userId,
+      filterRole: filterRole ?? null,
+      page: usersPage,
+    })
+  }
+
+  const roleCountEntries = await Promise.all(
+    Object.keys(ROLE_LABELS).map(async (role) => {
+      const { count, error: roleCountError } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', role as AppRole)
+      if (roleCountError) {
+        reportServerError('owner.users.role_count_query', roleCountError, {
+          actorId: access.userId,
+          countedRole: role,
+        })
+      }
+      return [role, count ?? 0] as const
+    })
+  )
+
+  const users = usersError ? [] : (usersData ?? [])
+  const roleCounts = Object.fromEntries(roleCountEntries)
+  const allUsersTotal = Object.values(roleCounts).reduce((sum, count) => sum + count, 0)
+  const visibleUsersTotal = usersTotal ?? users.length
+  const totalPages = Math.max(1, Math.ceil(visibleUsersTotal / OWNER_USERS_PAGE_SIZE))
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
@@ -321,7 +416,7 @@ export default async function OwnerUsersPage({
             All Users
           </h1>
           <p className="mt-1 text-[var(--color-text-secondary)]">
-            {users?.length ?? 0} users
+            {visibleUsersTotal} users
             {filterRole ? ` · ${ROLE_LABELS[filterRole] ?? filterRole}` : ''}
           </p>
         </div>
@@ -425,7 +520,7 @@ export default async function OwnerUsersPage({
 
       <div className="flex flex-wrap gap-2">
         {[
-          { key: '', label: `All (${allUsers?.length ?? 0})` },
+          { key: '', label: `All (${allUsersTotal})` },
           ...Object.keys(ROLE_LABELS).map((r) => ({
             key: r,
             label: `${ROLE_LABELS[r]} (${roleCounts[r] ?? 0})`,
@@ -433,7 +528,7 @@ export default async function OwnerUsersPage({
         ].map(({ key, label }) => (
           <a
             key={key}
-            href={key ? `/owner/users?role=${key}` : '/owner/users'}
+            href={ownerUsersHref({ role: key || undefined })}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               filterRole === key || (!filterRole && !key)
                 ? 'bg-[var(--color-accent)] text-white'
@@ -446,7 +541,29 @@ export default async function OwnerUsersPage({
       </div>
 
       <div className="space-y-2">
-        {(users ?? []).map((u) => {
+        {users.length === 0 && (
+          <GlassCard hover={false} className="p-8">
+            <div role="status" className="mx-auto max-w-md text-center">
+              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                No users match this view
+              </p>
+              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                {filterRole
+                  ? `There are no ${ROLE_LABELS[filterRole] ?? filterRole} users on the platform.`
+                  : 'No synced users are available yet.'}
+              </p>
+              {filterRole && (
+                <a
+                  href="/owner/users"
+                  className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-[var(--color-surface-elevated)] px-4 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+                >
+                  Clear the role filter
+                </a>
+              )}
+            </div>
+          </GlassCard>
+        )}
+        {users.map((u) => {
           const isMe = u.id === myId
           const role = u.role as UserRole
           const level = PRIVILEGE[role] ?? 3
@@ -456,7 +573,7 @@ export default async function OwnerUsersPage({
             { id: access.userId, role: access.role, orgIds: access.orgIds },
             { id: u.id, role: role as AppRole, orgIds: [] }
           )
-          const base = filterRole ? `/owner/users?role=${filterRole}` : '/owner/users'
+          const base = ownerUsersHref({ role: filterRole, page: usersPage })
           const separator = base.includes('?') ? '&' : '?'
 
           return (
@@ -608,6 +725,7 @@ export default async function OwnerUsersPage({
           )
         })}
       </div>
+      <UserPagination page={usersPage} totalPages={totalPages} role={filterRole} />
     </div>
   )
 }
