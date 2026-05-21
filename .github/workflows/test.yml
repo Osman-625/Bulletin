@@ -35,6 +35,7 @@ jobs:
       - run: npm ci
 
       - name: Check Supabase types are current
+        if: ${{ env.NEXT_PUBLIC_SUPABASE_URL != '' }}
         run: |
           PROJECT_ID=$(echo "$NEXT_PUBLIC_SUPABASE_URL" | sed 's|https://||' | cut -d. -f1)
           npx supabase gen types typescript --project-id "$PROJECT_ID" > /tmp/database.types.generated.ts
