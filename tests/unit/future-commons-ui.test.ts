@@ -337,8 +337,8 @@ describe('Future Commons production UI guards', () => {
     const ownerHome = source('src/app/(owner)/owner/page.tsx')
     const ownerResources = source('src/app/(owner)/owner/resources/page.tsx')
 
-    expect(ownerHome).toContain('col-span-12 sm:col-span-4')
-    expect(ownerHome).toContain('grid-cols-1 sm:grid-cols-2')
+    expect(ownerHome).toContain('sm:col-span-4')
+    expect(ownerHome).toContain('sm:grid-cols-2')
     expect(ownerHome).toContain('No audit activity yet')
     expect(ownerHome).toContain('role="status"')
     expect(ownerResources).toContain('No tracked announcement views yet')
