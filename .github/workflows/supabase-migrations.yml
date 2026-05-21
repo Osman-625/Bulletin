@@ -39,19 +39,13 @@ jobs:
         with:
           version: latest
       - name: Check required secrets
-        id: check
         run: |
-          if [ -z "$SUPABASE_ACCESS_TOKEN" ] || [ -z "$SUPABASE_DB_PASSWORD" ] || [ -z "$PROJECT_ID" ]; then
-            echo "::warning::Staging Supabase secrets not configured — skipping migration dry-run"
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          fi
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_DB_PASSWORD"
+          test -n "$PROJECT_ID"
       - name: Link staging project
-        if: steps.check.outputs.configured == 'true'
         run: supabase link --project-ref "$PROJECT_ID"
       - name: Dry-run migrations
-        if: steps.check.outputs.configured == 'true'
         run: supabase db push --dry-run
 
   workflow-dispatch:
