@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Atkinson_Hyperlegible, Bricolage_Grotesque, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import { headers } from 'next/headers'
 import { Providers } from './providers'
 import { getCanonicalSiteUrl } from '@/lib/site'
 import './globals.css'
@@ -33,20 +34,50 @@ export const metadata: Metadata = {
     template: '%s — Bulletin',
   },
   description: 'Independent campus announcements for the INTI community.',
+  openGraph: {
+    title: 'Bulletin',
+    description: 'Independent campus announcements for the INTI community.',
+    url: '/',
+    siteName: 'Bulletin',
+    images: [
+      {
+        url: '/bulletin_logo.png',
+        width: 512,
+        height: 512,
+        alt: 'Bulletin campus announcements',
+      },
+    ],
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Bulletin',
+    description: 'Independent campus announcements for the INTI community.',
+    images: ['/bulletin_logo.png'],
+  },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  await headers()
+
   return (
     <html
       lang="en"
       className={`${atkinsonHyperlegible.variable} ${geistMono.variable} ${bricolageGrotesque.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">
+        <a
+          href="#main-content"
+          className="sr-only z-[60] rounded-full bg-[var(--color-accent-inti)] px-4 py-3 text-sm font-bold text-white shadow-[var(--shadow-button-hover)] focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+        >
+          Skip to content
+        </a>
         <Providers>{children}</Providers>
         <Analytics />
         <SpeedInsights />

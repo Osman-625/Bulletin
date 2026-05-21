@@ -1,5 +1,6 @@
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { CountUp } from '@/components/dashboard/CountUp'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import { createServiceClient } from '@/lib/supabase/server'
 
 export const metadata = { title: 'Analytics — Bulletin Owner' }
@@ -54,7 +55,9 @@ export default async function OwnerAnalyticsPage() {
       const catRow = r as { categories?: unknown }
       const cat = catRow.categories as { name: string; color: string | null } | null
       if (!cat) return acc
-      if (!acc[cat.name]) acc[cat.name] = { count: 0, color: cat.color ?? '#C8102E' }
+      if (!acc[cat.name]) {
+        acc[cat.name] = { count: 0, color: cat.color ?? DEFAULT_CATEGORY_DISPLAY_COLOR }
+      }
       acc[cat.name].count++
       return acc
     },

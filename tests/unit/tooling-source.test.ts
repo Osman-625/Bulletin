@@ -32,6 +32,18 @@ describe('tooling source guards', () => {
     expect(buildIndex).toBeLessThan(e2eIndex)
   })
 
+  it('uses bracket notation for custom GitHub Actions secrets and variables', () => {
+    for (const workflowPath of [
+      '.github/workflows/test.yml',
+      '.github/workflows/security-scan.yml',
+      '.github/workflows/supabase-migrations.yml',
+    ]) {
+      const workflow = source(workflowPath)
+
+      expect(workflow).not.toMatch(/\$\{\{\s*(?:secrets|vars)\.[A-Z0-9_]+/)
+    }
+  })
+
   it('defines a guarded Supabase migration workflow for staging and production', () => {
     const workflowPath = '.github/workflows/supabase-migrations.yml'
 
@@ -40,11 +52,14 @@ describe('tooling source guards', () => {
     const workflow = source(workflowPath)
 
     expect(workflow).toContain('supabase/setup-cli@v2')
-    expect(workflow).toContain('SUPABASE_ACCESS_TOKEN')
-    expect(workflow).toContain('STAGING_PROJECT_ID')
-    expect(workflow).toContain('STAGING_DB_PASSWORD')
-    expect(workflow).toContain('PRODUCTION_PROJECT_ID')
-    expect(workflow).toContain('PRODUCTION_DB_PASSWORD')
+    expect(workflow).toContain("secrets['SUPABASE_ACCESS_TOKEN']")
+    expect(workflow).toContain("secrets['STAGING_PROJECT_ID']")
+    expect(workflow).toContain("secrets['STAGING_DB_PASSWORD']")
+    expect(workflow).toContain("secrets['PRODUCTION_PROJECT_ID']")
+    expect(workflow).toContain("secrets['PRODUCTION_DB_PASSWORD']")
+    expect(workflow).not.toContain('secrets.SUPABASE_ACCESS_TOKEN')
+    expect(workflow).not.toContain('secrets.STAGING_PROJECT_ID')
+    expect(workflow).not.toContain('secrets.STAGING_DB_PASSWORD')
     expect(workflow).toContain('supabase link --project-ref "$PROJECT_ID"')
     expect(workflow).toContain('supabase db push --dry-run')
     expect(workflow).toContain('supabase db push')
@@ -64,8 +79,10 @@ describe('tooling source guards', () => {
     expect(workflow).toContain('zaproxy/action-baseline@v0.15.0')
     expect(workflow).toContain('workflow_dispatch:')
     expect(workflow).toContain('target_url:')
-    expect(workflow).toContain('vars.ZAP_TARGET_URL')
-    expect(workflow).toContain('vars.PRODUCTION_URL')
+    expect(workflow).toContain("vars['ZAP_TARGET_URL']")
+    expect(workflow).toContain("vars['PRODUCTION_URL']")
+    expect(workflow).not.toContain('vars.ZAP_TARGET_URL')
+    expect(workflow).not.toContain('vars.PRODUCTION_URL')
     expect(workflow).toContain('target: ${{ steps.target.outputs.url }}')
     expect(workflow).toContain("docker_name: 'ghcr.io/zaproxy/zaproxy:stable'")
     expect(workflow).toContain("rules_file_name: '.zap/rules.tsv'")
@@ -94,8 +111,8 @@ describe('tooling source guards', () => {
     expect(config).toContain('PLAYWRIGHT_BASE_URL')
     expect(config).not.toContain('webServer')
     expect(spec).toContain("test.describe('deployment smoke'")
-    expect(spec).toContain("page.goto('/')")
-    expect(spec).toContain("page.goto('/login')")
+    expect(spec).toContain("page.goto('/', { waitUntil: 'domcontentloaded' })")
+    expect(spec).toContain("page.goto('/login', { waitUntil: 'domcontentloaded' })")
     expect(spec).toContain('request.post(`${BASE}/api/setup`)')
     expect(spec).toContain('page.setViewportSize({ width: 390, height: 844 })')
   })
@@ -127,6 +144,7 @@ describe('tooling source guards', () => {
       dependencies?: Record<string, string>
     }
     const nextConfig = source('next.config.ts')
+    const proxy = source('src/proxy.ts')
     const envExample = source('.env.example')
     const instrumentation = source('src/instrumentation.ts')
     const clientInstrumentation = source('src/instrumentation-client.ts')
@@ -140,7 +158,7 @@ describe('tooling source guards', () => {
     expect(nextConfig).toContain("import { withSentryConfig } from '@sentry/nextjs'")
     expect(nextConfig).toContain('withSentryConfig(nextConfig')
     expect(nextConfig).toContain('process.env.SENTRY_AUTH_TOKEN')
-    expect(nextConfig).toContain('https://*.sentry.io')
+    expect(proxy).toContain('https://*.sentry.io')
 
     expect(instrumentation).toContain('export async function register()')
     expect(instrumentation).toContain("process.env.NEXT_RUNTIME === 'nodejs'")
@@ -169,7 +187,7 @@ describe('tooling source guards', () => {
     const pkg = JSON.parse(source('package.json')) as {
       dependencies?: Record<string, string>
     }
-    const nextConfig = source('next.config.ts')
+    const proxy = source('src/proxy.ts')
     const envExample = source('.env.example')
     const clientInstrumentation = source('src/instrumentation-client.ts')
     const analytics = source('src/lib/product-analytics.ts')
@@ -188,8 +206,8 @@ describe('tooling source guards', () => {
     expect(clientInstrumentation).toContain("defaults: '2026-01-30'")
     expect(clientInstrumentation).toContain('autocapture: false')
     expect(clientInstrumentation).toContain('disable_session_recording')
-    expect(nextConfig).toContain('https://*.posthog.com')
-    expect(nextConfig).toContain('https://*.i.posthog.com')
+    expect(proxy).toContain('https://*.posthog.com')
+    expect(proxy).toContain('https://*.i.posthog.com')
     expect(envExample).toContain('NEXT_PUBLIC_POSTHOG_TOKEN=')
     expect(envExample).toContain('NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com')
     expect(envExample).toContain('NEXT_PUBLIC_POSTHOG_SESSION_REPLAY=0')
@@ -215,8 +233,8 @@ describe('tooling source guards', () => {
   it('provides owner credentials to CI because owner E2E specs require them', () => {
     const workflow = source('.github/workflows/test.yml')
 
-    expect(workflow).toContain('TEST_OWNER_EMAIL: ${{ secrets.TEST_OWNER_EMAIL }}')
-    expect(workflow).toContain('TEST_OWNER_PASSWORD: ${{ secrets.TEST_OWNER_PASSWORD }}')
+    expect(workflow).toContain("TEST_OWNER_EMAIL: ${{ secrets['TEST_OWNER_EMAIL'] }}")
+    expect(workflow).toContain("TEST_OWNER_PASSWORD: ${{ secrets['TEST_OWNER_PASSWORD'] }}")
   })
 
   it('keeps Next generated type roots in the TypeScript project', () => {

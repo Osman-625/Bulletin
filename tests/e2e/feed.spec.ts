@@ -32,8 +32,8 @@ test.describe('Public feed', () => {
 
   test('search with no matches shows empty state', async ({ page }) => {
     await page.goto('/?q=xyznotfound12345')
-    await expect(page.getByText('No announcements', { exact: true })).toBeVisible()
-    await expect(page.getByText(/no announcements match your search/i)).toBeVisible()
+    await expect(page.getByText('No matching notices', { exact: true })).toBeVisible()
+    await expect(page.getByText(/nothing matches "xyznotfound12345"/i)).toBeVisible()
   })
 
   test('clear button removes q param and restores feed', async ({ page }) => {

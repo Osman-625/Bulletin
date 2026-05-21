@@ -565,6 +565,29 @@ export type Database = {
           retry_after_seconds: number
         }[]
       }
+      search_audit_log: {
+        Args: {
+          p_search?: string | null
+          p_target_type?: string | null
+          p_actor_id?: string | null
+          p_system_actor?: boolean
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: {
+          id: string
+          actor_id: string | null
+          action: string
+          target_type: string
+          target_id: string | null
+          metadata: Json | null
+          created_at: string
+          actor_display_name: string | null
+          actor_email: string | null
+          actor_role: string | null
+          total_count: number
+        }[]
+      }
     }
     Enums: {
       announcement_display_font: 'editorial' | 'clean'

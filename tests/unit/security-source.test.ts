@@ -116,8 +116,9 @@ describe('security source guards', () => {
 
   it('sets browser hardening headers beyond the basic defaults', () => {
     const config = source('next.config.ts')
+    const proxy = source('src/proxy.ts')
 
-    expect(config).toContain('Content-Security-Policy')
+    expect(proxy).toContain('Content-Security-Policy')
     expect(config).toContain('Strict-Transport-Security')
     expect(config).toContain('Permissions-Policy')
     expect(config).toContain('Cross-Origin-Opener-Policy')
@@ -167,10 +168,30 @@ describe('security source guards', () => {
     expect(databaseTypes).toContain('hit_rate_limit: {')
   })
 
-  it('removes unsafe eval from the configured CSP', () => {
+  it('keeps unsafe eval out of production CSP while allowing React development diagnostics', () => {
     const config = source('next.config.ts')
+    const proxy = source('src/proxy.ts')
 
     expect(config).not.toContain("'unsafe-eval'")
+    expect(proxy).toContain("process.env.NODE_ENV !== 'production'")
+    expect(proxy).toContain('allowUnsafeEval')
+    expect(proxy).toContain('scriptSrc.push("\'unsafe-eval\'")')
+  })
+
+  it('uses a per-request nonce for production script CSP', () => {
+    const config = source('next.config.ts')
+    const proxy = source('src/proxy.ts')
+    const layout = source('src/app/layout.tsx')
+
+    expect(config).not.toContain('Content-Security-Policy')
+    expect(proxy).toContain('crypto.randomUUID()')
+    expect(proxy).toContain("requestHeaders.set('x-nonce', nonce)")
+    expect(proxy).toContain("'nonce-${nonce}'")
+    expect(proxy).toContain("'strict-dynamic'")
+    expect(proxy).toContain("script-src 'self' 'nonce-${nonce}' 'strict-dynamic'")
+    expect(proxy).not.toContain("script-src 'self' 'unsafe-inline'")
+    expect(layout).toContain("import { headers } from 'next/headers'")
+    expect(layout).toContain('await headers()')
   })
 
   it('adds application-layer guards to sensitive platform data helpers', () => {
@@ -239,5 +260,20 @@ describe('security source guards', () => {
     expect(adminPage).toContain("select('email, token')")
     expect(publisherPage).toContain(".eq('invited_by', access.userId)")
     expect(adminPage).toContain(".eq('invited_by', access.userId)")
+  })
+
+  it('uses parameterized SQL for owner audit search instead of raw PostgREST OR filters', () => {
+    const auditPage = source('src/app/(owner)/owner/audit/page.tsx')
+    const migration = source('supabase/migrations/20260521000020_parameterized_audit_search.sql')
+    const databaseTypes = source('src/lib/database.types.ts')
+
+    expect(auditPage).toContain("rpc('search_audit_log'")
+    expect(auditPage).not.toContain('entriesQuery.or(')
+    expect(auditPage).not.toContain('function cleanSearch')
+    expect(migration).toContain('create or replace function public.search_audit_log')
+    expect(migration).toContain('p_search text')
+    expect(migration).toContain("a.action ilike v_like escape E'\\\\'")
+    expect(migration).toContain('grant execute on function public.search_audit_log')
+    expect(databaseTypes).toContain('search_audit_log: {')
   })
 })

@@ -27,11 +27,11 @@ jobs:
           TARGET_URL="${{ github.event.inputs.target_url }}"
 
           if [ -z "$TARGET_URL" ]; then
-            TARGET_URL="${{ vars.ZAP_TARGET_URL }}"
+            TARGET_URL="${{ vars['ZAP_TARGET_URL'] }}"
           fi
 
           if [ -z "$TARGET_URL" ]; then
-            TARGET_URL="${{ vars.PRODUCTION_URL }}"
+            TARGET_URL="${{ vars['PRODUCTION_URL'] }}"
           fi
 
           if [ -z "$TARGET_URL" ]; then

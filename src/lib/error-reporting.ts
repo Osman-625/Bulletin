@@ -61,3 +61,9 @@ export function reportServerError(context: string, error: unknown, metadata: Err
 
   console.error('[server-error]', log)
 }
+
+export function reportServerWarning(context: string, error: unknown, metadata: ErrorMetadata = {}) {
+  const log = buildServerErrorLog(context, error, metadata)
+
+  console.warn('[server-warning]', log)
+}

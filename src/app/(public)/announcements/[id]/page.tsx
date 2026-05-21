@@ -14,6 +14,7 @@ import {
   normalizeAnnouncementUrgency,
 } from '@/lib/announcements/presentation'
 import { announcementPath, announcementPathSegment, toSafeHttpUrl } from '@/lib/announcements/urls'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import type { Metadata } from 'next'
 import BackButton from '@/components/announcements/BackButton'
 import { RegistrationLink } from '@/components/announcements/RegistrationLink'
@@ -126,7 +127,7 @@ export default async function AnnouncementPage({ params }: { params: Promise<{ i
     organizations,
   } = announcement
 
-  const catColor = categories?.color ?? '#C8102E'
+  const catColor = categories?.color ?? DEFAULT_CATEGORY_DISPLAY_COLOR
   const urgency = normalizeAnnouncementUrgency(announcement.urgency)
   const displayFont = normalizeAnnouncementDisplayFont(announcement.display_font)
   const displaySize = normalizeAnnouncementDisplaySize(announcement.display_size)

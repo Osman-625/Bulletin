@@ -388,6 +388,30 @@ export function AnnouncementForm({
     if (event.key === 'Escape') {
       event.preventDefault()
       closeDeleteConfirm()
+      return
+    }
+
+    if (event.key === 'Tab') {
+      const dialog = deleteConfirmRef.current
+      if (!dialog) return
+
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((element) => element.getAttribute('aria-hidden') !== 'true')
+
+      const first = focusable[0]
+      const last = focusable.at(-1)
+      if (!first || !last) return
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
   }
 
@@ -527,7 +551,7 @@ export function AnnouncementForm({
               <div
                 ref={deleteConfirmRef}
                 role="alertdialog"
-                aria-modal="false"
+                aria-modal="true"
                 aria-labelledby="delete-announcement-title"
                 aria-describedby="delete-announcement-description"
                 onKeyDown={handleDeleteConfirmKeyDown}

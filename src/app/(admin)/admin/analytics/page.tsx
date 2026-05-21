@@ -2,6 +2,7 @@ import { GlassCard } from '@/components/dashboard/GlassCard'
 import { CountUp } from '@/components/dashboard/CountUp'
 import { createClient } from '@/lib/supabase/server'
 import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import { redirect } from 'next/navigation'
 
 export const metadata = { title: 'Analytics — Bulletin Admin' }
@@ -54,7 +55,7 @@ export default async function AdminAnalyticsPage() {
         .categories
       if (!cat) return acc
       const key = cat.name
-      if (!acc[key]) acc[key] = { count: 0, color: cat.color ?? '#C8102E' }
+      if (!acc[key]) acc[key] = { count: 0, color: cat.color ?? DEFAULT_CATEGORY_DISPLAY_COLOR }
       acc[key].count++
       return acc
     },

@@ -50,4 +50,22 @@ describe('structured server logging source guards', () => {
     expect(resources).toContain('pathname: url.pathname')
     expect(resources).not.toContain('Authorization: `Bearer ${token}`')
   })
+
+  it('uses valid external health endpoints and labels owner resource API failures', () => {
+    const resources = source('src/lib/owner/resources.ts')
+
+    expect(resources).toContain("['auth', 'db', 'rest', 'realtime', 'storage']")
+    expect(resources).not.toContain("'postgres'")
+    expect(resources).toContain('usage.api-counts')
+    expect(resources).not.toContain('usage.api-requests-count')
+    expect(resources).toContain("'Vercel deployments'")
+    expect(resources).toContain("'Supabase health check'")
+    expect(resources).toContain("'Supabase API usage'")
+    expect(resources).toContain('label: context.label')
+    expect(resources).toContain('`${context.label} returned ${response.status}.')
+    expect(resources).toContain('reportServerWarning(')
+    expect(resources).not.toContain('new Error(`External API returned ${response.status}`)')
+    expect(resources).toContain('SUPABASE_PROJECT_REF_PATTERN')
+    expect(resources).toContain('20-character project ref')
+  })
 })

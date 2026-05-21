@@ -14,6 +14,8 @@ const CATEGORY_PATH = '/admin/categories'
 const CATEGORY_SAVE_ERROR = 'Could not save category. Try again.'
 const CATEGORY_TOGGLE_ERROR = 'Could not update category status. Try again.'
 const CATEGORY_DELETE_ERROR = 'Could not delete category. Try again.'
+const DEFAULT_CATEGORY_COLOR = 'var(--color-accent-inti)'
+const DEFAULT_CATEGORY_INPUT_COLOR = '#C8102E'
 
 function categoryErrorHref(message: string) {
   return `${CATEGORY_PATH}?error=${encodeURIComponent(message)}`
@@ -248,7 +250,7 @@ export default async function AdminCategoriesPage({
               id="color"
               name="color"
               type="color"
-              defaultValue="#C8102E"
+              defaultValue={DEFAULT_CATEGORY_INPUT_COLOR}
               className="h-[42px] w-16 cursor-pointer rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1"
             />
           </div>
@@ -278,7 +280,7 @@ export default async function AdminCategoriesPage({
                   <div className="flex items-center gap-4 px-5 py-3">
                     <span
                       className="h-4 w-4 shrink-0 rounded-full"
-                      style={{ background: cat.color ?? '#C8102E' }}
+                      style={{ background: cat.color ?? DEFAULT_CATEGORY_COLOR }}
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-[var(--color-text-primary)]">
@@ -353,7 +355,7 @@ export default async function AdminCategoriesPage({
                         <input
                           name="color"
                           type="color"
-                          defaultValue={cat.color ?? '#C8102E'}
+                          defaultValue={cat.color ?? DEFAULT_CATEGORY_INPUT_COLOR}
                           className="h-[42px] w-16 cursor-pointer rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1"
                         />
                       </div>

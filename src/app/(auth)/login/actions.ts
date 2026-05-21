@@ -8,6 +8,8 @@ import { ensureAuthUserProfile } from '@/lib/auth/sync-users'
 import { reportServerError } from '@/lib/error-reporting'
 import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
 
+const AUTH_TIMING_DUMMY_EMAIL = 'invalid-login@bulletin.invalid'
+
 export async function login(formData: FormData) {
   const supabase = await createClient()
 
@@ -26,21 +28,20 @@ export async function login(formData: FormData) {
       .from('users')
       .select('email')
       .eq('display_name', email)
-      .single()
+      .maybeSingle()
     if (usernameLookupError) {
       reportServerError('auth.login.username_lookup_failed', usernameLookupError, {
         username: email,
       })
     }
-    if (!match?.email) redirect('/login?error=invalid_credentials')
-    email = match.email
+    email = match?.email ?? AUTH_TIMING_DUMMY_EMAIL
   }
 
   const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
   if (signInError) {
     reportServerError('auth.login.sign_in_failed', signInError, {
-      email,
+      email: email === AUTH_TIMING_DUMMY_EMAIL ? null : email,
     })
     redirect('/login?error=invalid_credentials')
   }

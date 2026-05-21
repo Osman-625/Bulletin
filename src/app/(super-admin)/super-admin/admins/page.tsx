@@ -7,8 +7,8 @@ export const metadata = { title: 'Admins — Bulletin Super Admin' }
 
 const roleBadge = (role: string) =>
   role === 'super_admin'
-    ? 'bg-[var(--color-accent-surface)] text-[var(--color-accent)]'
-    : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]'
+    ? 'bg-[var(--color-role-super-admin-bg)] text-[var(--color-role-super-admin-text)]'
+    : 'bg-[var(--color-role-admin-bg)] text-[var(--color-role-admin-text)]'
 
 export default async function AdminsPage() {
   const admins = await getAllAdmins()
@@ -62,7 +62,7 @@ export default async function AdminsPage() {
                   {a.display_name}
                 </p>
                 <span
-                  className={`inline-flex items-center rounded px-2 py-0.5 text-[15px] font-bold tracking-wider uppercase ${roleBadge(a.role)}`}
+                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold uppercase ${roleBadge(a.role)}`}
                 >
                   {a.role.replace('_', ' ')}
                 </span>

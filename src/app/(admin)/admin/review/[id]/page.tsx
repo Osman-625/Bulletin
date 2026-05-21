@@ -5,6 +5,7 @@ import { StatusBadge } from '@/components/dashboard/StatusBadge'
 import { BackNavButton } from '@/components/navigation/BackNavButton'
 import { getAnnouncementForReview } from '@/lib/data'
 import { toSafeHttpUrl } from '@/lib/announcements/urls'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import { reviewAnnouncement } from './actions'
 
 export const metadata = { title: 'Review Announcement' }
@@ -51,7 +52,9 @@ export default async function ReviewDetailPage({
                 {announcement.categories && (
                   <span
                     className="inline-flex items-center rounded-[0.45rem] px-2 py-1 font-mono text-[0.68rem] font-bold tracking-[0.12em] text-white uppercase"
-                    style={{ background: announcement.categories.color ?? '#C8102E' }}
+                    style={{
+                      background: announcement.categories.color ?? DEFAULT_CATEGORY_DISPLAY_COLOR,
+                    }}
                   >
                     {announcement.categories.name}
                   </span>

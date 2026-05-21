@@ -30,9 +30,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      PROJECT_ID: ${{ secrets.STAGING_PROJECT_ID }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.STAGING_DB_PASSWORD }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets['SUPABASE_ACCESS_TOKEN'] }}
+      PROJECT_ID: ${{ secrets['STAGING_PROJECT_ID'] }}
+      SUPABASE_DB_PASSWORD: ${{ secrets['STAGING_DB_PASSWORD'] }}
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v2
@@ -54,9 +54,9 @@ jobs:
     timeout-minutes: 15
     environment: ${{ inputs.target }}
     env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      PROJECT_ID: ${{ inputs.target == 'production' && secrets.PRODUCTION_PROJECT_ID || secrets.STAGING_PROJECT_ID }}
-      SUPABASE_DB_PASSWORD: ${{ inputs.target == 'production' && secrets.PRODUCTION_DB_PASSWORD || secrets.STAGING_DB_PASSWORD }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets['SUPABASE_ACCESS_TOKEN'] }}
+      PROJECT_ID: ${{ inputs.target == 'production' && secrets['PRODUCTION_PROJECT_ID'] || secrets['STAGING_PROJECT_ID'] }}
+      SUPABASE_DB_PASSWORD: ${{ inputs.target == 'production' && secrets['PRODUCTION_DB_PASSWORD'] || secrets['STAGING_DB_PASSWORD'] }}
     steps:
       - uses: actions/checkout@v4
       - uses: supabase/setup-cli@v2

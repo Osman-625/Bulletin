@@ -11,6 +11,56 @@ import {
 
 const PUBLIC_FILE = /\.[^/]+$/
 
+type ContentSecurityPolicyOptions = {
+  allowUnsafeEval?: boolean
+}
+
+export function createContentSecurityPolicy(
+  nonce: string,
+  options: ContentSecurityPolicyOptions = {}
+) {
+  const scriptSrc = [`script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`]
+  if (options.allowUnsafeEval ?? process.env.NODE_ENV !== 'production') {
+    scriptSrc.push("'unsafe-eval'")
+  }
+
+  return [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    scriptSrc.join(' '),
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https://*.supabase.co",
+    "font-src 'self'",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://vitals.vercel-insights.com https://*.sentry.io https://*.posthog.com https://*.i.posthog.com",
+  ].join('; ')
+}
+
+function createRequestHeaders(request: NextRequest, nonce: string, csp: string) {
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-nonce', nonce)
+  requestHeaders.set('Content-Security-Policy', csp)
+  return requestHeaders
+}
+
+function createNextResponse(requestHeaders: Headers, csp: string) {
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  })
+  response.headers.set('Content-Security-Policy', csp)
+  return response
+}
+
+function redirectWithContentSecurityPolicy(url: URL, csp: string) {
+  const response = NextResponse.redirect(url)
+  response.headers.set('Content-Security-Policy', csp)
+  return response
+}
+
 function shouldBypassProxy(pathname: string) {
   return (
     pathname.startsWith('/_next/') ||
@@ -31,7 +81,10 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  let supabaseResponse = NextResponse.next({ request })
+  const nonce = btoa(crypto.randomUUID())
+  const contentSecurityPolicy = createContentSecurityPolicy(nonce)
+  const requestHeaders = createRequestHeaders(request, nonce, contentSecurityPolicy)
+  let supabaseResponse = createNextResponse(requestHeaders, contentSecurityPolicy)
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,7 +96,8 @@ export async function proxy(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request })
+          requestHeaders.set('cookie', request.cookies.toString())
+          supabaseResponse = createNextResponse(requestHeaders, contentSecurityPolicy)
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           )
@@ -65,7 +119,7 @@ export async function proxy(request: NextRequest) {
   if (isProtected && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
-    return NextResponse.redirect(url)
+    return redirectWithContentSecurityPolicy(url, contentSecurityPolicy)
   }
 
   if (user) {
@@ -80,37 +134,37 @@ export async function proxy(request: NextRequest) {
     if (profile?.force_password_change && pathname !== '/change-password') {
       const url = request.nextUrl.clone()
       url.pathname = '/change-password'
-      return NextResponse.redirect(url)
+      return redirectWithContentSecurityPolicy(url, contentSecurityPolicy)
     }
 
     if (!role) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
-      return NextResponse.redirect(url)
+      return redirectWithContentSecurityPolicy(url, contentSecurityPolicy)
     }
 
     if (pathname.startsWith('/owner') && !canAccessOwnerArea(role)) {
       const url = request.nextUrl.clone()
       url.pathname = getDefaultAppPath(role)
-      return NextResponse.redirect(url)
+      return redirectWithContentSecurityPolicy(url, contentSecurityPolicy)
     }
 
     if (pathname.startsWith('/super-admin') && !canAccessSuperAdminArea(role)) {
       const url = request.nextUrl.clone()
       url.pathname = getDefaultAppPath(role)
-      return NextResponse.redirect(url)
+      return redirectWithContentSecurityPolicy(url, contentSecurityPolicy)
     }
 
     if (pathname.startsWith('/admin') && !canAccessAdminArea(role)) {
       const url = request.nextUrl.clone()
       url.pathname = getDefaultAppPath(role)
-      return NextResponse.redirect(url)
+      return redirectWithContentSecurityPolicy(url, contentSecurityPolicy)
     }
 
     if (pathname.startsWith('/dashboard') && !canAccessPublisherArea(role)) {
       const url = request.nextUrl.clone()
       url.pathname = getDefaultAppPath(role)
-      return NextResponse.redirect(url)
+      return redirectWithContentSecurityPolicy(url, contentSecurityPolicy)
     }
   }
 
@@ -122,4 +176,3 @@ export const config = {
     '/((?!api|_next/static|_next/image|__nextjs_font|_vercel|favicon.ico|robots.txt|sitemap.xml|.*\\..*).*)',
   ],
 }
-

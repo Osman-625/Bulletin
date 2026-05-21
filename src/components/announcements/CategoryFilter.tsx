@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import { captureProductEvent } from '@/lib/product-analytics'
 import type { DbCategory } from '@/lib/types'
 
@@ -25,7 +26,7 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
 
   return (
     <div
-      className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden"
+      className="flex snap-x snap-proximity gap-2 overflow-x-auto pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden"
       role="group"
       aria-label="Filter by category"
     >
@@ -34,7 +35,7 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
         type="button"
         data-category=""
         onClick={() => select('')}
-        className="tab-lift inline-flex min-h-11 shrink-0 cursor-pointer items-center rounded-[10px] border px-3.5 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]"
+        className="tab-lift inline-flex min-h-11 shrink-0 cursor-pointer snap-start items-center rounded-[10px] border px-3.5 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]"
         style={{
           ...(!active
             ? {
@@ -54,7 +55,7 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
       </button>
 
       {categories.length === 0 && (
-        <span className="inline-flex min-h-11 shrink-0 items-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3.5 text-sm font-semibold text-[var(--color-text-muted)]">
+        <span className="inline-flex min-h-11 shrink-0 snap-start items-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3.5 text-sm font-semibold text-[var(--color-text-muted)]">
           No topics available yet
         </span>
       )}
@@ -62,14 +63,14 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
       {/* Category tabs */}
       {categories.map((cat) => {
         const isActive = active === cat.slug
-        const color = cat.color ?? '#C8102E'
+        const color = cat.color ?? DEFAULT_CATEGORY_DISPLAY_COLOR
         return (
           <button
             type="button"
             data-category={cat.slug}
             key={cat.id}
             onClick={() => select(cat.slug)}
-            className="tab-lift inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-2 rounded-[10px] border px-3.5 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]"
+            className="tab-lift inline-flex min-h-11 shrink-0 cursor-pointer snap-start items-center gap-2 rounded-[10px] border px-3.5 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]"
             style={{
               ...(isActive
                 ? {

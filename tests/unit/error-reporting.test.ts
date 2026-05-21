@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildServerErrorLog, reportServerError } from '@/lib/error-reporting'
+import { buildServerErrorLog, reportServerError, reportServerWarning } from '@/lib/error-reporting'
 
 vi.mock('@sentry/nextjs', () => ({
   captureException: vi.fn(),
@@ -74,5 +74,31 @@ describe('server error reporting', () => {
     )
 
     spy.mockRestore()
+  })
+
+  it('logs expected health probe failures as warnings instead of console errors', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    reportServerWarning('owner.resources.external_api_failed', new Error('Supabase returned 400'), {
+      label: 'Supabase health check',
+      status: 400,
+    })
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[server-warning]',
+      expect.objectContaining({
+        context: 'owner.resources.external_api_failed',
+        message: 'Supabase returned 400',
+        metadata: {
+          label: 'Supabase health check',
+          status: 400,
+        },
+      })
+    )
+    expect(errorSpy).not.toHaveBeenCalled()
+
+    warnSpy.mockRestore()
+    errorSpy.mockRestore()
   })
 })

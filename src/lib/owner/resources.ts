@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { unstable_rethrow } from 'next/navigation'
-import { reportServerError } from '@/lib/error-reporting'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
+import { reportServerError, reportServerWarning } from '@/lib/error-reporting'
 
 type ResourceMetric = {
   label: string
@@ -70,6 +71,22 @@ type SupabaseHealthService = {
   status?: string
   error?: string | null
 }
+
+type SupabaseUsageApiCountsResponse = {
+  result?: Array<{
+    total_auth_requests?: number | null
+    total_realtime_requests?: number | null
+    total_rest_requests?: number | null
+    total_storage_requests?: number | null
+  }>
+}
+
+type ExternalApiContext = {
+  label: string
+  hint: string
+}
+
+const SUPABASE_PROJECT_REF_PATTERN = /^[a-z]{20}$/
 
 export async function getOwnerResourceOverview(
   supabase: SupabaseClient
@@ -195,7 +212,10 @@ async function getVercelResourceCard(): Promise<ExternalResourceCard> {
   url.searchParams.set('limit', '1')
   if (teamId) url.searchParams.set('teamId', teamId)
 
-  const response = await fetchJson<{ deployments?: VercelDeployment[] }>(url, token)
+  const response = await fetchJson<{ deployments?: VercelDeployment[] }>(url, token, {
+    label: 'Vercel deployments',
+    hint: 'Check VERCEL_API_TOKEN, VERCEL_PROJECT_ID, and VERCEL_TEAM_ID.',
+  })
 
   if (!response.ok) {
     return {
@@ -239,14 +259,20 @@ async function getVercelResourceCard(): Promise<ExternalResourceCard> {
 }
 
 async function getSupabaseResourceCard(): Promise<ExternalResourceCard> {
-  const token = process.env.SUPABASE_ACCESS_TOKEN
-  const projectRef = process.env.SUPABASE_PROJECT_REF ?? inferSupabaseProjectRef()
+  const token = process.env.SUPABASE_ACCESS_TOKEN?.trim()
+  const configuredProjectRef = process.env.SUPABASE_PROJECT_REF?.trim()
+  const projectRef = configuredProjectRef
+    ? normalizeSupabaseProjectRef(configuredProjectRef)
+    : inferSupabaseProjectRef()
+  const invalidProjectRef = Boolean(configuredProjectRef && !projectRef)
 
   if (!token || !projectRef) {
     return {
       name: 'Supabase',
       status: 'not_configured',
-      summary: 'Add SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF to show project health.',
+      summary: invalidProjectRef
+        ? 'SUPABASE_PROJECT_REF must be the 20-character project ref or a hosted Supabase project URL.'
+        : 'Add SUPABASE_ACCESS_TOKEN and SUPABASE_PROJECT_REF to show project health.',
       href: projectRef
         ? `https://supabase.com/dashboard/project/${projectRef}`
         : 'https://supabase.com/dashboard',
@@ -258,7 +284,7 @@ async function getSupabaseResourceCard(): Promise<ExternalResourceCard> {
         },
         {
           label: 'Project ref',
-          value: projectRef ? 'Configured' : 'Missing',
+          value: projectRef ? 'Configured' : invalidProjectRef ? 'Invalid' : 'Missing',
           tone: projectRef ? 'good' : 'warn',
         },
       ],
@@ -266,18 +292,24 @@ async function getSupabaseResourceCard(): Promise<ExternalResourceCard> {
   }
 
   const healthUrl = new URL(`https://api.supabase.com/v1/projects/${projectRef}/health`)
-  for (const service of ['auth', 'postgres', 'storage']) {
+  for (const service of ['auth', 'db', 'rest', 'realtime', 'storage']) {
     healthUrl.searchParams.append('services', service)
   }
   healthUrl.searchParams.set('timeout_ms', '3000')
 
   const usageUrl = new URL(
-    `https://api.supabase.com/v1/projects/${projectRef}/analytics/endpoints/usage.api-requests-count`
+    `https://api.supabase.com/v1/projects/${projectRef}/analytics/endpoints/usage.api-counts`
   )
 
   const [health, usage] = await Promise.all([
-    fetchJson<SupabaseHealthService[]>(healthUrl, token),
-    fetchJson<{ result?: Array<{ count?: number }> }>(usageUrl, token),
+    fetchJson<SupabaseHealthService[]>(healthUrl, token, {
+      label: 'Supabase health check',
+      hint: 'Check SUPABASE_ACCESS_TOKEN, SUPABASE_PROJECT_REF, and project read permissions.',
+    }),
+    fetchJson<SupabaseUsageApiCountsResponse>(usageUrl, token, {
+      label: 'Supabase API usage',
+      hint: 'Check analytics usage permissions for SUPABASE_ACCESS_TOKEN.',
+    }),
   ])
 
   if (!health.ok) {
@@ -294,7 +326,17 @@ async function getSupabaseResourceCard(): Promise<ExternalResourceCard> {
   }
 
   const unhealthy = health.data.filter((service) => service.healthy === false)
-  const requestCount = usage.ok ? usage.data.result?.[0]?.count : undefined
+  const requestCount = usage.ok
+    ? usage.data.result?.reduce(
+        (sum, row) =>
+          sum +
+          (row.total_auth_requests ?? 0) +
+          (row.total_realtime_requests ?? 0) +
+          (row.total_rest_requests ?? 0) +
+          (row.total_storage_requests ?? 0),
+        0
+      )
+    : undefined
 
   return {
     name: 'Supabase',
@@ -319,7 +361,7 @@ async function getSupabaseResourceCard(): Promise<ExternalResourceCard> {
   }
 }
 
-async function fetchJson<T>(url: URL, token: string) {
+async function fetchJson<T>(url: URL, token: string, context: ExternalApiContext) {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 4500)
   const headers = new Headers()
@@ -333,34 +375,36 @@ async function fetchJson<T>(url: URL, token: string) {
     })
 
     if (!response.ok) {
-      reportServerError(
+      reportServerWarning(
         'owner.resources.external_api_failed',
-        new Error(`External API returned ${response.status}`),
+        new Error(`${context.label} returned ${response.status}`),
         {
           hostname: url.hostname,
           pathname: url.pathname,
           status: response.status,
+          label: context.label,
         }
       )
       return {
         ok: false as const,
-        message: `API returned ${response.status}. Check token permissions and project identifiers.`,
+        message: `${context.label} returned ${response.status}. ${context.hint}`,
       }
     }
 
     return { ok: true as const, data: (await response.json()) as T }
   } catch (error) {
     unstable_rethrow(error)
-    reportServerError('owner.resources.external_api_unhandled', error, {
+    reportServerWarning('owner.resources.external_api_unhandled', error, {
       hostname: url.hostname,
       pathname: url.pathname,
+      label: context.label,
     })
     return {
       ok: false as const,
       message:
         error instanceof Error && error.name === 'AbortError'
-          ? 'API request timed out.'
-          : 'API request failed.',
+          ? `${context.label} timed out.`
+          : `${context.label} request failed.`,
     }
   } finally {
     clearTimeout(timeout)
@@ -370,7 +414,9 @@ async function fetchJson<T>(url: URL, token: string) {
 function summarizeViewsByCategory(rows: AnnouncementViewRow[]) {
   const counts = rows.reduce<Record<string, { color: string; views: number }>>((acc, row) => {
     const name = row.categories?.name ?? 'Uncategorized'
-    if (!acc[name]) acc[name] = { color: row.categories?.color ?? '#C8102E', views: 0 }
+    if (!acc[name]) {
+      acc[name] = { color: row.categories?.color ?? DEFAULT_CATEGORY_DISPLAY_COLOR, views: 0 }
+    }
     acc[name].views += row.view_count ?? 0
     return acc
   }, {})
@@ -398,10 +444,34 @@ function inferSupabaseProjectRef() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!supabaseUrl) return null
 
+  return normalizeSupabaseProjectRef(supabaseUrl)
+}
+
+function normalizeSupabaseProjectRef(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  const directRef = trimmed.toLowerCase()
+  if (SUPABASE_PROJECT_REF_PATTERN.test(directRef)) return directRef
+
+  const parsedProjectUrl = parseSupabaseProjectUrl(trimmed)
+  if (!parsedProjectUrl) return null
+
+  const ref = parsedProjectUrl.hostname.split('.')[0]?.toLowerCase()
+  return ref && SUPABASE_PROJECT_REF_PATTERN.test(ref) ? ref : null
+}
+
+function parseSupabaseProjectUrl(value: string) {
   try {
-    return new URL(supabaseUrl).hostname.split('.')[0] || null
+    const url = new URL(value)
+    return url.hostname.endsWith('.supabase.co') ? url : null
   } catch {
-    return null
+    try {
+      const url = new URL(`https://${value}`)
+      return url.hostname.endsWith('.supabase.co') ? url : null
+    } catch {
+      return null
+    }
   }
 }
 

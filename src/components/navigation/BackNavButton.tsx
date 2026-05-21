@@ -12,6 +12,10 @@ type BackNavButtonProps = {
   'aria-label'?: string
 }
 
+type HistoryStateWithIndex = {
+  idx?: unknown
+}
+
 export function BackNavButton({
   fallbackHref = '/',
   className,
@@ -31,8 +35,18 @@ export function BackNavButton({
     }
   }
 
+  function hasInternalHistoryState() {
+    const state = window.history.state as HistoryStateWithIndex | null
+    return typeof state?.idx === 'number' && state.idx > 0
+  }
+
+  function canUseBrowserBack() {
+    if (hasInternalHistoryState()) return true
+    return window.history.length > 1 && !hasKnownExternalReferrer()
+  }
+
   function handleBack() {
-    if (window.history.length > 1 && !hasKnownExternalReferrer()) {
+    if (canUseBrowserBack()) {
       router.back()
       return
     }

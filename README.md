@@ -1,449 +1,406 @@
 # Bulletin
 
-A governed announcement platform for INTI International University. Public-facing feed with a four-tier role system, editorial presentation controls, in-app notifications, view tracking, and a full audit trail.
+Bulletin is a campus announcement platform built for INTI-style public notices, publisher workflows, admin review, and owner-level operations. The public site presents announcements as a branded campus board, while authenticated areas handle drafting, review, publishing, user management, analytics, and maintenance.
 
-**Stack:** Next.js 16.2.3 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Supabase (PostgreSQL + RLS + Auth + Storage) · Vercel · Speed Insights
+The application is a Next.js App Router project backed by Supabase Auth, Postgres, Row Level Security, and Supabase Storage.
 
----
+## Stack
 
-## Role System
+| Area          | Technology                                                        |
+| ------------- | ----------------------------------------------------------------- |
+| Framework     | Next.js 16.2.6 App Router, React 19.2.4, TypeScript               |
+| Styling       | Tailwind CSS v4 plus custom CSS layers in `src/app/globals.css`   |
+| Fonts         | Bricolage Grotesque, Atkinson Hyperlegible, Geist Mono            |
+| Backend       | Supabase Auth, Postgres, RLS, Storage                             |
+| Testing       | Vitest, Testing Library, Playwright                               |
+| Observability | Sentry, Vercel Analytics, Vercel Speed Insights, optional PostHog |
+| Deployment    | Vercel with a scheduled maintenance cron                          |
 
-Four authenticated tiers, each with a dedicated route group and dashboard. The public feed requires no login.
+## Product Overview
 
-| Role            | Who                                    | Can do                                                                                               |
-| --------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| **Public**      | Anyone                                 | Browse the feed, read announcements — no login required                                              |
-| **Publisher**   | Clubs, departments, societies          | Create drafts, submit for review, manage own announcements, receive review notifications             |
-| **Admin**       | SA Director, Student Council President | Approve/reject submissions, manage publishers, orgs, categories, users — notified on new submissions |
-| **Super Admin** | Platform administrators                | Manage admins, global categories, platform analytics, password resets                                |
-| **Owner**       | Platform owner (Maaney)                | Full audit log, all metrics, all user management — bypasses RLS                                      |
+Bulletin has two main surfaces:
 
-Login automatically routes each role to its panel.
+1. Public board - a searchable, filterable announcement feed with campus-oriented visual sections, announcement detail pages, view tracking, SEO metadata, robots, and sitemap support.
+2. Authenticated operations - role-based dashboards for publishers, admins, super admins, and owners.
 
----
+The public board groups announcements into meaningful sections such as:
 
-## Features
+- New today
+- Closing soon
+- Plan ahead
+- General notices
 
-### Public feed
+Sorting and date labels are computed in Malaysia time (`Asia/Kuala_Lumpur`) through `src/lib/announcements/public-board.ts`.
 
-- Announcement grid with featured first-card layout
-- Database-backed search and category filter via URL search params
-- Markdown-stripped excerpts on cards
-- Full detail view with optional safe `http`/`https` registration link
-- View count tracked per announcement (via RPC — safe for unauthenticated users)
-- Back navigation on detail pages with a direct-load fallback to `/`
-- Pinned announcements surfaced above the fold (until `pinned_until` expires)
-- Scheduled posts hidden until their publish time
-- Hero section with editorial stats panel (live post count, active topics) and pulsing INTI dot
-- Dynamic XML sitemap generated from all published announcements
-- `robots.txt` blocking auth, dashboard, admin, and owner routes from crawlers
-- Canonical URL resolved from `NEXT_PUBLIC_APP_URL` with production fallback to `bulletininti.vercel.app`
+## Roles
 
-### Publisher dashboard
+Roles are enforced by Supabase data, server-side authorization helpers, and route protection in `src/proxy.ts`.
 
-- Create and edit announcements with rich presentation controls:
-  - **Urgency** — `normal` · `important` · `urgent`
-  - **Display font** — `editorial` · `clean`
-  - **Display size** — `compact` · `standard` · `large`
-- Banner image upload to the Supabase `banner-images` storage bucket
-- Draft autosave with visual indicator
-- Schedule a future publish time (`scheduled_publish_at`)
-- Edit rejected announcements and resubmit
-- Status tracking across full lifecycle
-- In-app notifications: approval, rejection (with comment), scheduled publish confirmation
+| Role          | Default area   | Main capabilities                                                                              |
+| ------------- | -------------- | ---------------------------------------------------------------------------------------------- |
+| `publisher`   | `/dashboard`   | Create drafts, upload banners, submit announcements for review, manage own announcements       |
+| `admin`       | `/admin`       | Review scoped organization announcements, approve/reject submissions, manage scoped publishers |
+| `super_admin` | `/super-admin` | Cross-organization administration, users, invitations, audit visibility                        |
+| `owner`       | `/owner`       | Platform resources, owner-level controls, privileged user and system visibility                |
 
-### Admin panel
+Users marked with `force_password_change` are redirected to `/change-password` before accessing protected areas.
 
-- Review queue — approve or reject submitted announcements
-- Rejection comments are required and sent to the publisher as a notification
-- Publisher invite flow with copyable invite link
-- Organization management
-- Category management
-- User management
-- Analytics dashboard
-- In-app notifications for new submissions
+## Main Features
 
-### Super admin panel
+### Public Announcement Board
 
-- Admin invite and management
-- Global category control
-- Platform-wide analytics
-- User password resets and forgot-password request queue
-- In-app notifications
+- Server-rendered public feed at `/`
+- Announcement detail pages for published, visible announcements
+- Category filtering and full-text search
+- Pagination with a fixed public page size
+- Board sorting by priority, issue date, and closing date
+- Featured/pinned announcement treatment
+- Public view tracking through `increment_announcement_view`
+- SEO through metadata, `robots.ts`, and `sitemap.ts`
 
-### Owner panel
+### Publisher Workflow
 
-- Bento dashboard: user role breakdown chart, publish-rate donut, pending review count, recent audit feed
-- Full paginated audit log (50 per page, newest first)
-- Resource page for Vercel deployment status, Supabase health, banner storage, setup-route status, and view counters
-- All-user management
-- Owner-level analytics
-- In-app notifications
+- Draft creation and editing
+- Autosave for existing drafts
+- Banner image uploads to the `banner-images` Supabase Storage bucket
+- Registration link validation
+- Scheduled publish dates, expiry dates, pinned-until dates, and urgency
+- Display controls for poster/card presentation
+- Submit for admin review
+- Delete, unpublish, and admin inline publish flows where authorized
+
+### Admin Review
+
+- Review queue for submitted announcements
+- Scoped approval and rejection
+- Required rejection comments
+- Review records in `announcement_reviews`
+- Author notifications for approvals, scheduled approvals, and rejections
+- Audit log entries for important changes
+
+### Owner Operations
+
+The owner area reads operational data from Supabase and optional platform APIs:
+
+- Announcement view totals and top announcements
+- Published announcement counts and registration-link counts
+- Password reset request counts
+- Banner Storage usage and cleanup status
+- Setup route status
+- Vercel deployment status when Vercel API variables are configured
+- Supabase project health and API usage when Supabase management variables are configured
 
 ### Notifications
 
-In-app notification system covering the full review workflow:
+`src/lib/notifications.ts` handles in-app notifications for:
 
-| Event                          | Who is notified                               |
-| ------------------------------ | --------------------------------------------- |
-| Publisher submits announcement | All admins, super admins, and owner           |
-| Admin approves announcement    | Publisher (with scheduled time if applicable) |
-| Admin rejects announcement     | Publisher (with rejection comment)            |
-
-Notifications are per-user, have unread state, and link directly to the relevant page. Delivered via the `NotificationsPanel` component available in all role dashboards.
+- New submissions to admins, super admins, and owners
+- Review approval, scheduled approval, and rejection messages to authors
+- Unread counts and recent notification lists
 
 ### Security
 
-- IP-based rate limiting on all public routes
-- Server action rate limiting
-- Row-level security on all database tables
-- Service-role client for owner/admin queries that bypass RLS
-- Server-side validation for announcement banner URLs and registration links
-- Next image allow-list scoped to the configured Supabase `banner-images` bucket
-- One-time bootstrap endpoint (`/api/setup`) disabled by default and protected by `SETUP_SECRET`
-- Idle logout on all authenticated sessions
-- Admin-created and reset passwords force a password change on next login
+- Supabase RLS is the primary data boundary
+- Server actions re-check authorization before writes
+- `src/proxy.ts` refreshes SSR sessions and redirects by role
+- CSP nonce support is generated per request
+- Security headers include HSTS, COOP, CORP, `X-Frame-Options`, `X-Content-Type-Options`, and strict referrer policy
+- `/api/setup` is disabled unless explicitly enabled and is blocked on Vercel production
+- `/api/maintenance/cleanup-orphan-banners` requires `Authorization: Bearer $CRON_SECRET`
+- Persistent rate limiting is backed by `rate_limit_buckets`
 
----
+## Repository Structure
 
-## Announcement Lifecycle
-
+```text
+src/
+  app/
+    (public)/              Public board and announcement pages
+    (auth)/                Login and password-change screens
+    (dashboard)/           Publisher dashboard
+    (admin)/               Admin review and management
+    (super-admin)/         Super admin area
+    (owner)/               Owner operations area
+    api/
+      maintenance/         Scheduled cleanup routes
+      setup/               Owner bootstrap route
+    globals.css            Tailwind v4 layers, tokens, public UI system
+    layout.tsx             Root layout, metadata, analytics providers
+  proxy.ts                 Session refresh, CSP, role redirects
+  components/
+    public/                Public cards, filters, branding, theme controls
+    dashboard/             Announcement forms and dashboard UI
+    admin/                 Admin and review components
+    owner/                 Owner resource components
+    ui/                    Shared UI primitives
+  lib/
+    announcements/         Public board grouping and sorting
+    auth/                  Authorization helpers
+    storage/               Banner Storage cleanup helpers
+    database.types.ts      Generated Supabase types
+    data.ts                Main data access functions
+    notifications.ts       In-app notification helpers
+supabase/
+  migrations/              Database schema, RLS, roles, workflow, hardening
+tests/
+  unit/                    Vitest unit tests
+  e2e/                     Playwright E2E tests
+scripts/
+  seed-test-users.js       Local/E2E user and fixture seed script
+  setup-owner.ps1          Helper for calling the setup route
+docs/
+  brand/                   Future Commons design system notes
+  CODEBASE_STRUCTURE.md    Route and folder map
 ```
-Draft → Submitted → Published → Expired (auto at 30 days) → Archived
-                ↓
-            Rejected → (publisher edits) → Submitted
-```
-
-Publishers save drafts and submit for admin review. Admins approve or reject; rejections require a comment so publishers know what to change. Rejected announcements can be revised and resubmitted. Published announcements auto-expire after 30 days.
-
-**Scheduled publishing:** Approved announcements with a `scheduled_publish_at` in the future are not visible on the public feed until that time passes. The RLS policy and the public query both enforce this.
-
-**Pinned posts:** Announcements with an active `pinned_until` timestamp are surfaced above the normal grid. Pinning expires automatically.
-
----
-
-## Audit Log
-
-Every significant system action writes a row to `audit_log`:
-
-| Field         | Description                                                     |
-| ------------- | --------------------------------------------------------------- |
-| `actor_id`    | User who performed the action (with display name + role)        |
-| `action`      | What was done (e.g. `approve_announcement`, `invite_publisher`) |
-| `target_type` | What was acted on (e.g. `announcement`, `user`)                 |
-| `target_id`   | ID of the affected record                                       |
-| `metadata`    | Additional context as JSON                                      |
-| `created_at`  | Timestamp                                                       |
-
-The owner dashboard shows the 6 most recent entries. `/owner/audit` shows the full paginated log. Only the owner can read this table — append-only, no editing. Owner dashboard paths are revalidated automatically after each write.
-
----
-
-## Routes
-
-### Public
-
-| Route                 | Description                                                                      |
-| --------------------- | -------------------------------------------------------------------------------- |
-| `/`                   | Announcement feed with category filter, pinned posts, scheduled post enforcement |
-| `/announcements/[id]` | Full announcement detail (increments view count)                                 |
-
-### Auth
-
-| Route              | Description                                                     |
-| ------------------ | --------------------------------------------------------------- |
-| `/login`           | Email/username + password (routes to role dashboard on success) |
-| `/forgot-password` | Submit email to request an administrator password reset         |
-| `/change-password` | Forced password change flow                                     |
-| `/register`        | Account registration                                            |
-
-### Publisher — `/dashboard`
-
-| Route                                | Description                                                 |
-| ------------------------------------ | ----------------------------------------------------------- |
-| `/dashboard`                         | Overview stats and quick actions                            |
-| `/dashboard/announcements`           | All announcements with status badges                        |
-| `/dashboard/announcements/new`       | Create announcement (with scheduled publish option)         |
-| `/dashboard/announcements/[id]/edit` | Edit announcement (available on draft, submitted, rejected) |
-| `/dashboard/notifications`           | In-app notification inbox                                   |
-| `/dashboard/settings`                | Account name, password, theme, and workspace shortcuts      |
-
-### Admin — `/admin`
-
-| Route                      | Description                                                             |
-| -------------------------- | ----------------------------------------------------------------------- |
-| `/admin`                   | Overview with pending count and quick links                             |
-| `/admin/review`            | Review queue                                                            |
-| `/admin/review/[id]`       | Review detail — approve (with optional schedule) or return with comment |
-| `/admin/publishers`        | Publisher list                                                          |
-| `/admin/publishers/invite` | Invite new publisher (with copyable link)                               |
-| `/admin/orgs`              | Organization list                                                       |
-| `/admin/orgs/new`          | Create organization                                                     |
-| `/admin/categories`        | Category management                                                     |
-| `/admin/users`             | User management                                                         |
-| `/admin/analytics`         | Admin analytics                                                         |
-| `/admin/notifications`     | In-app notification inbox                                               |
-| `/admin/settings`          | Account name, password, theme, and workspace shortcuts                  |
-
-### Super Admin — `/super-admin`
-
-| Route                        | Description                                            |
-| ---------------------------- | ------------------------------------------------------ |
-| `/super-admin`               | Platform overview                                      |
-| `/super-admin/admins`        | Admin list                                             |
-| `/super-admin/admins/invite` | Invite new admin                                       |
-| `/super-admin/categories`    | Global category management                             |
-| `/super-admin/users`         | All users with password reset                          |
-| `/super-admin/analytics`     | Platform analytics                                     |
-| `/super-admin/notifications` | In-app notification inbox                              |
-| `/super-admin/settings`      | Account name, password, theme, and workspace shortcuts |
-
-### Owner — `/owner`
-
-| Route                  | Description                                               |
-| ---------------------- | --------------------------------------------------------- |
-| `/owner`               | Bento dashboard: role breakdown, publish rate, audit feed |
-| `/owner/users`         | All users                                                 |
-| `/owner/analytics`     | Owner analytics                                           |
-| `/owner/resources`     | Server health, storage usage, and view counters           |
-| `/owner/audit`         | Full audit log (paginated, 50/page)                       |
-| `/owner/notifications` | In-app notification inbox                                 |
-| `/owner/settings`      | Account name, password, theme, and workspace shortcuts    |
-
-### API
-
-| Route        | Description                                                       |
-| ------------ | ----------------------------------------------------------------- |
-| `/api/setup` | One-time owner bootstrap — disabled unless `ENABLE_SETUP_ROUTE=1` |
-
----
 
 ## Database
 
-14 migrations. Run them in order from `supabase/migrations/` in the Supabase SQL editor.
+The database is managed through ordered Supabase migrations in `supabase/migrations`.
 
-| File                               | Description                                                                                                      |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `000001_schema`                    | Core tables: users, organizations, organization_members, categories, announcements                               |
-| `000002_rls`                       | Row-level security policies for all tables                                                                       |
-| `000003_storage`                   | `banner-images` bucket + storage RLS                                                                             |
-| `000004–007`                       | RLS recursion fixes for org_members (Supabase gotcha)                                                            |
-| `000008_post_status_enums`         | Announcement status enum                                                                                         |
-| `000009_role_system`               | User role enum and RBAC policies                                                                                 |
-| `000010_owner_role`                | Owner role schema                                                                                                |
-| `000011_sync_auth_users`           | Trigger: sync `auth.users` → `public.users`                                                                      |
-| `000012_announcement_presentation` | `urgency`, `display_font`, `display_size` columns                                                                |
-| `000013_announcement_workflow`     | `scheduled_publish_at`, `pinned_until`, `view_count` + `notifications` table + `increment_announcement_view` RPC |
-| `000014_password_reset_requests`   | Forgot-password reset request queue + password reset notifications                                               |
+Current migration set:
 
----
+| Range                               | Purpose                                                                  |
+| ----------------------------------- | ------------------------------------------------------------------------ |
+| `20260411000001` - `20260411000003` | Base schema, RLS, Storage bucket                                         |
+| `20260418000004` - `20260418000007` | Schema fixes and RLS recursion fixes                                     |
+| `20260502000008` - `20260503000010` | Post statuses, role system, owner role                                   |
+| `20260507000011` - `20260508000014` | Auth sync, presentation fields, review workflow, password reset requests |
+| `20260518000015` - `20260519000017` | Security and Storage policy hardening                                    |
+| `20260521000018` - `20260521000020` | Owner user policy, rate limit buckets, parameterized audit search        |
 
-## Setup
+Important tables include:
 
-### 1. Clone and install
+- `users`
+- `organizations`
+- `organization_members`
+- `categories`
+- `announcements`
+- `announcement_reviews`
+- `notifications`
+- `invitations`
+- `password_reset_requests`
+- `audit_log`
+- `rate_limit_buckets`
 
-```bash
-git clone https://github.com/Osman6202/Bulletin.git
-cd Bulletin
-npm install
-```
+The `banner-images` Storage bucket stores announcement banner uploads.
 
-### 2. Environment variables
+## Environment Variables
+
+Start from the checked-in example:
 
 ```bash
 cp .env.example .env.local
 ```
 
-Fill in `.env.local`:
+Required for normal app operation:
 
-```env
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-ENABLE_SETUP_ROUTE=0
-SETUP_SECRET=choose-a-strong-secret
+| Variable                        | Purpose                                                 |
+| ------------------------------- | ------------------------------------------------------- |
+| `NEXT_PUBLIC_SUPABASE_URL`      | Supabase project URL                                    |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser-safe Supabase anon key                          |
+| `SUPABASE_SERVICE_ROLE_KEY`     | Server-only privileged Supabase key                     |
+| `NEXT_PUBLIC_APP_URL`           | Canonical app URL used for metadata, sitemap, and links |
 
-# Optional owner-only resource cards
-VERCEL_API_TOKEN=
-VERCEL_PROJECT_ID=
-VERCEL_TEAM_ID=
-SUPABASE_ACCESS_TOKEN=
-SUPABASE_PROJECT_REF=
-```
+Required for scheduled maintenance:
 
-### 3. Run migrations
+| Variable                     | Purpose                                |
+| ---------------------------- | -------------------------------------- |
+| `CRON_SECRET`                | Bearer token for maintenance routes    |
+| `BANNER_CLEANUP_MAX_DELETES` | Optional delete cap for banner cleanup |
 
-In the Supabase SQL editor, paste and run each file from `supabase/migrations/` in filename order (all 14).
+Required only when bootstrapping an owner:
 
-Migration `000003_storage` creates the public `banner-images` bucket used by announcement banner uploads. Keep that bucket name unchanged unless you also update `next.config.ts` and the announcement form validation helpers.
+| Variable                    | Purpose                                                      |
+| --------------------------- | ------------------------------------------------------------ |
+| `ENABLE_SETUP_ROUTE`        | Must be `1` to enable `/api/setup` outside Vercel production |
+| `SETUP_SECRET`              | Required `x-setup-secret` header value                       |
+| `SETUP_OWNER_EMAIL`         | Owner email to create or promote                             |
+| `SETUP_OWNER_USERNAME`      | Owner username                                               |
+| `SETUP_OWNER_TEMP_PASSWORD` | Initial owner password, minimum 12 characters                |
 
-### 4. Bootstrap the owner account
+Optional observability:
 
-Temporarily set `ENABLE_SETUP_ROUTE=1` in the running environment, then run:
+| Variable                             | Purpose                                |
+| ------------------------------------ | -------------------------------------- |
+| `NEXT_PUBLIC_SENTRY_DSN`             | Client/server Sentry reporting         |
+| `SENTRY_AUTH_TOKEN`                  | Sentry release upload during builds    |
+| `SENTRY_ORG`                         | Sentry organization                    |
+| `SENTRY_PROJECT`                     | Sentry project                         |
+| `NEXT_PUBLIC_POSTHOG_TOKEN`          | Product analytics token                |
+| `NEXT_PUBLIC_POSTHOG_HOST`           | PostHog host                           |
+| `NEXT_PUBLIC_POSTHOG_SESSION_REPLAY` | Enables PostHog replay when set to `1` |
 
-```powershell
-# PowerShell
-./scripts/setup-owner.ps1
-```
+Optional owner resource integrations:
 
-Or with curl:
+| Variable                | Purpose                                   |
+| ----------------------- | ----------------------------------------- |
+| `VERCEL_API_TOKEN`      | Reads latest Vercel production deployment |
+| `VERCEL_PROJECT_ID`     | Vercel project id                         |
+| `VERCEL_TEAM_ID`        | Optional Vercel team id                   |
+| `SUPABASE_ACCESS_TOKEN` | Reads Supabase management API data        |
+| `SUPABASE_PROJECT_REF`  | Optional Supabase project ref override    |
+
+Testing variables are documented in `.env.example` and can be generated for local E2E runs with `scripts/seed-test-users.js`.
+
+## Local Development
+
+Install dependencies:
 
 ```bash
-curl -X POST http://localhost:3000/api/setup \
-  -H "x-setup-secret: your-secret"
+npm install
 ```
 
-The bootstrap route creates or resets the built-in owner login `osman_owner` and returns a temporary password. The next login forces a password change.
+Create `.env.local` from `.env.example`, then fill in Supabase credentials.
 
-> Set `ENABLE_SETUP_ROUTE=0` or remove it after the owner account is created.
+Apply Supabase migrations to your project. The repository expects the migrations in `supabase/migrations` to be applied in filename order.
 
-### 5. Start dev server
+Start the dev server:
 
 ```bash
 npm run dev
 ```
 
----
+The app runs at `http://localhost:3000` by default.
+
+## Owner Bootstrap
+
+Use `/api/setup` only to create the first owner account in a controlled environment.
+
+Important behavior:
+
+- The route only accepts `POST`
+- `ENABLE_SETUP_ROUTE=1` is required
+- `x-setup-secret` must match `SETUP_SECRET`
+- The route is intentionally unavailable on Vercel production
+- The temporary password comes from `SETUP_OWNER_TEMP_PASSWORD`
+- The response does not return the temporary password
+- If an owner already exists, the route returns `409`
+
+Example request:
+
+```bash
+curl -X POST http://localhost:3000/api/setup \
+  -H "x-setup-secret: $SETUP_SECRET"
+```
+
+After the owner signs in, disable the setup route and rotate any temporary credentials that were used.
+
+## Scripts
+
+| Command                | Purpose                                       |
+| ---------------------- | --------------------------------------------- |
+| `npm run dev`          | Start Next.js development server              |
+| `npm run build`        | Build the production app                      |
+| `npm run start`        | Start a built production app                  |
+| `npm run lint`         | Run ESLint                                    |
+| `npm run format`       | Format the repository with Prettier           |
+| `npm run format:check` | Check Prettier formatting                     |
+| `npm test`             | Run Vitest unit tests                         |
+| `npm run test:watch`   | Run Vitest in watch mode                      |
+| `npm run test:e2e`     | Run Playwright E2E tests                      |
+| `npm run test:smoke`   | Run smoke tests against `PLAYWRIGHT_BASE_URL` |
 
 ## Testing
 
-### Unit tests (Vitest)
+Run unit tests:
 
 ```bash
 npm test
 ```
 
-9 test files: authz, announcement form validation, feed queries, rate limiting, setup route security, presentation constants, Future Commons UI, SEO URL helpers, brand lab.
-
-### E2E tests (Playwright)
-
-```bash
-npm run test:e2e        # headless
-npm run test:e2e:ui     # interactive UI mode
-```
-
-6 spec files: auth, feed, routing, setup-route, users, public theme.
-Runs on Desktop Chrome, Desktop Safari, Mobile Chrome (Pixel 5), Mobile Safari (iPhone 13).
-
-Seed test accounts before running E2E:
+Run E2E tests locally:
 
 ```bash
 node scripts/seed-test-users.js
+npm run test:e2e
 ```
 
-### CI (GitHub Actions)
+The seed script creates or resets test users, writes `.env.test.local`, and adds sample data needed by the Playwright suite. It requires a valid local `.env.local` with Supabase URL and service role key.
 
-Runs on every push and pull request:
+Playwright defaults to `http://localhost:3000` and starts `npm run dev` automatically unless an existing server is reused. Set `PLAYWRIGHT_BASE_URL` to target another environment.
 
-1. `npm run lint`
-2. `npx tsc --noEmit`
-3. `npm test`
-4. `npm run test:e2e` (chromium + webkit)
+Run deployed smoke tests:
 
-Required repository secrets: `TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_SUPABASE_SERVICE_ROLE_KEY`, `TEST_SETUP_SECRET`, and email/password pairs for each test role (owner, super_admin, admin, publisher, force_change).
-
-### Owner resource integrations
-
-`/owner/resources` always shows internal app metrics: total announcement views, top viewed announcements, banner storage file count, pending password reset requests, and setup-route status.
-
-External Vercel and Supabase cards are optional:
-
-- Vercel: set `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID`, and optionally `VERCEL_TEAM_ID`.
-- Supabase: set `SUPABASE_ACCESS_TOKEN` and optionally `SUPABASE_PROJECT_REF`; when blank, the project ref is inferred from `NEXT_PUBLIC_SUPABASE_URL`.
-
-Keep these variables server-only. Do not prefix them with `NEXT_PUBLIC_`, and do not display raw token values in UI or logs.
-
-### Security audit note
-
-`npm audit --omit=dev` currently reports a moderate PostCSS advisory under Next.js 16.2.3's bundled dependency tree. `npm audit fix --force` suggests downgrading Next to `9.3.3`, so do not run the forced fix. Leave this to an upstream Next patch or a deliberate Next upgrade.
-
----
-
-## Commands
-
-| Command                | Description                  |
-| ---------------------- | ---------------------------- |
-| `npm run dev`          | Start development server     |
-| `npm run build`        | Production build             |
-| `npm run start`        | Start production server      |
-| `npm run lint`         | ESLint                       |
-| `npm run format`       | Prettier (write)             |
-| `npm run format:check` | Prettier (check only)        |
-| `npm test`             | Unit tests                   |
-| `npm run test:watch`   | Unit tests in watch mode     |
-| `npm run test:e2e`     | E2E tests                    |
-| `npm run test:e2e:ui`  | E2E tests with Playwright UI |
-
----
-
-## Project Structure
-
-```
-Bulletin/
-├── src/
-│   ├── app/
-│   │   ├── (public)/             # Feed, announcement detail (+ ViewTracker, view actions)
-│   │   ├── (auth)/               # Login, forgot-password, register, change-password
-│   │   ├── (dashboard)/          # Publisher dashboard + notifications
-│   │   ├── (admin)/              # Admin panel + notifications
-│   │   ├── (super-admin)/        # Super admin panel + notifications
-│   │   ├── (owner)/              # Owner panel + notifications
-│   │   ├── brand-lab/            # Design token and component showcase (internal)
-│   │   ├── api/setup/            # One-time bootstrap endpoint (disabled by default)
-│   │   ├── robots.ts             # robots.txt — blocks auth/dashboard/admin/owner from crawlers
-│   │   ├── sitemap.ts            # Dynamic XML sitemap from published announcements
-│   │   └── layout.tsx            # Root layout (Atkinson Hyperlegible + Bricolage Grotesque + Geist Mono)
-│   ├── components/
-│   │   ├── announcements/        # AnnouncementCard, CategoryFilter, BackButton
-│   │   ├── navigation/           # BackNavButton (history-aware back navigation with fallback)
-│   │   ├── account/              # Account settings forms and password controls
-│   │   ├── auth/                 # IdleLogout
-│   │   ├── dashboard/            # AnnouncementForm, AnnouncementRow, DashboardShell,
-│   │   │                         # DashboardSidebar, DashboardTopNav, StatusBadge,
-│   │   │                         # GlassCard, AutosaveIndicator, CountUp, ActionBar,
-│   │   │                         # NotificationsPanel
-│   │   └── layout/               # Header, BrandMark (multi-size logo+wordmark), ThemeToggle
-│   └── lib/
-│       ├── account/              # Account settings and password update helpers
-│       ├── announcements/        # Feed helpers, access control, presentation constants, URL/slug helpers
-│       ├── auth/                 # Authorization, auth-to-users sync
-│       ├── brand-lab/            # Design token directions and brand showcase data
-│       ├── owner/                # Owner-only read-only resource and operations DTOs
-│       ├── security/             # IP rate limiting, action rate limiting
-│       ├── supabase/             # Browser client, server client, service client
-│       ├── audit.ts              # logAuditEvent — writes to audit_log, revalidates owner paths
-│       ├── notifications.ts      # getUnreadCount, getNotifications, notifySubmitted, notifyReviewed
-│       ├── notification-actions.ts  # Server actions for marking notifications read
-│       └── site.ts               # getCanonicalSiteUrl — resolves production URL, strips localhost
-├── supabase/
-│   └── migrations/               # 14 ordered SQL migrations
-├── tests/
-│   ├── e2e/                      # 6 Playwright specs
-│   └── unit/                     # 9 Vitest test files
-├── scripts/
-│   ├── setup-owner.ps1           # Owner bootstrap (PowerShell)
-│   ├── seed-test-users.js        # Seed E2E test accounts
-│   ├── seed.sql                  # SQL seed data
-│   └── capture-feature-screenshots.mjs  # Screenshot capture utility
-├── .github/workflows/test.yml    # CI pipeline
-├── .env.example                  # Environment variable template
-├── playwright.config.ts
-└── vitest.config.ts
+```bash
+PLAYWRIGHT_BASE_URL=https://your-deployment.example npm run test:smoke
 ```
 
----
+## CI and Automation
 
-## Design Notes
+GitHub Actions currently cover:
 
-- **No student accounts.** The public feed is fully unauthenticated — only staff and publishers log in.
-- **Server Actions for all mutations.** Create, edit, publish, delete, review, and notification reads go through co-located `actions.ts` files with no separate API layer.
-- **RLS on every table.** Admin and owner pages use a service-role client where RLS needs to be bypassed. The notifications table has its own RLS: users can only read and update their own rows.
-- **Upload and link validation.** Banner URLs are restricted to local sample assets or the configured Supabase `banner-images` bucket; registration links must be valid `http` or `https` URLs.
-- **View tracking via RPC.** `increment_announcement_view` runs as `SECURITY DEFINER` so anonymous users can increment counts without needing table-level write access.
-- **Autosave.** The announcement form autosaves drafts continuously with a visual indicator.
-- **Presentation layer.** Publishers control how their announcement renders on the public feed (font, size, urgency) — stored in the database, applied at render time.
-- **Audit trail.** All significant actions are recorded in `audit_log` via `logAuditEvent()` and visible only to the owner. Owner dashboard paths are revalidated on every write.
-- **Design system.** The public UI uses the Future Commons design system — a bento-grid feed layout, editorial stats panel, and token-based dark/light theming with INTI brand colors (INTI Red). All design tokens live in `globals.css`; never hardcoded in components.
-- **Typography.** Three typefaces: Atkinson Hyperlegible (UI body), Bricolage Grotesque (display headings), Geist Mono (code/mono).
-- **Theme.** Light/dark mode follows the OS preference (`prefers-color-scheme`), with a manual toggle available in every dashboard.
+- Lint, type check, production build, Vitest, and Playwright E2E
+- Optional Supabase generated type drift checks
+- Supabase migration dry-runs and manually approved applies
+- Weekly or manual OWASP ZAP baseline scans
+
+Vercel cron is configured in `vercel.json`:
+
+```json
+{
+  "path": "/api/maintenance/cleanup-orphan-banners",
+  "schedule": "17 18 * * *"
+}
+```
+
+That route scans `banner-images`, compares files with referenced announcement banner URLs, and deletes orphaned files up to the configured cap.
+
+## Deployment Notes
+
+For Vercel deployment:
+
+1. Configure the Supabase environment variables.
+2. Configure `NEXT_PUBLIC_APP_URL` to the production URL.
+3. Add `CRON_SECRET` before enabling the maintenance cron.
+4. Add Sentry/PostHog variables only when those services are ready.
+5. Add Vercel and Supabase management tokens only if owner resource cards should show live platform status.
+6. Keep `ENABLE_SETUP_ROUTE` disabled in production.
+
+The Next image configuration derives the Supabase image host from `NEXT_PUBLIC_SUPABASE_URL`, so that variable must be correct before building.
+
+## Design System
+
+The visual direction is documented in `docs/brand/bulletin-design-system.md`.
+
+The public UI uses the "Future Commons" system:
+
+- Warm campus canvas
+- INTI red accent
+- Editorial card hierarchy
+- Bento-style public board structure
+- Branded poster and announcement card treatments
+- Intentional light/dark theme tokens
+
+Global tokens and animation primitives live in `src/app/globals.css`. Public-facing components live mostly under `src/components/public`.
+
+## Operational Notes
+
+- Do not bypass server actions for protected writes; they contain authorization and audit behavior.
+- Do not expose `SUPABASE_SERVICE_ROLE_KEY` to client components.
+- Use the generated `src/lib/database.types.ts` types when adding database-facing code.
+- Keep announcement date logic centralized in `src/lib/announcements/public-board.ts` and `src/lib/date-format.ts`.
+- Banner cleanup should be tested with `?dryRun=1` before deleting in a new environment.
+- Public announcement images depend on the `banner-images` bucket policies and Next remote image configuration.
+
+## Troubleshooting
+
+| Symptom                         | Likely cause                                                        |
+| ------------------------------- | ------------------------------------------------------------------- |
+| `/api/setup` returns `404`      | Setup route is disabled, or the app is running on Vercel production |
+| `/api/setup` returns `403`      | Missing or incorrect `x-setup-secret`                               |
+| `/api/setup` returns `409`      | An owner already exists                                             |
+| `/api/setup` returns `412`      | Required owner bootstrap env vars are missing or invalid            |
+| Public images do not load       | `NEXT_PUBLIC_SUPABASE_URL` or Storage policies are incorrect        |
+| E2E login tests fail            | Test users were not seeded or `.env.test.local` is stale            |
+| Maintenance route returns `401` | Missing or incorrect `Authorization: Bearer $CRON_SECRET`           |
+
+## Current Verification
+
+The repository has automated coverage across unit tests, server action behavior, setup route behavior, role-aware flows, public UI behavior, and E2E browser flows. Before merging production changes, run:
+
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+npm test
+npm run test:e2e
+```

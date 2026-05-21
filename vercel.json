@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/maintenance/cleanup-orphan-banners",
+      "schedule": "17 18 * * *"
+    }
+  ]
+}
