@@ -126,14 +126,16 @@ function EventMetaPill({
 export default function AnnouncementCard({
   announcement,
   featured = false,
+  featureLabel,
   visual = 'letterbox',
 }: {
   announcement: AnnouncementWithRelations
   featured?: boolean
+  featureLabel?: string
   visual?: AnnouncementCardVisual
 }) {
   return featured ? (
-    <FeaturedCard announcement={announcement} visual={visual} />
+    <FeaturedCard announcement={announcement} visual={visual} featureLabel={featureLabel} />
   ) : (
     <StandardCard announcement={announcement} visual={visual} />
   )
@@ -175,19 +177,23 @@ function StandardCard({
     <Link
       href={announcementPath(announcement)}
       data-testid="announcement-card"
+      data-has-image={banner_url ? 'true' : 'false'}
       data-image-layout={visual}
-      className="card-lift group relative flex h-full min-h-[13rem] flex-col overflow-hidden rounded-[1.25rem] outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      data-uniform-card="true"
+      className={cn(
+        'card-lift group relative flex h-full flex-col overflow-hidden rounded-[1.25rem] outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+        banner_url ? 'min-h-[26rem]' : 'min-h-[18rem]'
+      )}
       style={{
         background: 'var(--color-surface)',
         border: `1px solid var(--color-border)`,
         boxShadow: 'var(--shadow-soft)',
       }}
     >
-      {/* Banner */}
       {banner_url && (
         <div
           data-card-media={visual}
-          className={standardImagePanelClass(visual)}
+          className={standardImagePanelClass()}
           style={standardImagePanelStyle(catColor, visual)}
         >
           <PosterImage
@@ -258,23 +264,11 @@ function StandardCard({
   )
 }
 
-function standardImagePanelClass(visual: AnnouncementCardVisual) {
+function standardImagePanelClass() {
   const base = 'relative overflow-hidden border-b'
   const border = 'border-[var(--color-border-subtle)]'
 
-  if (visual === 'poster') {
-    return cn(base, border, 'aspect-[5/6]')
-  }
-
-  if (visual === 'stamp') {
-    return cn('relative mx-4 mt-4 aspect-[4/3] overflow-hidden rounded-[0.95rem] border', border)
-  }
-
-  if (visual === 'ribbon') {
-    return cn(base, border, 'aspect-[21/9]')
-  }
-
-  return cn(base, border, 'aspect-[16/10]')
+  return cn(base, border, 'aspect-[16/9]')
 }
 
 function standardImagePanelStyle(color: string, visual: AnnouncementCardVisual): CSSProperties {
@@ -341,9 +335,11 @@ function CategoryChip({ color, label }: { color: string; label: string }) {
 // ── Featured (full-width horizontal) ──────────────────────────────────────────
 function FeaturedCard({
   announcement,
+  featureLabel = 'Featured',
   visual,
 }: {
   announcement: AnnouncementWithRelations
+  featureLabel?: string
   visual: AnnouncementCardVisual
 }) {
   const {
@@ -374,6 +370,7 @@ function FeaturedCard({
     <Link
       href={announcementPath(announcement)}
       data-testid="announcement-card"
+      data-has-image={banner_url ? 'true' : 'false'}
       data-image-layout={visual}
       className="featured-announcement-card card-lift group relative flex h-full min-h-[20rem] flex-col overflow-hidden rounded-[1.45rem] outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
       style={{
@@ -382,16 +379,15 @@ function FeaturedCard({
         boxShadow: 'var(--shadow-soft)',
       }}
     >
-      {/* Visual panel */}
-      <div
-        data-card-media={visual}
-        className={cn(
-          'relative overflow-hidden border-b border-[var(--color-border-subtle)]',
-          visual === 'ribbon' ? 'aspect-[21/9]' : 'aspect-[16/9] sm:aspect-[16/10]'
-        )}
-        style={categoryPanelStyle(catColor)}
-      >
-        {banner_url ? (
+      {banner_url && (
+        <div
+          data-card-media={visual}
+          className={cn(
+            'relative overflow-hidden border-b border-[var(--color-border-subtle)]',
+            visual === 'ribbon' ? 'aspect-[21/9]' : 'aspect-[16/9] sm:aspect-[16/10]'
+          )}
+          style={categoryPanelStyle(catColor)}
+        >
           <PosterImage
             src={banner_url}
             alt={title}
@@ -399,20 +395,22 @@ function FeaturedCard({
             preload
             className="transition-transform duration-500 ease-[var(--ease-ui)] group-hover:scale-[1.015]"
           />
-        ) : (
-          <div className="flex h-full items-center justify-center">
-            <span
-              className="font-display text-7xl leading-none font-bold opacity-[0.18] select-none sm:text-8xl"
-              style={{ color: catColor }}
-            >
-              {categories?.name?.[0] ?? organizations?.name?.[0] ?? 'B'}
-            </span>
-          </div>
-        )}
-      </div>
+          <span className="featured-announcement-badge absolute top-3 left-3 z-10 rounded-full border px-3 py-1.5 font-mono text-[0.62rem] font-bold tracking-[0.14em] uppercase">
+            {featureLabel}
+          </span>
+        </div>
+      )}
 
       {/* Content */}
       <div className="announcement-card-body flex min-h-0 flex-1 flex-col p-4 sm:p-5">
+        {!banner_url && (
+          <div className="mb-4 flex">
+            <span className="featured-announcement-badge inline-flex rounded-full border px-3 py-1.5 font-mono text-[0.62rem] font-bold tracking-[0.14em] uppercase">
+              {featureLabel}
+            </span>
+          </div>
+        )}
+
         {hasBadgeRow && (
           <div className="announcement-card-badges mb-4 flex flex-wrap items-center gap-2">
             {urgency !== 'normal' && <StatusChip label={urgencyMeta.label} tone="urgency" />}

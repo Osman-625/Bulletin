@@ -16,8 +16,8 @@ export default async function Header() {
 
   return (
     <header
-      className="sticky top-0 z-50 shadow-[0_12px_36px_rgba(95,61,22,0.1),0_1px_0_rgba(30,26,23,0.05)] dark:shadow-[0_10px_36px_rgba(0,0,0,0.42),0_1px_0_rgba(255,255,255,0.04)]"
-      style={{ borderBottom: '1px solid var(--color-border)' }}
+      className="sticky top-0 z-50 shadow-[0_12px_34px_rgba(95,61,22,0.12),0_1px_0_rgba(30,26,23,0.08)] dark:shadow-[0_12px_34px_rgba(0,0,0,0.42),0_1px_0_rgba(255,255,255,0.04)]"
+      style={{ borderBottom: '1px solid var(--color-border-subtle)' }}
     >
       <HeaderLoadingSignal />
 
@@ -28,21 +28,24 @@ export default async function Header() {
           WebkitBackdropFilter: 'blur(18px)',
         }}
       >
-        <div className="mx-auto flex min-h-16 w-full max-w-[1280px] items-center justify-between gap-2 px-3 py-2 sm:min-h-20 sm:gap-4 sm:px-6 sm:py-3 lg:px-8">
+        <nav
+          aria-label="Public navigation"
+          className="mx-auto flex min-h-16 w-full max-w-[1280px] items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-6 lg:px-8"
+        >
           <Link
             href="/"
-            className="group min-w-0 rounded-[1.5rem] pr-2 transition-transform duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] sm:pr-3"
+            className="group min-w-0 rounded-[1rem] pr-2 transition-transform duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] sm:pr-3"
           >
             <BrandMark
               size="md"
               preload
-              className="transition-transform duration-300 ease-[var(--ease-ui)] group-hover:scale-[1.015]"
-              textClassName="hidden min-[500px]:block"
+              className="gap-2 transition-transform duration-300 ease-[var(--ease-ui)] group-hover:scale-[1.015] sm:gap-3"
+              textClassName="block max-w-[8.5rem] [&_p:first-child]:font-display [&_p:first-child]:text-lg [&_p:first-child]:font-extrabold [&_p:last-child]:hidden sm:[&_p:last-child]:block"
             />
           </Link>
 
           <div className="hidden min-w-0 flex-1 justify-center md:flex">
-            <p className="max-w-full truncate rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface)]/70 px-3 py-2 font-mono text-[0.68rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
+            <p className="max-w-full truncate rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface)]/70 px-3 py-1.5 font-mono text-[0.66rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
               {today}
             </p>
           </div>
@@ -51,17 +54,12 @@ export default async function Header() {
             <ThemeToggle />
             <Link
               href={workspaceHref}
-              className="inline-flex min-h-11 cursor-pointer items-center rounded-full px-4 font-sans text-sm font-semibold text-white transition-[transform,box-shadow,background] duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] active:scale-[0.97] sm:min-h-12 sm:px-5 sm:text-base"
-              style={{
-                background: 'var(--color-accent-inti)',
-                boxShadow:
-                  '0 10px 28px color-mix(in oklab, var(--color-accent-inti) 24%, transparent)',
-              }}
+              className="inline-flex min-h-10 cursor-pointer items-center rounded-full border border-transparent px-3 font-sans text-sm font-semibold text-[var(--color-text-primary)] transition-[transform,background,border-color,color] duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 hover:border-[var(--color-border)] hover:bg-[var(--color-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] active:scale-[0.97] sm:min-h-11 sm:px-4"
             >
               {access ? 'Workspace' : 'Sign in'}
             </Link>
           </div>
-        </div>
+        </nav>
       </div>
       {access && (
         <div className="border-t border-[var(--color-border)] bg-[var(--color-surface)]/92 px-4 py-2.5 text-center text-xs font-medium text-[var(--color-text-muted)]">
