@@ -127,14 +127,14 @@
   --color-surface-high: #efcf8f;
   --color-border: #e4c895;
   --color-border-subtle: #f0dfbd;
-  --color-text-primary: #241815;
-  --color-text-secondary: #4a3933;
-  --color-text-muted: #705f52;
-  --color-accent: #d91234;
-  --color-accent-inti: #d91234;
-  --color-accent-hover: #ac0d28;
-  --color-accent-surface: rgba(217, 18, 52, 0.1);
-  --color-focus: #d91234;
+  --color-text-primary: #1b100d;
+  --color-text-secondary: #3f2d26;
+  --color-text-muted: #5f4b3d;
+  --color-accent: #c8102e;
+  --color-accent-inti: #c8102e;
+  --color-accent-hover: #9f0c24;
+  --color-accent-surface: rgba(200, 16, 46, 0.12);
+  --color-focus: #c8102e;
   --color-role-admin-bg: rgba(112, 95, 82, 0.12);
   --color-role-admin-text: #4a3933;
   --color-role-super-admin-bg: rgba(217, 18, 52, 0.12);
@@ -148,16 +148,16 @@
   --color-mark-plate: #f7e6bc;
   --color-mark-plate-border: #d9b45f;
   --color-mark-plate-ring: rgba(255, 255, 255, 0.45);
-  --color-mark-glow: rgba(242, 200, 75, 0.25);
-  --color-header-bg: rgba(255, 246, 224, 0.94);
+  --color-mark-glow: rgba(242, 200, 75, 0.34);
+  --color-header-bg: rgba(255, 246, 224, 0.98);
   --color-glass-bg: var(--color-surface);
   --color-glass-border: var(--color-border);
   --shadow-soft: 0 1px 0 rgba(36, 24, 21, 0.06), 0 18px 46px rgba(95, 61, 22, 0.1);
   --shadow-hover: 0 24px 58px rgba(95, 61, 22, 0.16);
   --shadow-button: 0 10px 26px rgba(95, 61, 22, 0.12);
   --shadow-button-hover: 0 16px 34px rgba(95, 61, 22, 0.18);
-  --shadow-mark: 0 14px 34px rgba(2, 33, 71, 0.18);
-  --shadow-logo-mark: 0 8px 14px rgba(2, 33, 71, 0.24);
+  --shadow-mark: 0 14px 34px rgba(2, 33, 71, 0.24), 0 0 0 1px rgba(21, 17, 15, 0.08);
+  --shadow-logo-mark: 0 9px 16px rgba(2, 33, 71, 0.3);
   --ease-ui: cubic-bezier(0.16, 1, 0.3, 1);
   --color-destructive: #b91c1c;
   --color-status-published-text: #15803d;
@@ -235,16 +235,16 @@
   --color-mark-plate: #f2dfa9;
   --color-mark-plate-border: #e5c671;
   --color-mark-plate-ring: rgba(255, 255, 255, 0.4);
-  --color-mark-glow: rgba(245, 166, 35, 0.22);
-  --color-header-bg: rgba(22, 20, 18, 0.88);
+  --color-mark-glow: rgba(245, 166, 35, 0.28);
+  --color-header-bg: rgba(22, 20, 18, 0.94);
   --color-glass-bg: var(--color-surface);
   --color-glass-border: var(--color-border);
   --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.28), 0 12px 32px rgba(0, 0, 0, 0.34);
   --shadow-hover: 0 18px 48px rgba(0, 0, 0, 0.52);
   --shadow-button: 0 8px 20px rgba(0, 0, 0, 0.28);
   --shadow-button-hover: 0 14px 30px rgba(0, 0, 0, 0.4);
-  --shadow-mark: 0 16px 38px rgba(0, 0, 0, 0.42);
-  --shadow-logo-mark: 0 10px 18px rgba(0, 0, 0, 0.38);
+  --shadow-mark: 0 16px 38px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-logo-mark: 0 10px 18px rgba(0, 0, 0, 0.46);
   --ease-ui: cubic-bezier(0.16, 1, 0.3, 1);
   --color-destructive: #ff6b6b;
   --color-status-published-text: #4ade80;
@@ -662,7 +662,7 @@
   .dense-bento-board,
   .priority-lane-board {
     --dense-bento-gap: 1rem;
-    --dense-bento-row: 6rem;
+    --dense-bento-row: 5.5rem;
   }
 
   .dense-bento-item {
@@ -677,6 +677,27 @@
     min-width: 0;
   }
 
+  .uniform-card-board {
+    align-items: stretch;
+  }
+
+  .uniform-card-board .dense-bento-item {
+    min-width: 0;
+  }
+
+  .uniform-card-board [data-card-media] {
+    aspect-ratio: 16 / 9;
+    max-height: none;
+  }
+
+  .uniform-card-board [data-has-image='true'] {
+    min-height: 26rem;
+  }
+
+  .uniform-card-board [data-has-image='false'] {
+    min-height: 18rem;
+  }
+
   .urgent-bento-item [data-testid='announcement-card'] {
     border-color: color-mix(in oklab, var(--color-accent-inti) 34%, var(--color-border)) !important;
     box-shadow:
@@ -684,16 +705,24 @@
       var(--shadow-soft) !important;
   }
 
-  .urgent-bento-item [data-testid='announcement-card']::before {
+  .urgent-bento-corner [data-testid='announcement-card']::after {
     position: absolute;
-    top: 1rem;
-    bottom: 1rem;
-    left: 0;
+    top: 0;
+    right: 0;
     z-index: 1;
-    width: 3px;
-    border-radius: 999px;
+    width: 2.35rem;
+    height: 2.35rem;
     background: var(--color-accent-inti);
+    clip-path: polygon(100% 0, 0 0, 100% 100%);
     content: '';
+  }
+
+  .featured-announcement-badge {
+    color: var(--color-canvas);
+    background: color-mix(in oklab, var(--color-text-primary) 88%, transparent);
+    border-color: color-mix(in oklab, var(--color-canvas) 30%, transparent);
+    box-shadow: 0 10px 24px rgba(36, 24, 21, 0.18);
+    backdrop-filter: blur(10px);
   }
 
   .announcement-card-summary-clamp {
@@ -835,7 +864,7 @@
 }
 
 @media (min-width: 768px) {
-  .hero-poster-card [data-testid='announcement-card'] {
+  .hero-poster-card [data-testid='announcement-card'][data-has-image='true'] {
     display: grid;
     min-height: 22rem;
     grid-template-columns: minmax(13rem, 0.68fr) minmax(0, 1fr);
@@ -872,29 +901,16 @@
     min-height: 0;
   }
 
-  .dense-bento-board .dense-bento-item {
-    grid-row: span 4;
-  }
-
-  .dense-bento-board .dense-bento-wide {
-    grid-column: span 2;
-    grid-row: span 4;
-  }
-
-  .dense-bento-board .dense-bento-tall {
-    grid-row: span 5;
-  }
-
-  .dense-bento-board .dense-bento-compact {
+  .dense-bento-board .card-without-image {
     grid-row: span 3;
   }
 
-  .priority-lane-board .dense-bento-item:only-child {
-    grid-column: span 3;
+  .dense-bento-board .card-with-image {
+    grid-row: span 5;
   }
 
-  .priority-lane-board .dense-bento-item:first-child:nth-last-child(2) {
-    grid-column: span 2;
+  .priority-lane-board.uniform-card-board .dense-bento-item {
+    grid-column: auto;
   }
 
   .dense-bento-board [data-testid='announcement-card'],
@@ -919,6 +935,10 @@
     -webkit-line-clamp: 2;
   }
 
+  .card-with-image [data-has-image='true'] .announcement-card-summary {
+    -webkit-line-clamp: 3;
+  }
+
   .dense-bento-board .announcement-card-meta {
     margin-top: 0.85rem;
   }
@@ -927,52 +947,14 @@
     padding-top: 0.8rem;
   }
 
-  .dense-bento-board .dense-bento-compact .announcement-card-body {
-    padding: 1.1rem;
-  }
-
-  .dense-bento-board .dense-bento-compact .announcement-card-badges {
-    margin-bottom: 0.65rem;
-    gap: 0.4rem;
-  }
-
-  .dense-bento-board .dense-bento-compact .announcement-card-chip {
-    padding: 0.36rem 0.6rem;
-    font-size: 0.72rem;
-  }
-
-  .dense-bento-board .dense-bento-compact .announcement-card-summary {
-    margin-top: 0.45rem;
-    -webkit-line-clamp: 1;
-  }
-
-  .dense-bento-board .dense-bento-compact .announcement-card-meta {
-    margin-top: 0.7rem;
-    gap: 0.45rem;
-  }
-
-  .dense-bento-board .dense-bento-compact .announcement-meta-pill {
-    border-radius: 0.72rem;
-    padding: 0.62rem 0.7rem;
-  }
-
-  .dense-bento-board .dense-bento-compact .announcement-meta-pill span:first-child {
-    font-size: 0.56rem;
-  }
-
-  .dense-bento-board .dense-bento-compact .announcement-meta-pill span:last-child {
-    font-size: 0.8rem;
-  }
-
-  .dense-bento-board .dense-bento-compact .announcement-card-footer {
-    padding-top: 0.7rem;
-    font-size: 0.82rem;
-  }
-
-  /* Cap image panel height so wide-span tiles don't get dominated by a tall image */
   .dense-bento-board [data-card-media],
   .priority-lane-board [data-card-media] {
-    max-height: 9rem;
+    max-height: none;
+  }
+
+  .dense-bento-board .card-with-image [data-card-media],
+  .priority-lane-board .card-with-image [data-card-media] {
+    max-height: 11.25rem;
   }
 
   .dense-bento-board [data-card-media='poster'],
@@ -982,7 +964,7 @@
 
   .dense-bento-board [data-card-media='letterbox'],
   .priority-lane-board [data-card-media='letterbox'] {
-    aspect-ratio: 21 / 8;
+    aspect-ratio: 16 / 9;
   }
 
   .dense-bento-board [data-card-media='stamp'],
@@ -992,14 +974,10 @@
 
   .dense-bento-board [data-card-media='ribbon'],
   .priority-lane-board [data-card-media='ribbon'] {
-    aspect-ratio: 21 / 7;
+    aspect-ratio: 16 / 9;
   }
 
-  .dense-bento-board .dense-bento-compact [data-card-media] {
-    display: none;
-  }
-
-  .hero-poster-card [data-testid='announcement-card'] {
+  .hero-poster-card [data-testid='announcement-card'][data-has-image='true'] {
     min-height: 22.5rem;
     grid-template-columns: minmax(15rem, 0.72fr) minmax(0, 1.1fr);
   }

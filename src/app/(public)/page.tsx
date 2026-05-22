@@ -13,10 +13,8 @@ import {
   buildAnnouncementSections,
   daysUntilDeadline,
   formatCampusLongDate,
-  isClosingSoonForBoard,
   normalizeBoardSort,
   sortAnnouncementsForPublicBoard,
-  type BoardSectionId,
   type BoardSort,
 } from '@/lib/announcements/public-board'
 import {
@@ -273,6 +271,7 @@ export default async function PublicFeedPage({
                       <AnnouncementCard
                         announcement={featured}
                         featured
+                        featureLabel={featuredIsPinned ? 'Pinned' : 'Featured'}
                         visual={imageBentoVariant(featured, 0, true)}
                       />
                     </article>
@@ -321,14 +320,10 @@ export default async function PublicFeedPage({
                             <article
                               key={announcement.id}
                               className={[
-                                bentoTileClass(
-                                  section.id,
-                                  announcement,
-                                  index,
-                                  section.items.length,
-                                  now
-                                ),
-                                isUrgentCard(announcement, now) ? 'urgent-bento-item' : '',
+                                bentoTileClass(announcement),
+                                isUrgentCard(announcement, now)
+                                  ? 'urgent-bento-item urgent-bento-corner'
+                                  : '',
                               ]
                                 .filter(Boolean)
                                 .join(' ')}
@@ -390,51 +385,26 @@ function buildFeedHref({
   return query ? `/?${query}` : '/'
 }
 
-function bentoTileClass(
-  sectionId: BoardSectionId,
-  announcement: AnnouncementWithRelations,
-  index: number,
-  sectionCount: number,
-  now = Date.now()
-) {
-  const classes = ['public-page-reveal', 'dense-bento-item']
-  const hasImage = Boolean(announcement.banner_url)
-  const urgencyRank = URGENCY_META[normalizeAnnouncementUrgency(announcement.urgency)].rank
-  const closingSoon = isClosingSoonForBoard(announcement.expires_at, now)
-
-  if (sectionCount <= 2) {
-    classes.push(index === 0 ? 'dense-bento-wide' : 'dense-bento-standard')
-    return classes.join(' ')
-  }
-
-  if (sectionId === 'closing' && (index === 0 || closingSoon || urgencyRank > 0)) {
-    classes.push('dense-bento-wide')
-  } else if (hasImage && (index + 1) % 3 === 0) {
-    classes.push('dense-bento-tall')
-  } else if (!hasImage) {
-    classes.push('dense-bento-compact')
-  } else {
-    classes.push('dense-bento-standard')
-  }
-
-  return classes.join(' ')
+function bentoTileClass(announcement: AnnouncementWithRelations) {
+  return `public-page-reveal dense-bento-item dense-bento-standard ${
+    announcement.banner_url ? 'card-with-image' : 'card-without-image'
+  }`
 }
 
 function sectionBoardClass(count: number) {
   const base = 'grid gap-4 md:grid-cols-2 xl:grid-cols-3'
-  return count <= 2 ? `priority-lane-board ${base}` : `dense-bento-board ${base}`
+  return count <= 2
+    ? `priority-lane-board uniform-card-board ${base}`
+    : `dense-bento-board uniform-card-board ${base}`
 }
 
 function imageBentoVariant(
   announcement: AnnouncementWithRelations,
-  index: number,
+  _index: number,
   featured = false
 ): AnnouncementCardVisual {
-  if (!announcement.banner_url) return 'letterbox'
-  if (featured) return 'poster'
-
-  const variants: AnnouncementCardVisual[] = ['letterbox', 'ribbon', 'letterbox', 'ribbon']
-  return variants[index % variants.length]
+  if (featured && announcement.banner_url) return 'poster'
+  return 'letterbox'
 }
 
 function isUrgentCard(announcement: AnnouncementWithRelations, now = Date.now()): boolean {
@@ -531,17 +501,35 @@ function FeedPagination({
   search: string
   activeSort: BoardSort
 }) {
+  const progress =
+    totalPages > 0 ? `${Math.max(0, Math.min(100, (page / totalPages) * 100))}%` : '0%'
+
   return (
     <nav
       className="mt-8 flex flex-col gap-3 rounded-[1.15rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
       aria-label="Announcement pagination"
     >
-      <p className="text-sm text-[var(--color-text-muted)]">
-        Showing{' '}
-        <span className="font-semibold text-[var(--color-text-primary)]">{visibleStart}</span> to{' '}
-        <span className="font-semibold text-[var(--color-text-primary)]">{visibleEnd}</span> of{' '}
-        <span className="font-semibold text-[var(--color-text-primary)]">{total}</span>
-      </p>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-[var(--color-text-muted)]">
+          Showing{' '}
+          <span className="font-semibold text-[var(--color-text-primary)]">{visibleStart}</span> to{' '}
+          <span className="font-semibold text-[var(--color-text-primary)]">{visibleEnd}</span> of{' '}
+          <span className="font-semibold text-[var(--color-text-primary)]">{total}</span>
+        </p>
+        <div
+          className="pagination-progress mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-elevated)]"
+          aria-label="Pagination progress"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={totalPages}
+          aria-valuenow={page}
+        >
+          <div
+            className="h-full rounded-full bg-[var(--color-accent-inti)] transition-[width] duration-300 ease-[var(--ease-ui)]"
+            style={{ width: progress }}
+          />
+        </div>
+      </div>
 
       <div className="flex items-center gap-2">
         {page > 1 ? (
@@ -569,14 +557,14 @@ function FeedPagination({
             href={buildFeedHref({ category, q: search, sort: activeSort, page: page + 1 })}
             className="action-lift inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border)] px-3 text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
           >
-            Next
+            Load more notices
           </Link>
         ) : (
           <span
             aria-disabled="true"
             className="inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-muted)] opacity-55"
           >
-            Next
+            All caught up
           </span>
         )}
       </div>
