@@ -39,6 +39,19 @@ describe('optimized public UI redesign source guards', () => {
     expect(publicHome).not.toContain('public-page-reveal future-bento-cell hidden gap-4')
   })
 
+  it('keeps the featured notice and pagination visually distinct on every breakpoint', () => {
+    const publicHome = source('src/app/(public)/page.tsx')
+    const card = source('src/components/announcements/AnnouncementCard.tsx')
+    const globals = source('src/app/globals.css')
+
+    expect(publicHome).toContain('featureLabel={featuredIsPinned ?')
+    expect(card).toContain('featured-announcement-badge')
+    expect(globals).toContain('.featured-announcement-badge')
+    expect(publicHome).toContain('pagination-progress')
+    expect(publicHome).toContain('aria-label="Pagination progress"')
+    expect(publicHome).toContain('Load more notices')
+  })
+
   it('adds a skip link and public Open Graph metadata without changing the theme provider contract', () => {
     const layout = source('src/app/layout.tsx')
     const providers = source('src/app/providers.tsx')

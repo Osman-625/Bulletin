@@ -1,12 +1,10 @@
 import Link from 'next/link'
-import { ArrowUpRight } from 'lucide-react'
 import { BrandMark } from './BrandMark'
 
 const links = [
-  { href: '/', label: 'Home' },
-  { href: '/login', label: 'Staff sign in' },
-  { href: 'https://newinti.edu.my', label: 'INTI website', external: true },
-  { href: 'mailto:studentaffairs@newinti.edu.my', label: 'Student affairs', external: true },
+  { href: '/privacy', label: 'Privacy' },
+  { href: '/terms', label: 'Terms' },
+  { href: 'mailto:studentaffairs@newinti.edu.my', label: 'Contact' },
 ]
 
 export default function Footer() {
@@ -14,43 +12,48 @@ export default function Footer() {
 
   return (
     <footer
-      className="mt-auto overflow-hidden"
+      className="mt-auto"
       style={{
-        borderTop: '1px solid var(--color-border)',
-        background:
-          'radial-gradient(circle at 18% 0%, color-mix(in oklab, var(--color-gold) 24%, transparent), transparent 24rem), linear-gradient(180deg,var(--color-surface-elevated),var(--color-surface))',
+        borderTop: '1px solid var(--color-border-subtle)',
+        background: 'var(--color-surface)',
       }}
     >
-      <div className="mx-auto grid w-full max-w-[1500px] gap-6 px-4 py-10 sm:px-6 sm:py-12 lg:grid-cols-[minmax(0,1.1fr)_minmax(18rem,0.9fr)] lg:gap-8 lg:px-10 xl:px-12">
-        <div className="flex flex-col gap-4">
-          <BrandMark size="md" />
-          <div>
-            <p className="max-w-[38rem] text-base leading-7 text-[var(--color-text-muted)]">
-              Notices, events, deadlines, and student opportunities for the INTI community.
+      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-5 px-4 py-8 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8">
+        <div className="flex min-w-0 items-center gap-3">
+          <BrandMark size="sm" showText={false} />
+          <div className="min-w-0">
+            <p className="font-mono text-[0.68rem] font-bold tracking-[0.16em] text-[var(--color-text-primary)] uppercase">
+              Bulletin · © {year} Bulletin
             </p>
-            <p className="mt-2 font-mono text-[0.65rem] font-bold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
-              © {year} Bulletin · Independent campus project
+            <p className="mt-1 text-sm leading-6 text-[var(--color-text-muted)]">
+              Campus notices and student opportunities for the INTI community.
             </p>
           </div>
         </div>
 
         <nav
-          className="grid content-start gap-1.5 rounded-[1.25rem] border border-[var(--color-border)] bg-[var(--color-surface)]/86 p-1.5 shadow-[var(--shadow-soft)] sm:grid-cols-2"
+          className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[0.68rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase"
           aria-label="Footer navigation"
         >
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="inline-flex min-h-11 items-center justify-between gap-2 rounded-[0.875rem] px-3.5 py-2 text-sm font-semibold text-[var(--color-text-secondary)] transition-[background,color,transform] duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
-              {...(link.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-            >
-              <span>{link.label}</span>
-              {link.external && (
-                <ArrowUpRight className="h-3.5 w-3.5 flex-shrink-0 opacity-50" aria-hidden="true" />
-              )}
-            </Link>
-          ))}
+          {links.map((link) =>
+            link.href.startsWith('mailto:') ? (
+              <a
+                key={link.href}
+                href={link.href}
+                className="rounded-md transition-colors duration-200 hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-md transition-colors duration-200 hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+              >
+                {link.label}
+              </Link>
+            )
+          )}
         </nav>
       </div>
     </footer>
