@@ -501,7 +501,8 @@ function FeedPagination({
   search: string
   activeSort: BoardSort
 }) {
-  const progress = `${Math.max(0, Math.min(100, (page / totalPages) * 100))}%`
+  const progress =
+    totalPages > 0 ? `${Math.max(0, Math.min(100, (page / totalPages) * 100))}%` : '0%'
 
   return (
     <nav
@@ -519,7 +520,7 @@ function FeedPagination({
           className="pagination-progress mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-elevated)]"
           aria-label="Pagination progress"
           role="progressbar"
-          aria-valuemin={1}
+          aria-valuemin={0}
           aria-valuemax={totalPages}
           aria-valuenow={page}
         >

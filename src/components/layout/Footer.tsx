@@ -35,15 +35,25 @@ export default function Footer() {
           className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[0.68rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase"
           aria-label="Footer navigation"
         >
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="rounded-md transition-colors duration-200 hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
-            >
-              {link.label}
-            </Link>
-          ))}
+          {links.map((link) =>
+            link.href.startsWith('mailto:') ? (
+              <a
+                key={link.href}
+                href={link.href}
+                className="rounded-md transition-colors duration-200 hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+              >
+                {link.label}
+              </a>
+            ) : (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="rounded-md transition-colors duration-200 hover:text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+              >
+                {link.label}
+              </Link>
+            )
+          )}
         </nav>
       </div>
     </footer>

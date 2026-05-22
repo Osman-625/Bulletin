@@ -401,6 +401,16 @@ function FeaturedCard({
         </div>
       )}
 
+      {!banner_url && (
+        <div
+          className="h-14 flex-shrink-0 border-b border-[var(--color-border-subtle)]"
+          style={{
+            background: `color-mix(in oklab, ${catColor} 10%, var(--color-surface-elevated))`,
+          }}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Content */}
       <div className="announcement-card-body flex min-h-0 flex-1 flex-col p-4 sm:p-5">
         {!banner_url && (
