@@ -7,6 +7,7 @@ import {
   getCurrentAccessContext,
   getDefaultAppPath,
 } from '@/lib/auth/authz'
+import { readCategoryFormData } from '@/lib/categories/validation'
 import { reportServerError } from '@/lib/error-reporting'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -17,6 +18,8 @@ const CATEGORY_PATH = '/super-admin/categories'
 const CATEGORY_SAVE_ERROR = 'Could not save category. Try again.'
 const CATEGORY_TOGGLE_ERROR = 'Could not update category status. Try again.'
 const CATEGORY_DELETE_ERROR = 'Could not delete category. Try again.'
+const DEFAULT_CATEGORY_COLOR = 'var(--color-accent-inti)'
+const DEFAULT_CATEGORY_INPUT_COLOR = '#C8102E'
 
 function categoryErrorHref(message: string) {
   return `${CATEGORY_PATH}?error=${encodeURIComponent(message)}`
@@ -32,13 +35,11 @@ async function requireSuperAdminAccess() {
 async function createCategory(formData: FormData) {
   'use server'
   const access = await requireSuperAdminAccess()
+  const parsed = readCategoryFormData(formData)
+  if (!parsed.ok) redirect(categoryErrorHref(parsed.error))
+
   const supabase = await createClient()
-  const name = (formData.get('name') as string).trim()
-  const slug = name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-  const color = formData.get('color') as string
+  const { name, slug, color } = parsed.data
   const { data: category, error } = await supabase
     .from('categories')
     .insert({ name, slug, color, is_active: true })
@@ -66,13 +67,11 @@ async function createCategory(formData: FormData) {
 async function updateCategory(id: string, formData: FormData) {
   'use server'
   const access = await requireSuperAdminAccess()
+  const parsed = readCategoryFormData(formData)
+  if (!parsed.ok) redirect(categoryErrorHref(parsed.error))
+
   const supabase = await createClient()
-  const name = (formData.get('name') as string).trim()
-  const slug = name
-    .toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^a-z0-9-]/g, '')
-  const color = formData.get('color') as string
+  const { name, slug, color } = parsed.data
   const { error } = await supabase.from('categories').update({ name, slug, color }).eq('id', id)
   if (error) {
     reportServerError('super_admin.categories.update', error, {
@@ -230,6 +229,7 @@ export default async function CategoriesPage({
   const { error, edit } = await searchParams
   const supabase = await createServiceClient()
   const { data: categories } = await supabase.from('categories').select('*').order('name')
+  const hasCategories = (categories?.length ?? 0) > 0
 
   const announcementCounts: Record<string, number> = {}
   if (categories?.length) {
@@ -294,7 +294,7 @@ export default async function CategoriesPage({
               id="color"
               name="color"
               type="color"
-              defaultValue="#C8102E"
+              defaultValue={DEFAULT_CATEGORY_INPUT_COLOR}
               className="h-[42px] w-16 cursor-pointer rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1"
             />
           </div>
@@ -309,6 +309,18 @@ export default async function CategoriesPage({
 
       {/* Category list */}
       <div className="space-y-2">
+        {!hasCategories && (
+          <GlassCard hover={false} className="p-8">
+            <div role="status" className="mx-auto max-w-md text-center">
+              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                No categories yet
+              </p>
+              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                Create a category to start organizing the public board.
+              </p>
+            </div>
+          </GlassCard>
+        )}
         {(categories ?? []).map((cat) => {
           const isEditing = edit === cat.id
           const linkCount = announcementCounts[cat.id] ?? 0
@@ -323,7 +335,7 @@ export default async function CategoriesPage({
                 <div className="flex items-center gap-4 px-5 py-3">
                   <span
                     className="h-4 w-4 shrink-0 rounded-full"
-                    style={{ background: cat.color ?? '#C8102E' }}
+                    style={{ background: cat.color ?? DEFAULT_CATEGORY_COLOR }}
                   />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-[var(--color-text-primary)]">
@@ -400,7 +412,7 @@ export default async function CategoriesPage({
                       <input
                         name="color"
                         type="color"
-                        defaultValue={cat.color ?? '#C8102E'}
+                        defaultValue={cat.color ?? DEFAULT_CATEGORY_INPUT_COLOR}
                         className="h-[42px] w-16 cursor-pointer rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-1 py-1"
                       />
                     </div>

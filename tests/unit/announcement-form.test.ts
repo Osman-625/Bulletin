@@ -123,4 +123,19 @@ describe('announcement form validation helpers', () => {
     expect(formSource).toContain('crypto.randomUUID()')
     expect(formSource).not.toContain('upsert: true')
   })
+
+  it('keeps banner upload limits in shared announcement form config', () => {
+    const helperSource = source('src/lib/announcements/form.ts')
+    const formSource = source('src/components/dashboard/AnnouncementForm.tsx')
+
+    expect(helperSource).toContain('BANNER_MAX_FILE_SIZE_MB = 5')
+    expect(helperSource).toContain(
+      'BANNER_MAX_FILE_SIZE_BYTES = BANNER_MAX_FILE_SIZE_MB * 1024 * 1024'
+    )
+    expect(formSource).toContain('BANNER_MAX_FILE_SIZE_BYTES')
+    expect(formSource).toContain('BANNER_MAX_FILE_SIZE_MB')
+    expect(formSource).not.toContain('const BANNER_MAX_FILE_SIZE = 5 * 1024 * 1024')
+    expect(formSource).not.toContain('max 5MB')
+    expect(formSource).not.toContain('File exceeds 5 MB limit')
+  })
 })

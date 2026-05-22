@@ -26,10 +26,22 @@ describe('POST /api/setup security', () => {
     process.env.SETUP_SECRET = 'test-secret'
     delete process.env.SETUP_OWNER_EMAIL
     delete process.env.SETUP_OWNER_USERNAME
+    delete process.env.SETUP_OWNER_TEMP_PASSWORD
+    delete process.env.VERCEL_ENV
   })
 
   it('stays disabled unless the setup route is explicitly enabled', async () => {
     delete process.env.ENABLE_SETUP_ROUTE
+
+    const response = await POST(setupRequest('test-secret'))
+
+    expect(response.status).toBe(404)
+    expect(createServiceClient).not.toHaveBeenCalled()
+  })
+
+  it('stays disabled on Vercel production even when the setup flag is left on', async () => {
+    process.env.VERCEL_ENV = 'production'
+    process.env.SETUP_OWNER_TEMP_PASSWORD = 'ConfiguredTempPassword123!'
 
     const response = await POST(setupRequest('test-secret'))
 
@@ -61,9 +73,22 @@ describe('POST /api/setup security', () => {
     expect(createServiceClient).not.toHaveBeenCalled()
   })
 
+  it('requires a configured owner temporary password before creating a service client', async () => {
+    process.env.SETUP_OWNER_EMAIL = 'owner@example.edu'
+    process.env.SETUP_OWNER_USERNAME = 'Campus Owner'
+
+    const response = await POST(setupRequest('test-secret'))
+    const body = await response.json()
+
+    expect(response.status).toBe(412)
+    expect(body.error).toContain('configuration')
+    expect(createServiceClient).not.toHaveBeenCalled()
+  })
+
   it('uses configured owner identity when bootstrapping the owner account', async () => {
     process.env.SETUP_OWNER_EMAIL = 'owner@example.edu'
     process.env.SETUP_OWNER_USERNAME = 'Campus Owner'
+    process.env.SETUP_OWNER_TEMP_PASSWORD = 'ConfiguredTempPassword123!'
 
     const queriedEmails: string[] = []
     const profileUpdates: unknown[] = []
@@ -112,11 +137,13 @@ describe('POST /api/setup security', () => {
     expect(createUser).toHaveBeenCalledWith(
       expect.objectContaining({
         email: 'owner@example.edu',
+        password: 'ConfiguredTempPassword123!',
         user_metadata: { display_name: 'Campus Owner' },
       })
     )
     expect(profileUpdates).toContainEqual(expect.objectContaining({ display_name: 'Campus Owner' }))
     expect(body.username).toBe('Campus Owner')
+    expect(body).not.toHaveProperty('temp_password')
   })
 
   it('documents setup owner identity as server-only configuration', () => {
@@ -124,6 +151,7 @@ describe('POST /api/setup security', () => {
 
     expect(envExample).toContain('SETUP_OWNER_EMAIL=')
     expect(envExample).toContain('SETUP_OWNER_USERNAME=')
+    expect(envExample).toContain('SETUP_OWNER_TEMP_PASSWORD=')
     expect(envExample).not.toContain('NEXT_PUBLIC_SETUP_OWNER')
   })
 })

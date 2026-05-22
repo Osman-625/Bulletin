@@ -4,6 +4,10 @@ import { redirect } from 'next/navigation'
 import { logAuditEvent } from '@/lib/audit'
 import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
 import { reportServerError } from '@/lib/error-reporting'
+import {
+  INVITATION_EXPIRY_DAYS,
+  readPublisherInvitationFormData,
+} from '@/lib/invitations/validation'
 import { createClient } from '@/lib/supabase/server'
 
 const INVITE_PUBLISHER_PATH = '/admin/publishers/invite'
@@ -18,27 +22,19 @@ export async function invitePublisher(formData: FormData) {
   if (!access) redirect('/login')
   if (!canAccessAdminArea(access.role)) redirect(getDefaultAppPath(access.role))
 
-  const supabase = await createClient()
+  const parsed = readPublisherInvitationFormData(formData)
+  if (!parsed.ok) redirect(inviteErrorHref(parsed.error))
 
-  const email = ((formData.get('email') as string | null) ?? '').trim().toLowerCase()
-  const orgIds = formData
-    .getAll('org_ids')
-    .filter((orgId): orgId is string => typeof orgId === 'string' && orgId.trim().length > 0)
-  const rawMemberRole = (formData.get('member_role') as string | null) ?? 'publisher'
-  const memberRole = rawMemberRole === 'admin' ? 'admin' : 'publisher'
-
-  if (!email || !email.includes('@')) {
-    redirect(inviteErrorHref('Enter a valid email address.'))
-  }
-
+  const { email, orgIds, memberRole } = parsed.data
   if (access.role === 'admin' && orgIds.some((orgId) => !access.orgIds.includes(orgId))) {
     redirect(
       '/admin/publishers/invite?error=You+can+only+invite+publishers+into+your+own+organizations'
     )
   }
 
+  const supabase = await createClient()
   const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + 7)
+  expiresAt.setDate(expiresAt.getDate() + INVITATION_EXPIRY_DAYS)
 
   const { data, error: invitationError } = await supabase
     .from('invitations')
@@ -50,7 +46,7 @@ export async function invitePublisher(formData: FormData) {
       invited_by: access.userId,
       expires_at: expiresAt.toISOString(),
     })
-    .select('id, token')
+    .select('id')
     .single()
 
   if (invitationError || !data) {
@@ -80,5 +76,5 @@ export async function invitePublisher(formData: FormData) {
     },
   })
 
-  redirect(`/admin/publishers/invite?token=${data.token}&email=${encodeURIComponent(email)}`)
+  redirect(`/admin/publishers/invite?created=${data.id}`)
 }

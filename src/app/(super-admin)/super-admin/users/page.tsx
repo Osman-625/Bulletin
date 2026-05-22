@@ -35,6 +35,7 @@ const USER_CREATE_ERROR = 'Could not create user. Try again.'
 const USER_UPDATE_ERROR = 'Could not update user. Try again.'
 const PASSWORD_RESET_ERROR = 'Could not reset password. Try again.'
 const USER_DELETE_ERROR = 'Could not delete user. Try again.'
+const SUPER_ADMIN_USERS_PAGE_SIZE = 24
 
 function userErrorHref(message: string, add = false) {
   const key = add ? 'err' : 'error'
@@ -42,15 +43,115 @@ function userErrorHref(message: string, add = false) {
   return `${prefix}${key}=${encodeURIComponent(message)}`
 }
 
-async function getUsers() {
+function parseUsersPage(pageInput?: string | number | null) {
+  const parsedPage =
+    typeof pageInput === 'number' ? pageInput : Number.parseInt(pageInput ?? '1', 10)
+  return Number.isFinite(parsedPage) && parsedPage > 0 ? Math.floor(parsedPage) : 1
+}
+
+function superAdminUsersHref({ role, page }: { role?: string; page?: number }) {
+  const params = new URLSearchParams()
+  if (role) params.set('role', role)
+  if (page && page > 1) params.set('page', String(page))
+  const query = params.toString()
+  return query ? `${SUPER_ADMIN_USERS_PATH}?${query}` : SUPER_ADMIN_USERS_PATH
+}
+
+function UserPagination({
+  page,
+  totalPages,
+  role,
+}: {
+  page: number
+  totalPages: number
+  role?: string
+}) {
+  if (totalPages <= 1) return null
+  const previousPage = Math.max(1, page - 1)
+  const nextPage = Math.min(totalPages, page + 1)
+
+  return (
+    <nav
+      aria-label="User pagination"
+      className="flex flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p className="text-sm text-[var(--color-text-secondary)]">
+        Page {page} of {totalPages}
+      </p>
+      <div className="flex items-center gap-2">
+        <a
+          href={superAdminUsersHref({ role, page: previousPage })}
+          aria-disabled={page <= 1}
+          className={`inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
+            page <= 1
+              ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
+              : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+          }`}
+        >
+          Previous
+        </a>
+        <a
+          href={superAdminUsersHref({ role, page: nextPage })}
+          aria-disabled={page >= totalPages}
+          className={`inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
+            page >= totalPages
+              ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
+              : 'bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]'
+          }`}
+        >
+          Next
+        </a>
+      </div>
+    </nav>
+  )
+}
+
+async function getUsers({ role, page: pageInput }: { role?: string; page?: string | null } = {}) {
   const supabase = await createServiceClient()
-  const { data } = await supabase
+  const page = parseUsersPage(pageInput)
+  const from = (page - 1) * SUPER_ADMIN_USERS_PAGE_SIZE
+  const to = from + SUPER_ADMIN_USERS_PAGE_SIZE - 1
+
+  let query = supabase
     .from('users')
-    .select('*')
+    .select('*', { count: 'exact' })
     .neq('role', 'owner')
     .order('created_at', { ascending: false })
 
-  return data ?? []
+  if (role && ROLE_LABELS[role]) query = query.eq('role', role as AppRole)
+
+  const { data, count, error } = await query.range(from, to)
+  if (error) {
+    reportServerError('super_admin.users.list_query', error, {
+      filterRole: role ?? null,
+      page,
+    })
+  }
+
+  return {
+    items: error ? [] : (data ?? []),
+    total: count ?? data?.length ?? 0,
+    page,
+    pageSize: SUPER_ADMIN_USERS_PAGE_SIZE,
+    totalPages: Math.max(1, Math.ceil((count ?? data?.length ?? 0) / SUPER_ADMIN_USERS_PAGE_SIZE)),
+  }
+}
+
+async function getSuperAdminUserRoleCounts() {
+  const supabase = await createServiceClient()
+  const entries = await Promise.all(
+    Object.keys(ROLE_LABELS).map(async (role) => {
+      const { count, error } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', role as AppRole)
+      if (error) {
+        reportServerError('super_admin.users.role_count_query', error, { countedRole: role })
+      }
+      return [role, count ?? 0] as const
+    })
+  )
+  return Object.fromEntries(entries)
 }
 
 async function getPendingPasswordResetRequests() {
@@ -294,6 +395,7 @@ export default async function SuperAdminUsersPage({
     err?: string
     error?: string
     reset_request?: string
+    page?: string
   }>
 }) {
   const {
@@ -305,6 +407,7 @@ export default async function SuperAdminUsersPage({
     err,
     error,
     reset_request: highlightedResetRequest,
+    page,
   } = await searchParams
   const isAdding = add === 'true'
   const access = await getCurrentAccessContext()
@@ -320,19 +423,13 @@ export default async function SuperAdminUsersPage({
 
   await syncAuthUsersToProfiles()
 
-  let users = await getUsers()
-  if (filterRole && ROLE_LABELS[filterRole]) {
-    users = users.filter((user) => user.role === filterRole)
-  }
-
-  const allUsers = await getUsers()
+  const usersPage = await getUsers({ role: filterRole, page })
+  const users = usersPage.items
   const pendingResetRequests = await getPendingPasswordResetRequests()
-  const roleCounts = allUsers.reduce<Record<string, number>>((acc, user) => {
-    acc[user.role as string] = (acc[user.role as string] ?? 0) + 1
-    return acc
-  }, {})
+  const roleCounts = await getSuperAdminUserRoleCounts()
+  const allUsersTotal = Object.values(roleCounts).reduce((sum, count) => sum + count, 0)
 
-  const base = filterRole ? `/super-admin/users?role=${filterRole}` : '/super-admin/users'
+  const base = superAdminUsersHref({ role: filterRole, page: usersPage.page })
   const separator = base.includes('?') ? '&' : '?'
 
   return (
@@ -343,7 +440,8 @@ export default async function SuperAdminUsersPage({
             Users
           </h1>
           <p className="mt-1 text-[var(--color-text-secondary)]">
-            {users.length} users{filterRole ? ` - ${ROLE_LABELS[filterRole] ?? filterRole}` : ''}
+            {usersPage.total} users
+            {filterRole ? ` - ${ROLE_LABELS[filterRole] ?? filterRole}` : ''}
           </p>
         </div>
         <a
@@ -509,7 +607,7 @@ export default async function SuperAdminUsersPage({
 
       <div className="flex flex-wrap gap-2">
         {[
-          { key: '', label: `All (${allUsers.length})` },
+          { key: '', label: `All (${allUsersTotal})` },
           ...Object.keys(ROLE_LABELS).map((role) => ({
             key: role,
             label: `${ROLE_LABELS[role]} (${roleCounts[role] ?? 0})`,
@@ -517,7 +615,7 @@ export default async function SuperAdminUsersPage({
         ].map(({ key, label }) => (
           <a
             key={key}
-            href={key ? `/super-admin/users?role=${key}` : '/super-admin/users'}
+            href={superAdminUsersHref({ role: key || undefined })}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
               filterRole === key || (!filterRole && !key)
                 ? 'bg-[var(--color-accent)] text-white'
@@ -530,6 +628,28 @@ export default async function SuperAdminUsersPage({
       </div>
 
       <div className="space-y-2">
+        {users.length === 0 && (
+          <GlassCard hover={false} className="p-8">
+            <div role="status" className="mx-auto max-w-md text-center">
+              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                No users match this view
+              </p>
+              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+                {filterRole
+                  ? `There are no ${ROLE_LABELS[filterRole] ?? filterRole} users on the platform.`
+                  : 'No synced users are available yet.'}
+              </p>
+              {filterRole && (
+                <a
+                  href="/super-admin/users"
+                  className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-[var(--color-surface-elevated)] px-4 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+                >
+                  Clear the role filter
+                </a>
+              )}
+            </div>
+          </GlassCard>
+        )}
         {users.map((user) => {
           const role = user.role as AppRole
           const isEditing = edit === user.id
@@ -699,6 +819,7 @@ export default async function SuperAdminUsersPage({
           )
         })}
       </div>
+      <UserPagination page={usersPage.page} totalPages={usersPage.totalPages} role={filterRole} />
     </div>
   )
 }

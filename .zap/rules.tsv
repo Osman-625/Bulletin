@@ -1,0 +1,4 @@
+# ZAP baseline rules
+#
+# Add one tab-delimited exception per line only after triage:
+# <plugin-id> <action> (<reason>)

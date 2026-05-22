@@ -12,16 +12,41 @@ type BackNavButtonProps = {
   'aria-label'?: string
 }
 
+type HistoryStateWithIndex = {
+  idx?: unknown
+}
+
 export function BackNavButton({
   fallbackHref = '/',
   className,
   children,
-  'aria-label': ariaLabel = 'Go back',
+  'aria-label': ariaLabel,
 }: BackNavButtonProps) {
   const router = useRouter()
+  const resolvedAriaLabel = ariaLabel ?? (children ? undefined : 'Go back')
+
+  function hasKnownExternalReferrer() {
+    if (!document.referrer) return false
+
+    try {
+      return new URL(document.referrer).origin !== window.location.origin
+    } catch {
+      return true
+    }
+  }
+
+  function hasInternalHistoryState() {
+    const state = window.history.state as HistoryStateWithIndex | null
+    return typeof state?.idx === 'number' && state.idx > 0
+  }
+
+  function canUseBrowserBack() {
+    if (hasInternalHistoryState()) return true
+    return window.history.length > 1 && !hasKnownExternalReferrer()
+  }
 
   function handleBack() {
-    if (window.history.length > 1) {
+    if (canUseBrowserBack()) {
       router.back()
       return
     }
@@ -32,7 +57,7 @@ export function BackNavButton({
   return (
     <button
       type="button"
-      aria-label={ariaLabel}
+      aria-label={resolvedAriaLabel}
       onClick={handleBack}
       className={cn(
         'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-text-muted)] shadow-[var(--shadow-button)]',

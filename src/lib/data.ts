@@ -1,10 +1,19 @@
+/**
+ * @module data
+ * @description Server-side data access layer for the Bulletin platform.
+ *
+ * All functions in this module execute on the server and communicate directly
+ * with Supabase. Access control is enforced at the query level using the
+ * caller's role and organization memberships from `getCurrentAccessContext()`.
+ *
+ * Sections:
+ *   - Public API  — unauthenticated announcement feed and category lookups
+ *   - Admin       — moderation queue and user/org management (admin + super_admin)
+ *   - Super Admin — platform-wide statistics and admin roster
+ */
+
 import { createClient, createServiceClient } from './supabase/server'
-import {
-  canAccessAdminArea,
-  canViewUser,
-  getCurrentAccessContext,
-  type ScopedUser,
-} from './auth/authz'
+import { canAccessAdminArea, canAccessSuperAdminArea, getCurrentAccessContext } from './auth/authz'
 import type {
   AnnouncementWithRelations,
   AnnouncementForReview,
@@ -16,30 +25,65 @@ import { sortAnnouncementsForFeed } from './announcements/presentation'
 import { announcementLookupId } from './announcements/urls'
 import { reportServerError } from '@/lib/error-reporting'
 
+/** Selects announcement fields with category and organization relations (left join). */
 const ANNOUNCEMENT_SELECT = `
   *,
   categories ( id, name, slug, color ),
   organizations ( id, name, slug, logo_url )
 ` as const
 
+/**
+ * Like `ANNOUNCEMENT_SELECT` but uses an inner join on categories so that
+ * `.eq('categories.slug', ...)` filters rows rather than just nulling the relation.
+ */
 const ANNOUNCEMENT_SELECT_WITH_CATEGORY_FILTER = `
   *,
   categories!inner ( id, name, slug, color ),
   organizations ( id, name, slug, logo_url )
 ` as const
 
-const PUBLIC_FEED_LIMIT = 80
+const PUBLIC_FEED_PAGE_SIZE = 24
+const USER_MANAGEMENT_PAGE_SIZE = 24
 
+/** Paginated result for the public announcement feed. */
+type PublicAnnouncementsPage = {
+  items: AnnouncementWithRelations[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
+/** Generic paginated result for user management tables; includes per-role counts. */
+type UserManagementPage<T> = {
+  items: T[]
+  total: number
+  /** Total across all roles, unaffected by the current role filter. */
+  allTotal: number
+  roleCounts: Record<string, number>
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
+/** Extracts the `code` field from a Supabase/PostgREST error object, if present. */
 function errorCode(error: unknown): string | undefined {
   if (!error || typeof error !== 'object') return undefined
   const value = (error as Record<string, unknown>).code
   return typeof value === 'string' ? value : undefined
 }
 
+/** Returns true when the PostgREST error code indicates zero rows were returned (PGRST116). */
 function isNoRowsError(error: unknown) {
   return errorCode(error) === 'PGRST116'
 }
 
+/**
+ * Sanitizes a free-text search query for safe use in an `ilike` Supabase filter.
+ *
+ * Strips SQL wildcard and grouping characters `%`, `,`, `(`, `)`, collapses
+ * consecutive whitespace, and truncates to 80 characters to prevent runaway queries.
+ */
 function normalizePublicSearchQuery(query?: string): string {
   return (query ?? '')
     .trim()
@@ -48,22 +92,48 @@ function normalizePublicSearchQuery(query?: string): string {
     .slice(0, 80)
 }
 
+/**
+ * Parses and clamps a page number from URL search params.
+ * Falls back to page 1 for any non-positive or non-finite input.
+ */
+function normalizePageInput(pageInput?: string | number | null) {
+  const parsedPage =
+    typeof pageInput === 'number' ? pageInput : Number.parseInt(pageInput ?? '1', 10)
+  return Number.isFinite(parsedPage) && parsedPage > 0 ? Math.floor(parsedPage) : 1
+}
+
+/**
+ * Fetches a paginated page of published announcements for the public feed.
+ *
+ * Filters out announcements that have not yet reached their `scheduled_publish_at`
+ * date or have passed their `expires_at` date. Results are post-sorted by
+ * `sortAnnouncementsForFeed` after the DB query to apply custom feed ordering.
+ *
+ * @param categorySlug - When provided, restricts results to a single category.
+ * @param searchQuery  - Raw user input; sanitized before use in the `ilike` filter.
+ * @param pageInput    - 1-based page number (string or number); invalid values fall back to 1.
+ * @returns A page of announcements with pagination metadata. Returns an empty page on error.
+ */
 export async function getPublicAnnouncements(
   categorySlug?: string,
-  searchQuery?: string
-): Promise<AnnouncementWithRelations[]> {
+  searchQuery?: string,
+  pageInput?: string | number | null
+): Promise<PublicAnnouncementsPage> {
   const supabase = await createClient()
   const now = new Date().toISOString()
   const search = normalizePublicSearchQuery(searchQuery)
+  const page = normalizePageInput(pageInput)
+  const from = (page - 1) * PUBLIC_FEED_PAGE_SIZE
+  const to = from + PUBLIC_FEED_PAGE_SIZE - 1
 
   let query = supabase
     .from('announcements')
-    .select(categorySlug ? ANNOUNCEMENT_SELECT_WITH_CATEGORY_FILTER : ANNOUNCEMENT_SELECT)
+    .select(categorySlug ? ANNOUNCEMENT_SELECT_WITH_CATEGORY_FILTER : ANNOUNCEMENT_SELECT, {
+      count: 'exact',
+    })
     .eq('status', 'published')
     .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${now}`)
     .or(`expires_at.is.null,expires_at.gt.${now}`)
-    .order('published_at', { ascending: false })
-    .limit(PUBLIC_FEED_LIMIT)
 
   if (categorySlug) {
     query = query.eq('categories.slug', categorySlug)
@@ -73,17 +143,44 @@ export async function getPublicAnnouncements(
     query = query.or(`title.ilike.%${search}%,body.ilike.%${search}%`)
   }
 
-  const { data, error } = await query
+  const { data, error, count } = await query
+    .order('published_at', { ascending: false })
+    .range(from, to)
+
   if (error) {
     reportServerError('data.public_announcements.query_failed', error, {
       categorySlug: categorySlug ?? null,
       hasSearch: Boolean(search),
+      page,
     })
-    return []
+    return {
+      items: [],
+      total: 0,
+      page,
+      pageSize: PUBLIC_FEED_PAGE_SIZE,
+      totalPages: 1,
+    }
   }
-  return sortAnnouncementsForFeed((data ?? []) as AnnouncementWithRelations[])
+
+  const total = count ?? data?.length ?? 0
+  return {
+    items: sortAnnouncementsForFeed((data ?? []) as AnnouncementWithRelations[]),
+    total,
+    page,
+    pageSize: PUBLIC_FEED_PAGE_SIZE,
+    totalPages: Math.max(1, Math.ceil(total / PUBLIC_FEED_PAGE_SIZE)),
+  }
 }
 
+/**
+ * Fetches a single published announcement by its ID.
+ *
+ * Respects `scheduled_publish_at` and `expires_at` visibility windows — returns
+ * `null` for announcements that are not yet live or have expired.
+ *
+ * @param id - The announcement UUID (or slug-encoded lookup ID via `announcementLookupId`).
+ * @returns The announcement with category and organization relations, or `null` if not found.
+ */
 export async function getAnnouncementById(id: string): Promise<AnnouncementWithRelations | null> {
   const supabase = await createClient()
   const now = new Date().toISOString()
@@ -101,6 +198,12 @@ export async function getAnnouncementById(id: string): Promise<AnnouncementWithR
   return data as AnnouncementWithRelations
 }
 
+/**
+ * Returns all active categories ordered alphabetically by name.
+ * Used to populate the category filter on the public feed.
+ *
+ * @returns Array of active categories, or an empty array on error.
+ */
 export async function getActiveCategories(): Promise<DbCategory[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -125,6 +228,15 @@ const REVIEW_SELECT = `
   users ( display_name, email )
 ` as const
 
+/**
+ * Returns all announcements in `submitted` status awaiting moderation.
+ *
+ * Access is role-scoped: `admin` sees only announcements belonging to their
+ * assigned organizations; `super_admin` sees all. Returns an empty array if
+ * the caller lacks admin access or has no assigned organizations.
+ *
+ * @returns Submitted announcements with user, category, and organization relations.
+ */
 export async function getSubmittedAnnouncements(): Promise<AnnouncementForReview[]> {
   const access = await getCurrentAccessContext()
   if (!access || !canAccessAdminArea(access.role)) return []
@@ -153,6 +265,18 @@ export async function getSubmittedAnnouncements(): Promise<AnnouncementForReview
   return (data ?? []) as AnnouncementForReview[]
 }
 
+/**
+ * Fetches a single announcement by ID for the admin review workflow.
+ *
+ * Unlike `getAnnouncementById`, this does not filter by published status or
+ * visibility windows — it is used to review announcements in any workflow state.
+ *
+ * Access enforcement: `admin` callers can only access announcements from their
+ * own organizations; `super_admin` can access any.
+ *
+ * @param id - The announcement UUID.
+ * @returns The announcement with review-relevant relations, or `null` if unauthorized or not found.
+ */
 export async function getAnnouncementForReview(id: string): Promise<AnnouncementForReview | null> {
   const access = await getCurrentAccessContext()
   if (!access || !canAccessAdminArea(access.role)) return null
@@ -181,6 +305,15 @@ export async function getAnnouncementForReview(id: string): Promise<Announcement
   return data as AnnouncementForReview | null
 }
 
+/**
+ * Returns all organizations with their owner user details.
+ *
+ * `admin` callers receive only organizations they are members of;
+ * `super_admin` callers receive all organizations platform-wide.
+ * Ordered newest-first.
+ *
+ * @returns Array of organizations with nested user relations, or empty array on error.
+ */
 export async function getAllOrganizations() {
   const access = await getCurrentAccessContext()
   if (!access || !canAccessAdminArea(access.role)) return []
@@ -209,6 +342,12 @@ export async function getAllOrganizations() {
   return data ?? []
 }
 
+/**
+ * Fetches a single organization along with its full member roster.
+ *
+ * @param orgId - The organization UUID.
+ * @returns The organization with all members and their user profiles, or `null` if not found.
+ */
 export async function getOrgWithMembers(orgId: string): Promise<OrgWithMembers | null> {
   const supabase = await createClient()
   const { data, error: orgWithMembersError } = await supabase
@@ -229,6 +368,15 @@ export async function getOrgWithMembers(orgId: string): Promise<OrgWithMembers |
   return data as OrgWithMembers | null
 }
 
+/**
+ * Returns all users with the `publisher` role, including their organization memberships.
+ *
+ * `admin` callers receive only publishers who belong to at least one of the caller's
+ * organizations, with memberships filtered to those organizations only.
+ * `super_admin` callers receive all publishers platform-wide.
+ *
+ * @returns Array of publishers with nested organization relations, or empty array on error.
+ */
 export async function getAllPublishers(): Promise<PublisherWithOrgs[]> {
   const access = await getCurrentAccessContext()
   if (!access || !canAccessAdminArea(access.role)) return []
@@ -263,6 +411,18 @@ export async function getAllPublishers(): Promise<PublisherWithOrgs[]> {
     .filter((publisher) => publisher.organization_members.length > 0)
 }
 
+/**
+ * Fetches summary statistics for the admin dashboard.
+ *
+ * Runs four parallel Supabase queries (pending review count, published-this-month
+ * count, approved org count, publisher list) and aggregates the results.
+ *
+ * `admin` callers see stats scoped to their assigned organizations.
+ * `super_admin` callers see platform-wide figures.
+ *
+ * @returns `{ pendingReview, publishedThisMonth, totalOrgs, totalPublishers }`.
+ *          All values default to 0 on partial query failure.
+ */
 export async function getAdminStats() {
   const access = await getCurrentAccessContext()
   if (!access || !canAccessAdminArea(access.role)) {
@@ -356,49 +516,138 @@ export async function getAdminStats() {
   }
 }
 
-export async function getVisibleUsersForAdmin() {
+/**
+ * Returns a paginated list of `admin` and `publisher` users visible to the caller.
+ *
+ * Uses the caller session client except for owner requests, where the owner UI
+ * needs platform-wide user visibility beyond normal RLS grants. Computes
+ * per-role counts independently of the current role filter so the UI can show
+ * unfiltered totals in the tab bar.
+ *
+ * @param options.role  - Optional role filter; must be `"admin"` or `"publisher"`.
+ * @param options.page  - 1-based page number; invalid input falls back to 1.
+ * @returns Paginated page with role counts, or an empty page if unauthorized.
+ */
+export async function getVisibleUsersForAdminPage({
+  role,
+  page: pageInput,
+}: {
+  role?: string
+  page?: string | number | null
+} = {}): Promise<UserManagementPage<Record<string, unknown>>> {
   const access = await getCurrentAccessContext()
-  if (!access || !canAccessAdminArea(access.role)) return []
+  const emptyPage = {
+    items: [],
+    total: 0,
+    allTotal: 0,
+    roleCounts: { admin: 0, publisher: 0 },
+    page: normalizePageInput(pageInput),
+    pageSize: USER_MANAGEMENT_PAGE_SIZE,
+    totalPages: 1,
+  }
 
-  const supabase = await createServiceClient()
-  const { data, error: visibleUsersError } = await supabase
+  if (!access || !canAccessAdminArea(access.role)) return emptyPage
+  if (access.role === 'admin' && access.orgIds.length === 0) return emptyPage
+
+  const supabase = access.role === 'owner' ? await createServiceClient() : await createClient()
+  const page = normalizePageInput(pageInput)
+  const from = (page - 1) * USER_MANAGEMENT_PAGE_SIZE
+  const to = from + USER_MANAGEMENT_PAGE_SIZE - 1
+  const allowedRoles = ['admin', 'publisher'] as const
+  const filterRole: (typeof allowedRoles)[number] | undefined =
+    role && allowedRoles.includes(role as (typeof allowedRoles)[number])
+      ? (role as (typeof allowedRoles)[number])
+      : undefined
+
+  let query = supabase
     .from('users')
-    .select('*, organization_members ( organization_id )')
-    .in('role', ['admin', 'publisher'])
+    .select('*, organization_members ( organization_id )', { count: 'exact' })
+    .in('role', [...allowedRoles])
     .order('created_at', { ascending: false })
+
+  if (access.role === 'admin') {
+    query = supabase
+      .from('users')
+      .select('*, organization_members!inner ( organization_id )', { count: 'exact' })
+      .in('role', [...allowedRoles])
+      .in('organization_members.organization_id', access.orgIds)
+      .order('created_at', { ascending: false })
+  }
+
+  if (filterRole) query = query.eq('role', filterRole)
+
+  const roleCountEntries = await Promise.all(
+    allowedRoles.map(async (candidateRole) => {
+      const { count, error } =
+        access.role === 'admin'
+          ? await supabase
+              .from('users')
+              .select('id, organization_members!inner ( organization_id )', {
+                count: 'exact',
+                head: true,
+              })
+              .eq('role', candidateRole)
+              .in('organization_members.organization_id', access.orgIds)
+          : await supabase
+              .from('users')
+              .select('id', { count: 'exact', head: true })
+              .eq('role', candidateRole)
+      if (error) {
+        reportServerError('data.visible_users_count.query_failed', error, {
+          actorId: access.userId,
+          role: access.role,
+          countedRole: candidateRole,
+          orgCount: access.orgIds.length,
+        })
+      }
+      return [candidateRole, count ?? 0] as const
+    })
+  )
+  const roleCounts = Object.fromEntries(roleCountEntries)
+  const allTotal = Object.values(roleCounts).reduce((sum, count) => sum + count, 0)
+
+  const { data, error: visibleUsersError, count } = await query.range(from, to)
 
   if (visibleUsersError) {
     reportServerError('data.visible_users.query_failed', visibleUsersError, {
       actorId: access.userId,
       role: access.role,
       orgCount: access.orgIds.length,
+      filterRole: filterRole ?? null,
+      page,
     })
-    return []
+    return {
+      ...emptyPage,
+      roleCounts,
+      allTotal,
+      page,
+    }
   }
 
-  if (!data) return []
-  if (access.role !== 'admin') return data
-
-  const actor: ScopedUser = {
-    id: access.userId,
-    role: access.role,
-    orgIds: access.orgIds,
+  const total = count ?? data?.length ?? 0
+  return {
+    items: (data ?? []) as Record<string, unknown>[],
+    total,
+    allTotal,
+    roleCounts,
+    page,
+    pageSize: USER_MANAGEMENT_PAGE_SIZE,
+    totalPages: Math.max(1, Math.ceil(total / USER_MANAGEMENT_PAGE_SIZE)),
   }
-
-  return data.filter((user) =>
-    canViewUser(actor, {
-      id: user.id,
-      role: user.role,
-      orgIds: (user.organization_members ?? []).map(
-        (membership: { organization_id: string }) => membership.organization_id
-      ),
-    })
-  )
 }
 
 // ─── Super Admin ──────────────────────────────────────────────
 
+/**
+ * Returns all users with `admin` or `super_admin` roles, ordered newest-first.
+ * Intended for the super-admin admin roster page.
+ *
+ * @returns Array of admin/super_admin user rows, or empty array on error.
+ */
 export async function getAllAdmins() {
+  const access = await getCurrentAccessContext()
+  if (!access || !canAccessSuperAdminArea(access.role)) return []
+
   const supabase = await createClient()
   const { data, error: adminsError } = await supabase
     .from('users')
@@ -414,7 +663,26 @@ export async function getAllAdmins() {
   return data ?? []
 }
 
+/**
+ * Fetches platform-wide aggregate statistics for the super-admin dashboard.
+ *
+ * Runs five parallel Supabase count queries (total announcements, published,
+ * pending review, total orgs, total users) and returns them as a flat object.
+ *
+ * @returns `{ totalAnnouncements, publishedCount, pendingReview, totalOrgs, totalUsers }`.
+ *          All values default to 0 on partial query failure.
+ */
 export async function getPlatformStats() {
+  const emptyPlatformStats = {
+    totalAnnouncements: 0,
+    publishedCount: 0,
+    pendingReview: 0,
+    totalOrgs: 0,
+    totalUsers: 0,
+  }
+  const access = await getCurrentAccessContext()
+  if (!access || !canAccessSuperAdminArea(access.role)) return emptyPlatformStats
+
   const supabase = await createClient()
   const [
     totalAnnouncementsResult,

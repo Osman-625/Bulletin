@@ -54,7 +54,7 @@ export async function completeRegistration(formData: FormData) {
 
   if (invitationReadError || !invitation) {
     if (invitationReadError) {
-      reportServerError('register.invitation.read', invitationReadError, { token })
+      reportServerError('register.invitation.read', invitationReadError)
     }
     redirect('/register?error=Invalid+or+expired+invite+link')
   }

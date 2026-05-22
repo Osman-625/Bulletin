@@ -11,20 +11,20 @@ jobs:
     env:
       PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_ROLE_KEY }}
-      SETUP_SECRET: ${{ secrets.TEST_SETUP_SECRET }}
-      TEST_OWNER_EMAIL: ${{ secrets.TEST_OWNER_EMAIL }}
-      TEST_OWNER_PASSWORD: ${{ secrets.TEST_OWNER_PASSWORD }}
-      TEST_SUPER_ADMIN_EMAIL: ${{ secrets.TEST_SUPER_ADMIN_EMAIL }}
-      TEST_SUPER_ADMIN_PASSWORD: ${{ secrets.TEST_SUPER_ADMIN_PASSWORD }}
-      TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
-      TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
-      TEST_PUBLISHER_EMAIL: ${{ secrets.TEST_PUBLISHER_EMAIL }}
-      TEST_PUBLISHER_PASSWORD: ${{ secrets.TEST_PUBLISHER_PASSWORD }}
-      TEST_FORCE_CHANGE_EMAIL: ${{ secrets.TEST_FORCE_CHANGE_EMAIL }}
-      TEST_FORCE_CHANGE_PASSWORD: ${{ secrets.TEST_FORCE_CHANGE_PASSWORD }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets['TEST_SUPABASE_URL'] }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets['TEST_SUPABASE_ANON_KEY'] }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets['TEST_SUPABASE_SERVICE_ROLE_KEY'] }}
+      SETUP_SECRET: ${{ secrets['TEST_SETUP_SECRET'] }}
+      TEST_OWNER_EMAIL: ${{ secrets['TEST_OWNER_EMAIL'] }}
+      TEST_OWNER_PASSWORD: ${{ secrets['TEST_OWNER_PASSWORD'] }}
+      TEST_SUPER_ADMIN_EMAIL: ${{ secrets['TEST_SUPER_ADMIN_EMAIL'] }}
+      TEST_SUPER_ADMIN_PASSWORD: ${{ secrets['TEST_SUPER_ADMIN_PASSWORD'] }}
+      TEST_ADMIN_EMAIL: ${{ secrets['TEST_ADMIN_EMAIL'] }}
+      TEST_ADMIN_PASSWORD: ${{ secrets['TEST_ADMIN_PASSWORD'] }}
+      TEST_PUBLISHER_EMAIL: ${{ secrets['TEST_PUBLISHER_EMAIL'] }}
+      TEST_PUBLISHER_PASSWORD: ${{ secrets['TEST_PUBLISHER_PASSWORD'] }}
+      TEST_FORCE_CHANGE_EMAIL: ${{ secrets['TEST_FORCE_CHANGE_EMAIL'] }}
+      TEST_FORCE_CHANGE_PASSWORD: ${{ secrets['TEST_FORCE_CHANGE_PASSWORD'] }}
 
     steps:
       - uses: actions/checkout@v4
@@ -35,16 +35,34 @@ jobs:
       - run: npm ci
 
       - name: Check Supabase types are current
+        if: ${{ env.NEXT_PUBLIC_SUPABASE_URL != '' }}
         run: |
           PROJECT_ID=$(echo "$NEXT_PUBLIC_SUPABASE_URL" | sed 's|https://||' | cut -d. -f1)
           npx supabase gen types typescript --project-id "$PROJECT_ID" > /tmp/database.types.generated.ts
           diff src/lib/database.types.ts /tmp/database.types.generated.ts || \
             (echo "::error::Supabase types are out of sync — run: npx supabase gen types typescript --project-id $PROJECT_ID > src/lib/database.types.ts" && exit 1)
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets['SUPABASE_ACCESS_TOKEN'] }}
 
       - run: npm run lint
       - run: npx tsc --noEmit
+      - run: npm run build
       - run: npm test
-      - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:e2e
+
+      - name: Check E2E prerequisites
+        id: e2e_check
+        run: |
+          if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
+            echo "::warning::Supabase secrets not configured — skipping E2E tests"
+            echo "can_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "can_run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Playwright browsers
+        if: steps.e2e_check.outputs.can_run == 'true'
+        run: npx playwright install --with-deps chromium webkit
+
+      - name: Run E2E tests
+        if: steps.e2e_check.outputs.can_run == 'true'
+        run: npm run test:e2e

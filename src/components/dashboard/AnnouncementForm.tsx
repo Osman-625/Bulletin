@@ -1,28 +1,24 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback, useTransition } from 'react'
-import { unstable_rethrow, useRouter } from 'next/navigation'
+import { unstable_rethrow } from 'next/navigation'
 import NextImage from 'next/image'
-import {
-  AlertTriangle,
-  ArrowLeft,
-  Calendar,
-  Clock,
-  Link2,
-  Pin,
-  Trash2,
-  Type,
-  Upload,
-  X,
-} from 'lucide-react'
+import { AlertTriangle, Calendar, Clock, Link2, Pin, Trash2, Type, Upload, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { BackNavButton } from '@/components/navigation/BackNavButton'
 import { ActionBar } from './ActionBar'
 import { GlassCard } from './GlassCard'
 import type { AutosaveStatus } from './AutosaveIndicator'
 import type { PostStatus } from '@/lib/types'
 import { createClient } from '@/lib/supabase/client'
-import { ANNOUNCEMENT_BODY_MAX, ANNOUNCEMENT_TITLE_MAX } from '@/lib/announcements/form'
+import {
+  ANNOUNCEMENT_BODY_MAX,
+  ANNOUNCEMENT_TITLE_MAX,
+  BANNER_MAX_FILE_SIZE_BYTES,
+  BANNER_MAX_FILE_SIZE_MB,
+} from '@/lib/announcements/form'
 import { reportClientError } from '@/lib/client-error-reporting'
+import { captureProductEvent } from '@/lib/product-analytics'
 import {
   ANNOUNCEMENT_DISPLAY_FONTS,
   ANNOUNCEMENT_DISPLAY_SIZES,
@@ -75,11 +71,10 @@ interface AnnouncementFormProps {
   onUnpublish?: () => Promise<{ success: boolean } | void>
   onDelete?: () => Promise<void>
   isNew?: boolean
+  backHref?: string
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
-
-const BANNER_MAX_FILE_SIZE = 5 * 1024 * 1024
 
 function isValidUrl(str: string): boolean {
   try {
@@ -126,8 +121,8 @@ export function AnnouncementForm({
   onUnpublish,
   onDelete,
   isNew = false,
+  backHref = '/dashboard/announcements',
 }: AnnouncementFormProps) {
-  const router = useRouter()
   const [isPending, startTransition] = useTransition()
 
   // Form state
@@ -164,6 +159,9 @@ export function AnnouncementForm({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lastSaveRef = useRef<number>(Date.now())
   const dirtyRef = useRef(false)
+  const deleteConfirmRef = useRef<HTMLDivElement | null>(null)
+  const deleteCancelRef = useRef<HTMLButtonElement | null>(null)
+  const deleteTriggerRef = useRef<HTMLButtonElement | null>(null)
 
   // Track dirty state
   useEffect(() => {
@@ -209,6 +207,16 @@ export function AnnouncementForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew])
 
+  useEffect(() => {
+    if (!showDeleteConfirm) return
+
+    const focusTimer = window.setTimeout(() => {
+      deleteCancelRef.current?.focus()
+    }, 0)
+
+    return () => window.clearTimeout(focusTimer)
+  }, [showDeleteConfirm])
+
   // Build FormData from state
   const buildFormData = useCallback(() => {
     const fd = new FormData()
@@ -239,6 +247,37 @@ export function AnnouncementForm({
     displaySize,
   ])
 
+  const analyticsProperties = useCallback(
+    (nextStatus: PostStatus = status) => ({
+      announcement_id: initialData.id ?? null,
+      status: nextStatus,
+      is_new: isNew,
+      has_banner: Boolean(bannerUrl),
+      has_category: Boolean(categoryId),
+      has_registration_link: Boolean(registrationLink),
+      has_expiry: Boolean(expiresAt),
+      is_scheduled: Boolean(scheduledPublishAt),
+      is_pinned: Boolean(pinnedUntil),
+      urgency,
+      display_font: displayFont,
+      display_size: displaySize,
+    }),
+    [
+      initialData.id,
+      status,
+      isNew,
+      bannerUrl,
+      categoryId,
+      registrationLink,
+      expiresAt,
+      scheduledPublishAt,
+      pinnedUntil,
+      urgency,
+      displayFont,
+      displaySize,
+    ]
+  )
+
   // ─── Handlers ────────────────────────────────────────────────
 
   async function handleSave() {
@@ -263,6 +302,7 @@ export function AnnouncementForm({
       setSaveState('saved')
       dirtyRef.current = false
       lastSaveRef.current = Date.now()
+      captureProductEvent('publisher_announcement_saved', analyticsProperties())
     } catch (error) {
       unstable_rethrow(error)
       reportClientError('announcement_form.save', error)
@@ -298,6 +338,7 @@ export function AnnouncementForm({
     setSaveState('saving')
     try {
       const fd = buildFormData()
+      captureProductEvent('publisher_announcement_submitted', analyticsProperties('submitted'))
       if (isNew && onSaveAndPublish) {
         await onSaveAndPublish(fd)
       } else {
@@ -324,6 +365,7 @@ export function AnnouncementForm({
       await onUnpublish()
       setStatus('draft')
       setSaveState('saved')
+      captureProductEvent('publisher_announcement_unpublished', analyticsProperties('draft'))
     } catch (error) {
       unstable_rethrow(error)
       reportClientError('announcement_form.unpublish', error)
@@ -334,17 +376,57 @@ export function AnnouncementForm({
     }
   }
 
+  function closeDeleteConfirm() {
+    setShowDeleteConfirm(false)
+
+    window.setTimeout(() => {
+      deleteTriggerRef.current?.focus()
+    }, 0)
+  }
+
+  function handleDeleteConfirmKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeDeleteConfirm()
+      return
+    }
+
+    if (event.key === 'Tab') {
+      const dialog = deleteConfirmRef.current
+      if (!dialog) return
+
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((element) => element.getAttribute('aria-hidden') !== 'true')
+
+      const first = focusable[0]
+      const last = focusable.at(-1)
+      if (!first || !last) return
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+  }
+
   async function handleDelete() {
     if (!onDelete) return
     startTransition(async () => {
       try {
+        captureProductEvent('publisher_announcement_deleted', analyticsProperties())
         await onDelete()
       } catch (error) {
         unstable_rethrow(error)
         reportClientError('announcement_form.delete', error)
         setFormError(error instanceof Error ? error.message : 'Could not delete announcement.')
         setSaveState('error')
-        setShowDeleteConfirm(false)
+        closeDeleteConfirm()
       }
     })
   }
@@ -368,7 +450,7 @@ export function AnnouncementForm({
   async function uploadBanner(file: File) {
     setBannerSizeError(false)
     setBannerUploadError('')
-    if (file.size > BANNER_MAX_FILE_SIZE) {
+    if (file.size > BANNER_MAX_FILE_SIZE_BYTES) {
       setBannerSizeError(true)
       return
     }
@@ -395,6 +477,11 @@ export function AnnouncementForm({
       } = supabase.storage.from('banner-images').getPublicUrl(path)
 
       setBannerUrl(publicUrl)
+      captureProductEvent('publisher_banner_uploaded', {
+        file_size: file.size,
+        file_type: file.type || null,
+        organization_id: organizationId ?? null,
+      })
     } catch (error) {
       reportClientError('announcement_form.banner_upload', error, {
         fileSize: file.size,
@@ -426,6 +513,7 @@ export function AnnouncementForm({
 
   function removeBanner() {
     setBannerUrl('')
+    captureProductEvent('publisher_banner_removed', analyticsProperties())
   }
 
   const selectedCategory = categories.find((c) => c.id === categoryId)
@@ -450,23 +538,23 @@ export function AnnouncementForm({
     <div className="flex min-h-screen flex-col">
       {/* Top bar with back button + delete */}
       <div className="mx-auto flex w-full max-w-[720px] items-center justify-between px-6 py-4">
-        <button
-          type="button"
-          onClick={() => router.push('/dashboard/announcements')}
-          className="flex min-h-11 items-center gap-2 rounded-lg text-sm text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+        <BackNavButton
+          fallbackHref={backHref}
+          className="min-w-0 rounded-lg border-transparent bg-transparent px-0 text-sm text-[var(--color-text-secondary)] shadow-none hover:border-transparent hover:bg-transparent hover:text-[var(--color-text-primary)] hover:shadow-none"
         >
-          <ArrowLeft size={16} />
           Back to announcements
-        </button>
+        </BackNavButton>
 
         {onDelete && !isNew && (
           <div className="relative">
             {showDeleteConfirm ? (
               <div
+                ref={deleteConfirmRef}
                 role="alertdialog"
-                aria-modal="false"
+                aria-modal="true"
                 aria-labelledby="delete-announcement-title"
                 aria-describedby="delete-announcement-description"
+                onKeyDown={handleDeleteConfirmKeyDown}
                 className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--color-destructive)]/30 bg-[var(--color-surface)] p-2 shadow-[var(--shadow-soft)]"
               >
                 <span
@@ -487,8 +575,9 @@ export function AnnouncementForm({
                   {isPending ? 'Deleting…' : 'Confirm'}
                 </button>
                 <button
+                  ref={deleteCancelRef}
                   type="button"
-                  onClick={() => setShowDeleteConfirm(false)}
+                  onClick={closeDeleteConfirm}
                   className="min-h-11 rounded-lg border border-[var(--color-glass-border)] px-3 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-elevated)]"
                 >
                   Cancel
@@ -496,6 +585,7 @@ export function AnnouncementForm({
               </div>
             ) : (
               <button
+                ref={deleteTriggerRef}
                 type="button"
                 onClick={() => setShowDeleteConfirm(true)}
                 className="flex min-h-11 items-center gap-1.5 rounded-lg text-xs text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-destructive)]"
@@ -791,11 +881,11 @@ export function AnnouncementForm({
                   {isUploading ? 'Uploading…' : 'Drop an image here or click to upload'}
                 </p>
                 <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                  JPG, PNG, or WebP — max 5MB
+                  JPG, PNG, or WebP — max {BANNER_MAX_FILE_SIZE_MB}MB
                 </p>
                 {bannerSizeError && (
                   <p className="mt-1 text-xs font-semibold text-[var(--color-destructive)]">
-                    File exceeds 5 MB limit. Choose a smaller image.
+                    File exceeds {BANNER_MAX_FILE_SIZE_MB} MB limit. Choose a smaller image.
                   </p>
                 )}
                 {bannerUploadError && (

@@ -6,7 +6,19 @@ import AnnouncementCard from '@/components/announcements/AnnouncementCard'
 import type { AnnouncementCardVisual } from '@/components/announcements/AnnouncementCard'
 import CategoryFilter from '@/components/announcements/CategoryFilter'
 import { BrandMark } from '@/components/layout/BrandMark'
+import { PublicFeedAnalytics } from '@/components/analytics/PublicFeedAnalytics'
 import { announcementPath } from '@/lib/announcements/urls'
+import {
+  BOARD_SORT_OPTIONS,
+  buildAnnouncementSections,
+  daysUntilDeadline,
+  formatCampusLongDate,
+  isClosingSoonForBoard,
+  normalizeBoardSort,
+  sortAnnouncementsForPublicBoard,
+  type BoardSectionId,
+  type BoardSort,
+} from '@/lib/announcements/public-board'
 import {
   URGENCY_META,
   isAnnouncementPinned,
@@ -16,105 +28,60 @@ import type { AnnouncementWithRelations } from '@/lib/types'
 
 export const metadata = { title: { absolute: 'Campus Bulletin' } }
 
-const BOARD_SORTS = ['priority', 'issued', 'closing'] as const
-const DAY_MS = 24 * 60 * 60 * 1000
-
-type BoardSort = (typeof BOARD_SORTS)[number]
-type BoardSectionId = 'daily' | 'closing' | 'future' | 'campus'
-
-const BOARD_SORT_OPTIONS: Array<{
-  sort: BoardSort
-  label: string
-  eyebrow: string
-  summary: string
-}> = [
-  {
-    sort: 'priority',
-    label: 'Most urgent',
-    eyebrow: 'Urgency',
-    summary: 'Pinned, urgent, and deadline-sensitive notices first',
-  },
-  {
-    sort: 'issued',
-    label: 'Latest first',
-    eyebrow: 'Newest',
-    summary: 'Most recently published notices at the top',
-  },
-  {
-    sort: 'closing',
-    label: 'Closing soon',
-    eyebrow: 'Deadline',
-    summary: 'Nearest active deadlines at the top',
-  },
-]
-
-const BOARD_SECTION_META: Record<
-  BoardSectionId,
-  {
-    label: string
-    summary: string
-  }
-> = {
-  daily: {
-    label: 'New today',
-    summary: 'Fresh notices published today for quick campus scanning.',
-  },
-  closing: {
-    label: 'Closing soon',
-    summary: 'Deadlines and registrations that need attention first.',
-  },
-  future: {
-    label: 'Plan ahead',
-    summary: 'Upcoming opportunities with more time to plan.',
-  },
-  campus: {
-    label: 'General notices',
-    summary: 'General notices that remain useful but are not deadline-led.',
-  },
-}
-
 export default async function PublicFeedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; q?: string; sort?: string }>
+  searchParams: Promise<{ category?: string; q?: string; sort?: string; page?: string }>
 }) {
-  const { category, q, sort } = await searchParams
+  const { category, q, sort, page } = await searchParams
   const search = q?.trim() ?? ''
   const activeSort = normalizeBoardSort(sort)
+  const now = new Date().getTime()
 
-  const [allAnnouncements, categories] = await Promise.all([
-    getPublicAnnouncements(category, search),
+  const [announcementPage, categories] = await Promise.all([
+    getPublicAnnouncements(category, search, page),
     getActiveCategories(),
   ])
-  const announcements = sortAnnouncementsForPublicBoard(allAnnouncements, activeSort)
+  const allAnnouncements = announcementPage.items
+  const announcements = sortAnnouncementsForPublicBoard(allAnnouncements, activeSort, now)
   const topics = derivePublicTopics(categories, allAnnouncements)
+  const totalAnnouncements = announcementPage.total
 
-  const today = new Date().toLocaleDateString('en-MY', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+  const today = formatCampusLongDate(now)
 
-  const pinnedHero = announcements.find((announcement) => isAnnouncementPinned(announcement))
+  const pinnedHero = announcements.find((announcement) => isAnnouncementPinned(announcement, now))
   const featured =
     pinnedHero ?? announcements.find((announcement) => announcement.banner_url) ?? announcements[0]
-  const featuredIsPinned = featured ? isAnnouncementPinned(featured) : false
+  const featuredIsPinned = featured ? isAnnouncementPinned(featured, now) : false
   const rest = featured
     ? announcements.filter((announcement) => announcement.id !== featured.id)
     : announcements
-  const boardSections = buildAnnouncementSections(rest, activeSort)
+  const boardSections = buildAnnouncementSections(rest, activeSort, now)
   const activeCategory = category ? topics.find((cat) => cat.slug === category)?.name : null
   const clearSearchHref = buildFeedHref({ category, sort: activeSort })
   const closingThisWeek = announcements.filter((a) => {
-    const days = daysUntilDeadline(a.expires_at)
+    const days = daysUntilDeadline(a.expires_at, now)
     return days !== null && days <= 7
   }).length
   const latestAnnouncement = announcements[0] ?? null
+  const visibleStart =
+    allAnnouncements.length > 0 ? (announcementPage.page - 1) * announcementPage.pageSize + 1 : 0
+  const visibleEnd =
+    allAnnouncements.length > 0
+      ? Math.min(visibleStart + allAnnouncements.length - 1, announcementPage.total)
+      : 0
 
   return (
     <div className="future-warm-plane min-h-[100dvh]">
-      <main className="w-full px-3 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-8">
+      <PublicFeedAnalytics
+        category={category ?? null}
+        searchLength={search.length}
+        sort={activeSort}
+        page={announcementPage.page}
+        visibleCount={announcements.length}
+        total={totalAnnouncements}
+      />
+      <main id="main-content" className="w-full px-3 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-8">
         <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-4 md:gap-5 lg:gap-6">
           <section
             className="grid gap-3 md:grid-cols-[minmax(0,1.45fr)_minmax(15rem,0.75fr)] lg:grid-cols-12"
@@ -147,8 +114,8 @@ export default async function PublicFeedPage({
                 public board. Fast to scan between classes, easy to search by topic.
               </p>
 
-              <div className="mt-5 hidden gap-3 sm:grid sm:grid-cols-3">
-                <CampusMetric value={announcements.length} label="Live notices" />
+              <div className="public-mobile-metrics mt-5 grid gap-2 sm:grid-cols-3 sm:gap-3">
+                <CampusMetric value={totalAnnouncements} label="Live notices" />
                 <CampusMetric value={topics.length} label="Topics" />
                 <CampusMetric value={today} label="Today" wide />
               </div>
@@ -172,7 +139,7 @@ export default async function PublicFeedPage({
                       style={{ border: '1px solid var(--color-border-subtle)' }}
                     >
                       <p className="font-mono text-3xl leading-none font-bold text-[var(--color-text-primary)]">
-                        {announcements.length}
+                        {totalAnnouncements}
                       </p>
                       <p className="mt-2 font-mono text-[0.65rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                         Live notices
@@ -270,7 +237,7 @@ export default async function PublicFeedPage({
             category={category}
             search={search}
             activeCategory={activeCategory}
-            count={announcements.length}
+            count={totalAnnouncements}
           />
 
           {announcements.length === 0 ? (
@@ -289,7 +256,7 @@ export default async function PublicFeedPage({
                   </h2>
                 </div>
                 <p className="text-sm font-semibold text-[var(--color-text-muted)]">
-                  {activeCategory ?? 'All topics'} · {announcements.length} notices
+                  {activeCategory ?? 'All topics'} · {totalAnnouncements} notices
                 </p>
               </div>
 
@@ -358,9 +325,10 @@ export default async function PublicFeedPage({
                                   section.id,
                                   announcement,
                                   index,
-                                  section.items.length
+                                  section.items.length,
+                                  now
                                 ),
-                                isUrgentCard(announcement) ? 'urgent-bento-item' : '',
+                                isUrgentCard(announcement, now) ? 'urgent-bento-item' : '',
                               ]
                                 .filter(Boolean)
                                 .join(' ')}
@@ -381,6 +349,19 @@ export default async function PublicFeedPage({
                   )
                 )}
               </div>
+
+              {announcementPage.totalPages > 1 && (
+                <FeedPagination
+                  page={announcementPage.page}
+                  totalPages={announcementPage.totalPages}
+                  visibleStart={visibleStart}
+                  visibleEnd={visibleEnd}
+                  total={announcementPage.total}
+                  category={category}
+                  search={search}
+                  activeSort={activeSort}
+                />
+              )}
             </section>
           )}
         </div>
@@ -389,75 +370,22 @@ export default async function PublicFeedPage({
   )
 }
 
-function normalizeBoardSort(value?: string): BoardSort {
-  return BOARD_SORTS.includes(value as BoardSort) ? (value as BoardSort) : 'priority'
-}
-
-function dateValue(iso?: string | null) {
-  if (!iso) return 0
-  const value = new Date(iso).getTime()
-  return Number.isNaN(value) ? 0 : value
-}
-
-function futureDeadlineValue(iso?: string | null, now = Date.now()) {
-  const value = dateValue(iso)
-  return value > now ? value : Number.POSITIVE_INFINITY
-}
-
-function closingRank(announcement: AnnouncementWithRelations, now = Date.now()) {
-  const deadline = futureDeadlineValue(announcement.expires_at, now)
-  if (!Number.isFinite(deadline)) return 0
-  const days = (deadline - now) / (24 * 60 * 60 * 1000)
-  if (days <= 3) return 3
-  if (days <= 7) return 2
-  if (days <= 14) return 1
-  return 0
-}
-
-function sortAnnouncementsForPublicBoard(
-  announcements: AnnouncementWithRelations[],
+function buildFeedHref({
+  category,
+  q,
+  sort,
+  page,
+}: {
+  category?: string
+  q?: string
   sort: BoardSort
-) {
-  const now = Date.now()
-
-  return [...announcements].sort((a, b) => {
-    if (sort === 'issued') {
-      return dateValue(b.published_at) - dateValue(a.published_at)
-    }
-
-    if (sort === 'closing') {
-      const deadlineDiff =
-        futureDeadlineValue(a.expires_at, now) - futureDeadlineValue(b.expires_at, now)
-      if (deadlineDiff !== 0) return deadlineDiff
-
-      const urgencyDiff =
-        URGENCY_META[normalizeAnnouncementUrgency(b.urgency)].rank -
-        URGENCY_META[normalizeAnnouncementUrgency(a.urgency)].rank
-      if (urgencyDiff !== 0) return urgencyDiff
-
-      return dateValue(b.published_at) - dateValue(a.published_at)
-    }
-
-    const pinnedDiff = Number(isAnnouncementPinned(b, now)) - Number(isAnnouncementPinned(a, now))
-    if (pinnedDiff !== 0) return pinnedDiff
-
-    const urgencyDiff =
-      URGENCY_META[normalizeAnnouncementUrgency(b.urgency)].rank -
-      URGENCY_META[normalizeAnnouncementUrgency(a.urgency)].rank
-    if (urgencyDiff !== 0) return urgencyDiff
-
-    const closingDiff = closingRank(b, now) - closingRank(a, now)
-    if (closingDiff !== 0) return closingDiff
-
-    return dateValue(b.published_at) - dateValue(a.published_at)
-  })
-}
-
-function buildFeedHref({ category, q, sort }: { category?: string; q?: string; sort: BoardSort }) {
+  page?: number
+}) {
   const params = new URLSearchParams()
   if (category) params.set('category', category)
   if (q) params.set('q', q)
   if (sort !== 'priority') params.set('sort', sort)
+  if (page && page > 1) params.set('page', String(page))
   const query = params.toString()
   return query ? `/?${query}` : '/'
 }
@@ -466,12 +394,13 @@ function bentoTileClass(
   sectionId: BoardSectionId,
   announcement: AnnouncementWithRelations,
   index: number,
-  sectionCount: number
+  sectionCount: number,
+  now = Date.now()
 ) {
   const classes = ['public-page-reveal', 'dense-bento-item']
   const hasImage = Boolean(announcement.banner_url)
   const urgencyRank = URGENCY_META[normalizeAnnouncementUrgency(announcement.urgency)].rank
-  const closingSoon = isClosingSoonForBoard(announcement.expires_at)
+  const closingSoon = isClosingSoonForBoard(announcement.expires_at, now)
 
   if (sectionCount <= 2) {
     classes.push(index === 0 ? 'dense-bento-wide' : 'dense-bento-standard')
@@ -496,68 +425,6 @@ function sectionBoardClass(count: number) {
   return count <= 2 ? `priority-lane-board ${base}` : `dense-bento-board ${base}`
 }
 
-function buildAnnouncementSections(announcements: AnnouncementWithRelations[], sort: BoardSort) {
-  const order = boardSectionOrder(sort)
-  const sections = new Map<BoardSectionId, AnnouncementWithRelations[]>(order.map((id) => [id, []]))
-  const now = Date.now()
-
-  announcements.forEach((announcement) => {
-    const sectionId = order.find((id) => announcementMatchesSection(announcement, id, now))!
-    sections.get(sectionId)!.push(announcement)
-  })
-
-  return order.map((id) => ({
-    id,
-    ...BOARD_SECTION_META[id],
-    items: sections.get(id) ?? [],
-  }))
-}
-
-function boardSectionOrder(sort: BoardSort): BoardSectionId[] {
-  if (sort === 'closing') return ['closing', 'daily', 'future', 'campus']
-  if (sort === 'issued') return ['daily', 'future', 'closing', 'campus']
-  return ['daily', 'closing', 'future', 'campus']
-}
-
-function announcementMatchesSection(
-  announcement: AnnouncementWithRelations,
-  sectionId: BoardSectionId,
-  now: number
-) {
-  if (sectionId === 'daily') return isIssuedToday(announcement.published_at, now)
-  if (sectionId === 'closing') return isClosingSoonForBoard(announcement.expires_at, now)
-  if (sectionId === 'future') return isFutureEventForBoard(announcement.expires_at, now)
-  return true
-}
-
-function isIssuedToday(iso?: string | null, now = Date.now()) {
-  if (!iso) return false
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return false
-  const today = new Date(now)
-  return (
-    date.getFullYear() === today.getFullYear() &&
-    date.getMonth() === today.getMonth() &&
-    date.getDate() === today.getDate()
-  )
-}
-
-function daysUntilDeadline(iso?: string | null, now = Date.now()) {
-  const deadline = futureDeadlineValue(iso, now)
-  if (!Number.isFinite(deadline)) return null
-  return Math.ceil((deadline - now) / DAY_MS)
-}
-
-function isClosingSoonForBoard(iso?: string | null, now = Date.now()) {
-  const days = daysUntilDeadline(iso, now)
-  return days !== null && days <= 7
-}
-
-function isFutureEventForBoard(iso?: string | null, now = Date.now()) {
-  const days = daysUntilDeadline(iso, now)
-  return days !== null && days > 7
-}
-
 function imageBentoVariant(
   announcement: AnnouncementWithRelations,
   index: number,
@@ -570,9 +437,9 @@ function imageBentoVariant(
   return variants[index % variants.length]
 }
 
-function isUrgentCard(announcement: AnnouncementWithRelations): boolean {
+function isUrgentCard(announcement: AnnouncementWithRelations, now = Date.now()): boolean {
   const rank = URGENCY_META[normalizeAnnouncementUrgency(announcement.urgency)].rank
-  const days = daysUntilDeadline(announcement.expires_at)
+  const days = daysUntilDeadline(announcement.expires_at, now)
   return rank > 0 || (days !== null && days <= 5)
 }
 
@@ -593,7 +460,7 @@ function BoardOrderControls({
 
   return (
     <section
-      className="public-page-reveal future-bento-cell hidden gap-4 rounded-[1.35rem] p-4 delay-4 lg:grid lg:grid-cols-[minmax(16rem,0.55fr)_minmax(0,1fr)] lg:items-center"
+      className="public-board-sort public-page-reveal future-bento-cell grid gap-3 rounded-[1.2rem] p-3 delay-4 sm:gap-4 sm:rounded-[1.35rem] sm:p-4 lg:grid-cols-[minmax(16rem,0.55fr)_minmax(0,1fr)] lg:items-center"
       aria-labelledby="board-order-title"
     >
       <div>
@@ -609,7 +476,10 @@ function BoardOrderControls({
         </p>
       </div>
 
-      <nav className="grid gap-2 sm:grid-cols-3" aria-label="Sort order">
+      <nav
+        className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden"
+        aria-label="Sort order"
+      >
         {BOARD_SORT_OPTIONS.map((option) => {
           const active = option.sort === activeSort
 
@@ -619,7 +489,7 @@ function BoardOrderControls({
               href={buildFeedHref({ category, q: search, sort: option.sort })}
               data-sort={option.sort}
               aria-current={active ? 'true' : undefined}
-              className="group min-h-24 rounded-[1rem] border p-4 transition-[background,border-color,box-shadow,transform,color] duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] active:scale-[0.99]"
+              className="group min-h-11 min-w-[8.75rem] shrink-0 rounded-[0.95rem] border px-3 py-2 transition-[background,border-color,box-shadow,transform,color] duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] active:scale-[0.99] sm:min-h-24 sm:min-w-0 sm:p-4"
               style={{
                 background: active ? 'var(--color-text-primary)' : 'var(--color-surface)',
                 borderColor: active ? 'var(--color-text-primary)' : 'var(--color-border)',
@@ -631,12 +501,86 @@ function BoardOrderControls({
                 {option.eyebrow}
               </span>
               <span className="mt-2 block text-base leading-tight font-bold">{option.label}</span>
-              <span className="mt-1 block text-xs leading-5 opacity-72">{option.summary}</span>
+              <span className="mt-1 hidden text-xs leading-5 opacity-72 sm:block">
+                {option.summary}
+              </span>
             </Link>
           )
         })}
       </nav>
     </section>
+  )
+}
+
+function FeedPagination({
+  page,
+  totalPages,
+  visibleStart,
+  visibleEnd,
+  total,
+  category,
+  search,
+  activeSort,
+}: {
+  page: number
+  totalPages: number
+  visibleStart: number
+  visibleEnd: number
+  total: number
+  category?: string
+  search: string
+  activeSort: BoardSort
+}) {
+  return (
+    <nav
+      className="mt-8 flex flex-col gap-3 rounded-[1.15rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+      aria-label="Announcement pagination"
+    >
+      <p className="text-sm text-[var(--color-text-muted)]">
+        Showing{' '}
+        <span className="font-semibold text-[var(--color-text-primary)]">{visibleStart}</span> to{' '}
+        <span className="font-semibold text-[var(--color-text-primary)]">{visibleEnd}</span> of{' '}
+        <span className="font-semibold text-[var(--color-text-primary)]">{total}</span>
+      </p>
+
+      <div className="flex items-center gap-2">
+        {page > 1 ? (
+          <Link
+            href={buildFeedHref({ category, q: search, sort: activeSort, page: page - 1 })}
+            className="action-lift inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border)] px-3 text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+          >
+            Previous
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            className="inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-muted)] opacity-55"
+          >
+            Previous
+          </span>
+        )}
+
+        <span className="rounded-[0.85rem] bg-[var(--color-surface-elevated)] px-3 py-2 font-mono text-xs font-bold text-[var(--color-text-muted)]">
+          {page} / {totalPages}
+        </span>
+
+        {page < totalPages ? (
+          <Link
+            href={buildFeedHref({ category, q: search, sort: activeSort, page: page + 1 })}
+            className="action-lift inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border)] px-3 text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+          >
+            Next
+          </Link>
+        ) : (
+          <span
+            aria-disabled="true"
+            className="inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-muted)] opacity-55"
+          >
+            Next
+          </span>
+        )}
+      </div>
+    </nav>
   )
 }
 
@@ -739,14 +683,18 @@ function EmptyState({ category, search }: { category?: string | null; search?: s
     <div className="public-page-reveal future-bento-cell flex min-h-[38vh] flex-col items-center justify-center rounded-[1.75rem] px-5 py-16 text-center lg:min-h-[22rem]">
       <BrandMark size="lg" showText={false} className="campus-logo-halo mb-6 rounded-[1.35rem]" />
       <p className="font-display text-4xl leading-tight font-bold text-[var(--color-text-primary)] sm:text-5xl">
-        No announcements
+        {search
+          ? 'No matching notices'
+          : category
+            ? 'No notices in this topic'
+            : 'The board is quiet'}
       </p>
       <p className="mt-4 max-w-[30rem] text-base leading-8 text-[var(--color-text-muted)]">
         {search
-          ? 'No announcements match your search.'
+          ? `Nothing matches "${search}". Try a different term or clear your filters.`
           : category
-            ? 'Try another category.'
-            : 'Check back soon.'}
+            ? `No notices in ${category} right now. Browse all topics to keep scanning.`
+            : 'Check back tomorrow for new campus updates.'}
       </p>
       {(search || category) && (
         <Link

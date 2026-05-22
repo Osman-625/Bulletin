@@ -55,4 +55,12 @@ describe('account flow write error handling source guards', () => {
     expect(registration).toContain('invitationAcceptError')
     expect(registration).toContain('cleanupCreatedAuthUser')
   })
+
+  it('does not send invitation bearer tokens to server error reporting', () => {
+    const registration = source('src/app/register/actions.ts')
+    const errorReports = registration.match(/reportServerError\([\s\S]*?\)/g) ?? []
+
+    expect(registration).not.toContain('{ token }')
+    expect(errorReports.join('\n')).not.toContain('token')
+  })
 })

@@ -1,6 +1,12 @@
-const ORGANIZATION_TYPES = ['club', 'department', 'society', 'faculty', 'other'] as const
+export const ORGANIZATION_TYPE_OPTIONS = [
+  { value: 'club', label: 'Club' },
+  { value: 'department', label: 'Department' },
+  { value: 'society', label: 'Society' },
+  { value: 'faculty', label: 'Faculty' },
+  { value: 'other', label: 'Other' },
+] as const
 
-export type OrganizationType = (typeof ORGANIZATION_TYPES)[number]
+export type OrganizationType = (typeof ORGANIZATION_TYPE_OPTIONS)[number]['value']
 
 export type OrganizationFormData = {
   name: string
@@ -13,7 +19,9 @@ export type OrganizationFormResult =
   | { ok: true; data: OrganizationFormData }
   | { ok: false; error: string }
 
-const ORGANIZATION_TYPE_SET = new Set<string>(ORGANIZATION_TYPES)
+const ORGANIZATION_TYPE_SET = new Set<string>(
+  ORGANIZATION_TYPE_OPTIONS.map((option) => option.value)
+)
 
 function readString(formData: FormData, key: string): string {
   const value = formData.get(key)

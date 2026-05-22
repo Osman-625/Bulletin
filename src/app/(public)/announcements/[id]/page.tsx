@@ -14,8 +14,10 @@ import {
   normalizeAnnouncementUrgency,
 } from '@/lib/announcements/presentation'
 import { announcementPath, announcementPathSegment, toSafeHttpUrl } from '@/lib/announcements/urls'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import type { Metadata } from 'next'
 import BackButton from '@/components/announcements/BackButton'
+import { RegistrationLink } from '@/components/announcements/RegistrationLink'
 import { ViewTracker } from './ViewTracker'
 
 export async function generateMetadata({
@@ -125,7 +127,7 @@ export default async function AnnouncementPage({ params }: { params: Promise<{ i
     organizations,
   } = announcement
 
-  const catColor = categories?.color ?? '#C8102E'
+  const catColor = categories?.color ?? DEFAULT_CATEGORY_DISPLAY_COLOR
   const urgency = normalizeAnnouncementUrgency(announcement.urgency)
   const displayFont = normalizeAnnouncementDisplayFont(announcement.display_font)
   const displaySize = normalizeAnnouncementDisplaySize(announcement.display_size)
@@ -137,7 +139,12 @@ export default async function AnnouncementPage({ params }: { params: Promise<{ i
 
   return (
     <div className="future-warm-plane min-h-[100dvh]">
-      <ViewTracker announcementId={announcement.id} />
+      <ViewTracker
+        announcementId={announcement.id}
+        categorySlug={categories?.slug ?? null}
+        organizationId={announcement.organization_id ?? null}
+        hasRegistrationLink={Boolean(registrationHref)}
+      />
       <main className="mx-auto w-full max-w-[1500px] px-4 py-10 sm:px-6 lg:px-10 xl:px-12">
         <article className="animate-fade-up mx-auto max-w-[82rem]">
           <BackButton />
@@ -300,15 +307,14 @@ export default async function AnnouncementPage({ params }: { params: Promise<{ i
                 )}
               </div>
               {registrationHref && (
-                <a
+                <RegistrationLink
                   href={registrationHref}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  announcementId={announcement.id}
                   className="action-lift mt-5 inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-[1rem] bg-[var(--color-accent-inti)] px-5 font-sans text-sm font-semibold text-white focus:outline-none focus-visible:ring-2"
                   style={{ boxShadow: 'var(--shadow-button)' }}
                 >
                   Register
-                </a>
+                </RegistrationLink>
               )}
             </aside>
           </section>

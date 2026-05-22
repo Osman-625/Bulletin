@@ -363,6 +363,27 @@ export type Database = {
           },
         ]
       }
+      rate_limit_buckets: {
+        Row: {
+          key: string
+          count: number
+          reset_at: string
+          updated_at: string
+        }
+        Insert: {
+          key: string
+          count?: number
+          reset_at: string
+          updated_at?: string
+        }
+        Update: {
+          key?: string
+          count?: number
+          reset_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       org_category_permissions: {
         Row: {
           org_id: string
@@ -529,6 +550,43 @@ export type Database = {
       increment_announcement_view: {
         Args: { p_announcement_id: string }
         Returns: void
+      }
+      hit_rate_limit: {
+        Args: {
+          p_key: string
+          p_limit: number
+          p_window_ms: number
+          p_now?: string
+        }
+        Returns: {
+          limited: boolean
+          remaining: number
+          reset_at: string
+          retry_after_seconds: number
+        }[]
+      }
+      search_audit_log: {
+        Args: {
+          p_search?: string | null
+          p_target_type?: string | null
+          p_actor_id?: string | null
+          p_system_actor?: boolean
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: {
+          id: string
+          actor_id: string | null
+          action: string
+          target_type: string
+          target_id: string | null
+          metadata: Json | null
+          created_at: string
+          actor_display_name: string | null
+          actor_email: string | null
+          actor_role: string | null
+          total_count: number
+        }[]
       }
     }
     Enums: {

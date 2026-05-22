@@ -1,5 +1,10 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { readOrganizationFormData } from '@/lib/organizations/validation'
+
+function source(path: string) {
+  return readFileSync(path, 'utf8')
+}
 
 function formData(entries: Record<string, string>) {
   const data = new FormData()
@@ -64,6 +69,16 @@ describe('readOrganizationFormData', () => {
       ok: false,
       error: 'Choose a valid organization type.',
     })
+  })
+
+  it('renders organization type options from the shared validation config', () => {
+    const validationSource = source('src/lib/organizations/validation.ts')
+    const newOrgPage = source('src/app/(admin)/admin/orgs/new/page.tsx')
+
+    expect(validationSource).toContain('export const ORGANIZATION_TYPE_OPTIONS')
+    expect(newOrgPage).toContain('ORGANIZATION_TYPE_OPTIONS.map')
+    expect(newOrgPage).not.toContain('<option value="club">Club</option>')
+    expect(newOrgPage).not.toContain('<option value="department">Department</option>')
   })
 
   it('rejects empty names and unusable slugs', () => {

@@ -3,6 +3,7 @@ import { ThemeToggle } from './ThemeToggle'
 import { BrandMark } from './BrandMark'
 import { HeaderLoadingSignal } from './HeaderLoadingSignal'
 import { getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
+import { formatCampusLongDate } from '@/lib/announcements/public-board'
 
 function formatRole(role: string) {
   return role.replace('_', ' ')
@@ -11,6 +12,7 @@ function formatRole(role: string) {
 export default async function Header() {
   const access = await getCurrentAccessContext()
   const workspaceHref = access ? getDefaultAppPath(access.role) : '/login'
+  const today = formatCampusLongDate()
 
   return (
     <header
@@ -38,6 +40,12 @@ export default async function Header() {
               textClassName="hidden min-[500px]:block"
             />
           </Link>
+
+          <div className="hidden min-w-0 flex-1 justify-center md:flex">
+            <p className="max-w-full truncate rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface)]/70 px-3 py-2 font-mono text-[0.68rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
+              {today}
+            </p>
+          </div>
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <ThemeToggle />

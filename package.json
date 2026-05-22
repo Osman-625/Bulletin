@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:smoke": "playwright test --config=playwright.smoke.config.ts",
     "test:e2e:ui": "playwright test --ui",
     "prepare": "husky"
   },
@@ -23,13 +24,16 @@
     "*.{js,mjs,json,css,md}": "prettier --write"
   },
   "dependencies": {
+    "@sentry/nextjs": "^10.53.1",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.103.0",
+    "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "clsx": "^2.1.1",
     "lucide-react": "^1.8.0",
     "next": "16.2.6",
     "next-themes": "^0.4.6",
+    "posthog-js": "^1.374.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",

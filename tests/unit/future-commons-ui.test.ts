@@ -92,6 +92,43 @@ describe('Future Commons production UI guards', () => {
     expect(loginPage).toContain('aria-label="Go back"')
   })
 
+  it('uses a safe shared back control for internal detail and editor routes', () => {
+    const backNav = source('src/components/navigation/BackNavButton.tsx')
+    const publicBack = source('src/components/announcements/BackButton.tsx')
+    const reviewPage = source('src/app/(admin)/admin/review/[id]/page.tsx')
+    const announcementForm = source('src/components/dashboard/AnnouncementForm.tsx')
+    const editPage = source('src/app/(dashboard)/dashboard/announcements/[id]/edit/page.tsx')
+    const newOrgPage = source('src/app/(admin)/admin/orgs/new/page.tsx')
+    const invitePublisherPage = source('src/app/(admin)/admin/publishers/invite/page.tsx')
+    const inviteAdminPage = source('src/app/(super-admin)/super-admin/admins/invite/page.tsx')
+    const ownerResourcesPage = source('src/app/(owner)/owner/resources/page.tsx')
+
+    expect(backNav).toContain('document.referrer')
+    expect(backNav).toContain('window.location.origin')
+    expect(backNav).toContain('window.history.state')
+    expect(backNav).toContain('state.idx')
+    expect(backNav).toContain('resolvedAriaLabel')
+    expect(backNav).toContain("children ? undefined : 'Go back'")
+    expect(backNav).toContain('router.push(fallbackHref)')
+    expect(publicBack).toContain('BackNavButton')
+    expect(publicBack).toContain('fallbackHref="/"')
+    expect(reviewPage).toContain('BackNavButton')
+    expect(reviewPage).toContain('fallbackHref="/admin/review"')
+    expect(announcementForm).toContain('BackNavButton')
+    expect(announcementForm).toContain('backHref?: string')
+    expect(announcementForm).toContain('fallbackHref={backHref}')
+    expect(announcementForm).not.toContain("router.push('/dashboard/announcements')")
+    expect(editPage).toContain('backHref="/dashboard/announcements"')
+    expect(newOrgPage).toContain('BackNavButton')
+    expect(newOrgPage).toContain('fallbackHref="/admin/orgs"')
+    expect(invitePublisherPage).toContain('BackNavButton')
+    expect(invitePublisherPage).toContain('fallbackHref="/admin/publishers"')
+    expect(inviteAdminPage).toContain('BackNavButton')
+    expect(inviteAdminPage).toContain('fallbackHref="/super-admin/admins"')
+    expect(ownerResourcesPage).toContain('BackNavButton')
+    expect(ownerResourcesPage).toContain('fallbackHref="/owner/analytics"')
+  })
+
   it('removes decorative blue line artifacts from Future Commons surfaces', () => {
     const globals = source('src/app/globals.css')
     const publicHome = source('src/app/(public)/page.tsx')
@@ -133,15 +170,18 @@ describe('Future Commons production UI guards', () => {
     expect(header).toContain('size="md"')
     expect(globals).toContain('--color-mark-bg')
     expect(globals).toContain('--color-mark-plate')
+    expect(token(globals, '--color-focus')).toMatch(/^#/)
     expect(globals).toContain('@keyframes signal-ring')
   })
 
   it('adds board-order sorting without replacing category filters', () => {
     const publicHome = source('src/app/(public)/page.tsx')
+    const publicBoard = source('src/lib/announcements/public-board.ts')
     const categoryFilter = source('src/components/announcements/CategoryFilter.tsx')
     const card = source('src/components/announcements/AnnouncementCard.tsx')
 
-    expect(publicHome).toContain("const BOARD_SORTS = ['priority', 'issued', 'closing']")
+    expect(publicBoard).toContain("export const BOARD_SORTS = ['priority', 'issued', 'closing']")
+    expect(publicHome).toContain('@/lib/announcements/public-board')
     expect(publicHome).toContain('BoardOrderControls')
     expect(publicHome).toContain('buildFeedHref({ category, q: search, sort: option.sort })')
     expect(publicHome).toContain('sortAnnouncementsForPublicBoard')
@@ -184,8 +224,24 @@ describe('Future Commons production UI guards', () => {
     expect(form).toContain('organizationId')
     expect(form).toContain('supabase.auth.getUser()')
     expect(form).toContain('bannerUploadError')
+    expect(form).toContain('deleteConfirmRef')
+    expect(form).toContain('deleteCancelRef')
+    expect(form).toContain('handleDeleteConfirmKeyDown')
+    expect(form).toContain("event.key === 'Escape'")
+    expect(form).toContain("event.key === 'Tab'")
+    expect(form).toContain('querySelectorAll<HTMLElement>')
+    expect(form).toContain('aria-modal="true"')
+    expect(form).toContain('onKeyDown={handleDeleteConfirmKeyDown}')
     expect(actionBar).toContain('showUnpublishConfirm')
     expect(actionBar).toContain('Unpublishing will hide this announcement from the public feed.')
+    expect(actionBar).toContain('unpublishConfirmRef')
+    expect(actionBar).toContain('unpublishCancelRef')
+    expect(actionBar).toContain('handleUnpublishConfirmKeyDown')
+    expect(actionBar).toContain("event.key === 'Escape'")
+    expect(actionBar).toContain("event.key === 'Tab'")
+    expect(actionBar).toContain('querySelectorAll<HTMLElement>')
+    expect(actionBar).toContain('aria-modal="true"')
+    expect(actionBar).toContain('onKeyDown={handleUnpublishConfirmKeyDown}')
   })
 
   it('warns before idle session logout instead of silently redirecting', () => {
@@ -195,6 +251,13 @@ describe('Future Commons production UI guards', () => {
     expect(idleLogout).toContain('Still there?')
     expect(idleLogout).toContain('Stay logged in')
     expect(idleLogout).toContain('aria-modal="true"')
+    expect(idleLogout).toContain('dialogRef')
+    expect(idleLogout).toContain('stayButtonRef')
+    expect(idleLogout).toContain('previousFocusedElementRef')
+    expect(idleLogout).toContain('handleDialogKeyDown')
+    expect(idleLogout).toContain("event.key === 'Escape'")
+    expect(idleLogout).toContain("event.key === 'Tab'")
+    expect(idleLogout).toContain('querySelectorAll<HTMLElement>')
   })
 
   it('keeps dashboard mobile navigation scrollable and closes it after route changes', () => {
@@ -205,6 +268,165 @@ describe('Future Commons production UI guards', () => {
     expect(shell).toContain('setMobileOpen(false)')
     expect(sidebar).toContain('min-h-0')
     expect(sidebar).toContain('overflow-y-auto')
+    expect(sidebar).toContain('mobileDialogRef')
+    expect(sidebar).toContain('firstMobileFocusRef')
+    expect(sidebar).toContain('previousFocusedElementRef')
+    expect(sidebar).toContain('handleMobileDialogKeyDown')
+    expect(sidebar).toContain("event.key === 'Escape'")
+    expect(sidebar).toContain("event.key === 'Tab'")
+    expect(sidebar).toContain('querySelectorAll<HTMLElement>')
+    expect(sidebar).toContain('onKeyDown={handleMobileDialogKeyDown}')
+  })
+
+  it('focus-traps super-admin reset password modal and supports Escape close', () => {
+    const resetButton = source('src/app/(super-admin)/super-admin/users/_ResetButton.tsx')
+
+    expect(resetButton).toContain('dialogRef')
+    expect(resetButton).toContain('firstFocusRef')
+    expect(resetButton).toContain('previousFocusedElementRef')
+    expect(resetButton).toContain('handleDialogKeyDown')
+    expect(resetButton).toContain("event.key === 'Escape'")
+    expect(resetButton).toContain("event.key === 'Tab'")
+    expect(resetButton).toContain('querySelectorAll<HTMLElement>')
+    expect(resetButton).toContain('aria-modal="true"')
+    expect(resetButton).toContain('role="dialog"')
+    expect(resetButton).toContain('onKeyDown={handleDialogKeyDown}')
+  })
+
+  it('renders explicit empty states for category management pages', () => {
+    const adminCategories = source('src/app/(admin)/admin/categories/page.tsx')
+    const superAdminCategories = source('src/app/(super-admin)/super-admin/categories/page.tsx')
+    const ownerCategories = source('src/app/(owner)/owner/categories/page.tsx')
+
+    expect(adminCategories).toContain('No categories yet')
+    expect(adminCategories).toContain('Create the first category')
+    expect(adminCategories).toContain('role="status"')
+    expect(superAdminCategories).toContain('No categories yet')
+    expect(superAdminCategories).toContain('Create a category to start organizing')
+    expect(superAdminCategories).toContain('role="status"')
+    expect(ownerCategories).toContain('No categories yet')
+    expect(ownerCategories).toContain('Create a category to start organizing')
+    expect(ownerCategories).toContain('role="status"')
+  })
+
+  it('uses design tokens for category color fallbacks in admin surfaces', () => {
+    const adminCategories = source('src/app/(admin)/admin/categories/page.tsx')
+    const superAdminCategories = source('src/app/(super-admin)/super-admin/categories/page.tsx')
+    const ownerCategories = source('src/app/(owner)/owner/categories/page.tsx')
+
+    for (const page of [adminCategories, superAdminCategories, ownerCategories]) {
+      expect(page).toContain('DEFAULT_CATEGORY_COLOR')
+      expect(page).toContain('cat.color ?? DEFAULT_CATEGORY_COLOR')
+      expect(page).not.toContain("cat.color ?? '#C8102E'")
+    }
+  })
+
+  it('uses a shared display token for category fallbacks outside color inputs', () => {
+    const displaySurfaces = [
+      source('src/components/announcements/CategoryFilter.tsx'),
+      source('src/components/announcements/AnnouncementCard.tsx'),
+      source('src/app/(public)/announcements/[id]/page.tsx'),
+      source('src/app/(admin)/admin/review/[id]/page.tsx'),
+      source('src/app/(admin)/admin/analytics/page.tsx'),
+      source('src/app/(owner)/owner/analytics/page.tsx'),
+      source('src/lib/owner/resources.ts'),
+    ]
+
+    for (const file of displaySurfaces) {
+      expect(file).toContain('DEFAULT_CATEGORY_DISPLAY_COLOR')
+      expect(file).not.toContain("?? '#C8102E'")
+    }
+  })
+
+  it('renders an explicit empty state for super-admin admin management', () => {
+    const superAdminAdmins = source('src/app/(super-admin)/super-admin/admins/page.tsx')
+
+    expect(superAdminAdmins).toContain('No admins yet')
+    expect(superAdminAdmins).toContain('Invite the first admin')
+    expect(superAdminAdmins).toContain('role="status"')
+    expect(superAdminAdmins).toContain('rounded-full')
+    expect(superAdminAdmins).toContain('text-xs')
+    expect(superAdminAdmins).toContain('bg-[var(--color-role-super-admin-bg)]')
+    expect(superAdminAdmins).toContain('text-[var(--color-role-super-admin-text)]')
+  })
+
+  it('renders explicit empty states for admin organization and publisher management', () => {
+    const adminOrgs = source('src/app/(admin)/admin/orgs/page.tsx')
+    const adminPublishers = source('src/app/(admin)/admin/publishers/page.tsx')
+
+    expect(adminOrgs).toContain('No organizations yet')
+    expect(adminOrgs).toContain('Create the first organization')
+    expect(adminOrgs).toContain('role="status"')
+    expect(adminPublishers).toContain('No publishers yet')
+    expect(adminPublishers).toContain('Invite the first publisher')
+    expect(adminPublishers).toContain('role="status"')
+  })
+
+  it('prevents publisher invites from submitting when no approved organization exists', () => {
+    const invitePublisherPage = source('src/app/(admin)/admin/publishers/invite/page.tsx')
+
+    expect(invitePublisherPage).toContain('const canInvitePublisher = approvedOrgs.length > 0')
+    expect(invitePublisherPage).toContain('id="publisher-invite-org-help"')
+    expect(invitePublisherPage).toContain('aria-describedby="publisher-invite-org-help"')
+    expect(invitePublisherPage).toContain('disabled={!canInvitePublisher}')
+    expect(invitePublisherPage).toContain(
+      'Create an approved organization before inviting publishers'
+    )
+  })
+
+  it('renders explicit empty states for analytics sections that have no rows', () => {
+    const adminAnalytics = source('src/app/(admin)/admin/analytics/page.tsx')
+    const superAdminAnalytics = source('src/app/(super-admin)/super-admin/analytics/page.tsx')
+    const ownerAnalytics = source('src/app/(owner)/owner/analytics/page.tsx')
+
+    expect(adminAnalytics).toContain('No published categories yet')
+    expect(adminAnalytics).toContain('No recent publications yet')
+    expect(adminAnalytics).toContain('role="status"')
+    expect(superAdminAnalytics).toContain('No organization activity yet')
+    expect(superAdminAnalytics).toContain('No recent users yet')
+    expect(superAdminAnalytics).toContain('role="status"')
+    expect(ownerAnalytics).toContain('No organization activity yet')
+    expect(ownerAnalytics).toContain('No published categories yet')
+    expect(ownerAnalytics).toContain('No recent users yet')
+    expect(ownerAnalytics).toContain('role="status"')
+  })
+
+  it('keeps owner overview and resources mobile-friendly with explicit no-data states', () => {
+    const ownerHome = source('src/app/(owner)/owner/page.tsx')
+    const ownerResources = source('src/app/(owner)/owner/resources/page.tsx')
+
+    expect(ownerHome).toContain('sm:col-span-4')
+    expect(ownerHome).toContain('sm:grid-cols-2')
+    expect(ownerHome).toContain('getOwnerResourceOverview')
+    expect(ownerHome).toContain('Total Views')
+    expect(ownerHome).toContain('Published Views')
+    expect(ownerHome).toContain('Average Views')
+    expect(ownerHome).toContain('Registration Links')
+    expect(ownerHome).toContain('Banner Storage')
+    expect(ownerHome).toContain('System Health')
+    expect(ownerHome).toContain('Top Viewed Announcements')
+    expect(ownerHome).toContain('Views by Category')
+    expect(ownerHome).toContain('Views by Organization')
+    expect(ownerHome).toContain('No audit activity yet')
+    expect(ownerHome).toContain('No tracked announcement views yet')
+    expect(ownerHome).toContain('No view distribution yet')
+    expect(ownerHome).toContain('role="status"')
+    expect(ownerResources).toContain('No tracked announcement views yet')
+    expect(ownerResources).toContain('No view distribution yet')
+    expect(ownerResources).toContain('role="status"')
+  })
+
+  it('renders explicit empty states for user management pages', () => {
+    const adminUsers = source('src/app/(admin)/admin/users/page.tsx')
+    const superAdminUsers = source('src/app/(super-admin)/super-admin/users/page.tsx')
+    const ownerUsers = source('src/app/(owner)/owner/users/page.tsx')
+
+    expect(adminUsers).toContain('No users match this view')
+    expect(adminUsers).toContain('Clear the role filter')
+    expect(superAdminUsers).toContain('No users match this view')
+    expect(superAdminUsers).toContain('Clear the role filter')
+    expect(ownerUsers).toContain('No users match this view')
+    expect(ownerUsers).toContain('Clear the role filter')
   })
 
   it('strengthens category filter focus and touch affordances', () => {
@@ -275,6 +497,11 @@ describe('Future Commons production UI guards', () => {
     expect(loginPage).not.toMatch(/attachShadow|shadowRoot|customElements/)
     expect(publicHome).not.toMatch(/next\.svg|vercel\.svg|signal-atlas|campus-press/)
     expect(header).not.toMatch(/next\.svg|vercel\.svg|signal-atlas|campus-press/)
+    expect(existsSync('public/next.svg')).toBe(false)
+    expect(existsSync('public/vercel.svg')).toBe(false)
+    expect(existsSync('public/file.svg')).toBe(false)
+    expect(existsSync('public/globe.svg')).toBe(false)
+    expect(existsSync('public/window.svg')).toBe(false)
   })
 
   it('uses a desktop dense board implementation while keeping mobile-friendly card flow', () => {

@@ -1,7 +1,17 @@
-import { describe, expect, it, vi } from 'vitest'
-import { buildServerErrorLog, reportServerError } from '@/lib/error-reporting'
+import * as Sentry from '@sentry/nextjs'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { buildServerErrorLog, reportServerError, reportServerWarning } from '@/lib/error-reporting'
+
+vi.mock('@sentry/nextjs', () => ({
+  captureException: vi.fn(),
+}))
 
 describe('server error reporting', () => {
+  afterEach(() => {
+    vi.mocked(Sentry.captureException).mockReset()
+    vi.unstubAllEnvs()
+  })
+
   it('keeps a structured diagnostic log without making raw errors user-facing', () => {
     const log = buildServerErrorLog('admin.categories.create', {
       message: 'duplicate key value violates unique constraint "categories_slug_key"',
@@ -39,5 +49,56 @@ describe('server error reporting', () => {
     )
 
     spy.mockRestore()
+  })
+
+  it('forwards redacted metadata to Sentry only when configured', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubEnv('NEXT_PUBLIC_SENTRY_DSN', 'https://examplePublicKey@o0.ingest.sentry.io/0')
+
+    reportServerError('register.invitation.read', new Error('invitation failed'), {
+      actorId: 'user-1',
+      token: 'raw-token',
+    })
+
+    expect(Sentry.captureException).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({
+        tags: { context: 'register.invitation.read' },
+        extra: expect.objectContaining({
+          metadata: {
+            actorId: 'user-1',
+            token: '[redacted]',
+          },
+        }),
+      })
+    )
+
+    spy.mockRestore()
+  })
+
+  it('logs expected health probe failures as warnings instead of console errors', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    reportServerWarning('owner.resources.external_api_failed', new Error('Supabase returned 400'), {
+      label: 'Supabase health check',
+      status: 400,
+    })
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[server-warning]',
+      expect.objectContaining({
+        context: 'owner.resources.external_api_failed',
+        message: 'Supabase returned 400',
+        metadata: {
+          label: 'Supabase health check',
+          status: 400,
+        },
+      })
+    )
+    expect(errorSpy).not.toHaveBeenCalled()
+
+    warnSpy.mockRestore()
+    errorSpy.mockRestore()
   })
 })

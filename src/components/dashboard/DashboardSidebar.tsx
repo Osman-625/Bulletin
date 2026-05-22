@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -21,6 +22,7 @@ import {
   Settings,
   ArrowUpRight,
   Activity,
+  X,
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { BrandMark } from '@/components/layout/BrandMark'
@@ -179,6 +181,9 @@ export function DashboardSidebar({
   pendingReviewCount = 0,
 }: DashboardSidebarProps) {
   const pathname = usePathname()
+  const mobileDialogRef = useRef<HTMLDivElement | null>(null)
+  const firstMobileFocusRef = useRef<HTMLButtonElement | null>(null)
+  const previousFocusedElementRef = useRef<HTMLElement | null>(null)
 
   const navItems =
     variant === 'owner'
@@ -196,6 +201,63 @@ export function DashboardSidebar({
       : []
 
   const visibleNavItems = [...returnItem, ...navItems]
+
+  useEffect(() => {
+    if (!mobileOpen) return
+
+    const activeElement = document.activeElement
+    previousFocusedElementRef.current = activeElement instanceof HTMLElement ? activeElement : null
+
+    const focusTimer = window.setTimeout(() => {
+      firstMobileFocusRef.current?.focus()
+    }, 0)
+
+    return () => {
+      window.clearTimeout(focusTimer)
+
+      const previousFocusedElement = previousFocusedElementRef.current
+      previousFocusedElementRef.current = null
+
+      if (previousFocusedElement && document.contains(previousFocusedElement)) {
+        previousFocusedElement.focus()
+      }
+    }
+  }, [mobileOpen])
+
+  function handleMobileDialogKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      onMobileClose?.()
+      return
+    }
+
+    if (event.key === 'Tab') {
+      const dialog = mobileDialogRef.current
+      if (!dialog) return
+
+      const focusableElements = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((element) => element.getAttribute('aria-hidden') !== 'true' && element.offsetParent)
+
+      if (focusableElements.length === 0) return
+
+      const firstElement = focusableElements[0]
+      const lastElement = focusableElements[focusableElements.length - 1]
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault()
+        lastElement.focus()
+        return
+      }
+
+      if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault()
+        firstElement.focus()
+      }
+    }
+  }
 
   return (
     <>
@@ -255,6 +317,7 @@ export function DashboardSidebar({
 
       {/* ── Mobile bottom drawer ── */}
       <div
+        ref={mobileDialogRef}
         className={cn(
           'fixed inset-x-0 bottom-0 z-40 md:hidden',
           'bg-[var(--color-canvas)]/95 backdrop-blur-2xl',
@@ -266,13 +329,26 @@ export function DashboardSidebar({
         )}
         role="dialog"
         aria-modal="true"
+        aria-hidden={!mobileOpen}
         aria-label="Navigation menu"
+        onKeyDown={handleMobileDialogKeyDown}
       >
         <div className="flex justify-center pt-3 pb-2">
           <div className="h-1 w-10 rounded-full bg-[var(--color-border)]" />
         </div>
-        <div className="border-b border-[var(--color-border)] px-6 pb-3">
-          <BrandMark size="sm" />
+        <div className="border-b border-[var(--color-border)] px-4 pb-3">
+          <div className="flex items-center justify-between gap-3">
+            <BrandMark size="sm" />
+            <button
+              ref={firstMobileFocusRef}
+              type="button"
+              onClick={onMobileClose}
+              className="flex min-h-11 min-w-11 items-center justify-center rounded-xl text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)] focus-visible:outline-none"
+              aria-label="Close navigation menu"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
         <nav className="max-h-[min(70dvh,32rem)] space-y-1 overflow-y-auto px-4 py-3">
           <NavLinks navItems={visibleNavItems} pathname={pathname} onClick={onMobileClose} />

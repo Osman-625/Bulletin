@@ -2,6 +2,7 @@ import { GlassCard } from '@/components/dashboard/GlassCard'
 import { CountUp } from '@/components/dashboard/CountUp'
 import { createClient } from '@/lib/supabase/server'
 import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import { redirect } from 'next/navigation'
 
 export const metadata = { title: 'Analytics — Bulletin Admin' }
@@ -14,7 +15,10 @@ export default async function AdminAnalyticsPage() {
   const supabase = await createClient()
 
   let byStatusQuery = supabase.from('announcements').select('status')
-  let byCategoryQuery = supabase.from('announcements').select('categories(name, color), status').eq('status', 'published')
+  let byCategoryQuery = supabase
+    .from('announcements')
+    .select('categories(name, color), status')
+    .eq('status', 'published')
   let recentPublishedQuery = supabase
     .from('announcements')
     .select('title, organizations(name), published_at')
@@ -34,11 +38,7 @@ export default async function AdminAnalyticsPage() {
     }
   }
 
-  const [
-    { data: byStatus },
-    { data: byCategory },
-    { data: recentPublished },
-  ] = await Promise.all([
+  const [{ data: byStatus }, { data: byCategory }, { data: recentPublished }] = await Promise.all([
     byStatusQuery,
     byCategoryQuery,
     recentPublishedQuery,
@@ -49,33 +49,44 @@ export default async function AdminAnalyticsPage() {
     return acc
   }, {})
 
-  const catCounts = (byCategory ?? []).reduce<Record<string, { count: number; color: string }>>((acc, r) => {
-    const cat = (r as unknown as { categories?: { name: string; color: string | null } | null }).categories
-    if (!cat) return acc
-    const key = cat.name
-    if (!acc[key]) acc[key] = { count: 0, color: cat.color ?? '#C8102E' }
-    acc[key].count++
-    return acc
-  }, {})
+  const catCounts = (byCategory ?? []).reduce<Record<string, { count: number; color: string }>>(
+    (acc, r) => {
+      const cat = (r as unknown as { categories?: { name: string; color: string | null } | null })
+        .categories
+      if (!cat) return acc
+      const key = cat.name
+      if (!acc[key]) acc[key] = { count: 0, color: cat.color ?? DEFAULT_CATEGORY_DISPLAY_COLOR }
+      acc[key].count++
+      return acc
+    },
+    {}
+  )
 
   const sortedCats = Object.entries(catCounts).sort((a, b) => b[1].count - a[1].count)
   const total = Object.values(statusCounts).reduce((s, n) => s + n, 0)
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
+    <div className="mx-auto max-w-4xl space-y-8 px-6 py-8">
       <div>
-        <h1 className="text-3xl font-bold text-[var(--color-text-primary)] tracking-tight">Analytics</h1>
-        <p className="text-[var(--color-text-secondary)] mt-1">Platform activity overview.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
+          Analytics
+        </h1>
+        <p className="mt-1 text-[var(--color-text-secondary)]">Platform activity overview.</p>
       </div>
 
       {/* Status breakdown */}
       <div>
-        <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">By Status</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">By Status</h2>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
           {['published', 'submitted', 'draft', 'rejected', 'archived', 'expired'].map((s) => (
             <GlassCard key={s} hover={false} className="p-5">
-              <CountUp value={statusCounts[s] ?? 0} className="text-3xl font-bold font-mono text-[var(--color-text-primary)]" />
-              <p className="text-xs uppercase tracking-widest text-[var(--color-text-muted)] mt-1">{s}</p>
+              <CountUp
+                value={statusCounts[s] ?? 0}
+                className="font-mono text-3xl font-bold text-[var(--color-text-primary)]"
+              />
+              <p className="mt-1 text-xs tracking-widest text-[var(--color-text-muted)] uppercase">
+                {s}
+              </p>
               {total > 0 && (
                 <div className="mt-2 h-1 rounded-full bg-[var(--color-surface-elevated)]">
                   <div
@@ -89,43 +100,83 @@ export default async function AdminAnalyticsPage() {
         </div>
       </div>
 
-      {/* Top categories */}
-      {sortedCats.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Top Categories</h2>
+      <div>
+        <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">
+          Top Categories
+        </h2>
+        {sortedCats.length > 0 ? (
           <div className="space-y-2">
             {sortedCats.map(([name, { count, color }]) => (
-              <GlassCard key={name} hover={false} className="px-5 py-3 flex items-center gap-4">
-                <span className="h-3 w-3 rounded-full shrink-0" style={{ background: color }} />
-                <p className="flex-1 text-sm font-medium text-[var(--color-text-primary)]">{name}</p>
-                <CountUp value={count} className="text-sm font-bold font-mono text-[var(--color-text-primary)]" />
+              <GlassCard key={name} hover={false} className="flex items-center gap-4 px-5 py-3">
+                <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: color }} />
+                <p className="flex-1 text-sm font-medium text-[var(--color-text-primary)]">
+                  {name}
+                </p>
+                <CountUp
+                  value={count}
+                  className="font-mono text-sm font-bold text-[var(--color-text-primary)]"
+                />
               </GlassCard>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <GlassCard hover={false} className="p-6">
+            <div role="status" className="text-sm">
+              <p className="font-semibold text-[var(--color-text-primary)]">
+                No published categories yet
+              </p>
+              <p className="mt-1 text-[var(--color-text-secondary)]">
+                Category rankings will appear after announcements in your scope are published.
+              </p>
+            </div>
+          </GlassCard>
+        )}
+      </div>
 
-      {/* Recent published */}
-      {(recentPublished ?? []).length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold text-[var(--color-text-primary)] mb-4">Recently Published</h2>
+      <div>
+        <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">
+          Recently Published
+        </h2>
+        {(recentPublished ?? []).length > 0 ? (
           <div className="space-y-2">
             {(recentPublished ?? []).map((a) => (
-              <GlassCard key={(a as { id?: string }).id ?? a.title} hover={false} className="px-5 py-3 flex items-center gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[var(--color-text-primary)] truncate">{a.title}</p>
+              <GlassCard
+                key={(a as { id?: string }).id ?? a.title}
+                hover={false}
+                className="flex items-center gap-4 px-5 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-[var(--color-text-primary)]">
+                    {a.title}
+                  </p>
                   <p className="text-xs text-[var(--color-text-muted)]">
                     {(a as { organizations?: { name?: string } | null }).organizations?.name ?? '—'}
                   </p>
                 </div>
-                <p className="text-xs font-mono text-[var(--color-text-muted)] shrink-0">
-                  {a.published_at ? new Date(a.published_at).toLocaleDateString('en-MY', { day: 'numeric', month: 'short' }) : '—'}
+                <p className="shrink-0 font-mono text-xs text-[var(--color-text-muted)]">
+                  {a.published_at
+                    ? new Date(a.published_at).toLocaleDateString('en-MY', {
+                        day: 'numeric',
+                        month: 'short',
+                      })
+                    : '—'}
                 </p>
               </GlassCard>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <GlassCard hover={false} className="p-6">
+            <div role="status" className="text-sm">
+              <p className="font-semibold text-[var(--color-text-primary)]">
+                No recent publications yet
+              </p>
+              <p className="mt-1 text-[var(--color-text-secondary)]">
+                Approved announcements will appear here after they go live.
+              </p>
+            </div>
+          </GlassCard>
+        )}
+      </div>
     </div>
   )
 }

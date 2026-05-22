@@ -9,7 +9,8 @@ import {
   ShieldCheck,
   UserRound,
 } from 'lucide-react'
-import type { Json, Tables } from '@/lib/database.types'
+import type { Database, Json, Tables } from '@/lib/database.types'
+import { reportServerError } from '@/lib/error-reporting'
 import { createServiceClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -25,6 +26,8 @@ type AuditEntry = Tables<'audit_log'> & {
   users?: AuditActor | null
 }
 
+type AuditSearchRow = Database['public']['Functions']['search_audit_log']['Returns'][number]
+
 type SearchParams = {
   page?: string
   q?: string
@@ -39,6 +42,7 @@ const ACTION_LABELS: Record<string, string> = {
   'auth.logout': 'Signed out',
   'announcement.created_draft': 'Created draft',
   'announcement.created_submitted': 'Created and submitted',
+  'announcement.updated': 'Updated announcement',
   'announcement.submitted': 'Submitted for review',
   'announcement.published': 'Published announcement',
   'announcement.scheduled': 'Scheduled announcement',
@@ -56,8 +60,10 @@ const ACTION_LABELS: Record<string, string> = {
   'category.deleted': 'Deleted category',
   'category.force_deleted': 'Force deleted category',
   'user.created': 'Created user',
+  'user.display_name_changed': 'Changed display name',
   'user.role_changed': 'Changed user role',
   'user.role_confirmed': 'Confirmed user role',
+  'user.password_reset_requested': 'Requested password reset',
   'user.password_reset': 'Reset password',
   'user.password_changed': 'Changed password',
   'user.deleted': 'Deleted user',
@@ -110,8 +116,34 @@ const METADATA_ORDER = [
   'category_id',
 ]
 
-function cleanSearch(value: string | undefined) {
-  return (value ?? '').replace(/[%(),]/g, ' ').trim()
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function normalizeAuditSearch(value: string | undefined) {
+  return (value ?? '').trim().replace(/\s+/g, ' ').slice(0, 80)
+}
+
+function normalizeUuidFilter(value: string) {
+  return UUID_PATTERN.test(value) ? value : null
+}
+
+function auditSearchRowToEntry(row: AuditSearchRow): AuditEntry {
+  return {
+    id: row.id,
+    actor_id: row.actor_id,
+    action: row.action,
+    target_type: row.target_type,
+    target_id: row.target_id,
+    metadata: row.metadata,
+    created_at: row.created_at,
+    users:
+      row.actor_display_name || row.actor_email || row.actor_role
+        ? {
+            display_name: row.actor_display_name,
+            email: row.actor_email,
+            role: row.actor_role,
+          }
+        : null,
+  }
 }
 
 function asMetadata(value: Json | null): Record<string, Json | undefined> {
@@ -260,7 +292,9 @@ export default async function AuditLogPage({
   const currentPage = Math.max(1, parseInt(page ?? '1', 10) || 1)
   const targetFilter = target || 'all'
   const actorFilter = actor || 'all'
-  const searchQuery = cleanSearch(q)
+  const searchQuery = normalizeAuditSearch(q)
+  const actorIdFilter =
+    actorFilter === 'all' || actorFilter === 'system' ? null : normalizeUuidFilter(actorFilter)
   const from = (currentPage - 1) * PAGE_SIZE
 
   const supabase = await createServiceClient()
@@ -297,30 +331,27 @@ export default async function AuditLogPage({
       .limit(500),
   ])
 
-  let entriesQuery = supabase
-    .from('audit_log')
-    .select('*, users(display_name, email, role)', { count: 'exact' })
-    .order('created_at', { ascending: false })
+  const { data: auditRows, error: auditSearchError } = await supabase.rpc('search_audit_log', {
+    p_search: searchQuery || null,
+    p_target_type: targetFilter === 'all' ? null : targetFilter,
+    p_actor_id: actorIdFilter,
+    p_system_actor: actorFilter === 'system',
+    p_limit: PAGE_SIZE,
+    p_offset: from,
+  })
 
-  if (targetFilter !== 'all') {
-    entriesQuery = entriesQuery.eq('target_type', targetFilter)
+  if (auditSearchError) {
+    reportServerError('owner.audit.search_failed', auditSearchError, {
+      hasSearch: Boolean(searchQuery),
+      targetFilter,
+      actorFilter: actorFilter === 'all' ? 'all' : actorFilter === 'system' ? 'system' : 'user',
+      page: currentPage,
+    })
   }
 
-  if (actorFilter === 'system') {
-    entriesQuery = entriesQuery.is('actor_id', null)
-  } else if (actorFilter !== 'all') {
-    entriesQuery = entriesQuery.eq('actor_id', actorFilter)
-  }
-
-  if (searchQuery) {
-    entriesQuery = entriesQuery.or(
-      `action.ilike.%${searchQuery}%,target_type.ilike.%${searchQuery}%`
-    )
-  }
-
-  const { data, count } = await entriesQuery.range(from, from + PAGE_SIZE - 1)
-  const entries = (data ?? []) as AuditEntry[]
-  const totalPages = Math.max(1, Math.ceil((count ?? 0) / PAGE_SIZE))
+  const entries = (auditRows ?? []).map(auditSearchRowToEntry)
+  const count = auditRows?.[0]?.total_count ?? 0
+  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE))
 
   const targetTypes = Array.from(new Set((recentRows ?? []).map((row) => row.target_type))).sort()
   const actorOptions = Array.from(

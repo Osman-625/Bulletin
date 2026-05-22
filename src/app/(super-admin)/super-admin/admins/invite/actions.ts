@@ -8,6 +8,7 @@ import {
   getDefaultAppPath,
 } from '@/lib/auth/authz'
 import { reportServerError } from '@/lib/error-reporting'
+import { INVITATION_EXPIRY_DAYS, readAdminInvitationFormData } from '@/lib/invitations/validation'
 import { createClient } from '@/lib/supabase/server'
 
 const INVITE_ADMIN_PATH = '/super-admin/admins/invite'
@@ -22,19 +23,13 @@ export async function inviteAdmin(formData: FormData) {
   if (!access) redirect('/login')
   if (!canAccessSuperAdminArea(access.role)) redirect(getDefaultAppPath(access.role))
 
+  const parsed = readAdminInvitationFormData(formData)
+  if (!parsed.ok) redirect(inviteErrorHref(parsed.error))
+
+  const { email, role } = parsed.data
   const supabase = await createClient()
-
-  const email = ((formData.get('email') as string | null) ?? '').trim().toLowerCase()
-  const ALLOWED_ROLES = ['admin', 'super_admin']
-  const rawRole = (formData.get('role') as string) || 'admin'
-  const role = ALLOWED_ROLES.includes(rawRole) ? rawRole : 'admin'
-
-  if (!email || !email.includes('@')) {
-    redirect(inviteErrorHref('Enter a valid email address.'))
-  }
-
   const expiresAt = new Date()
-  expiresAt.setDate(expiresAt.getDate() + 7)
+  expiresAt.setDate(expiresAt.getDate() + INVITATION_EXPIRY_DAYS)
 
   const { data, error: invitationError } = await supabase
     .from('invitations')
@@ -46,7 +41,7 @@ export async function inviteAdmin(formData: FormData) {
       invited_by: access.userId,
       expires_at: expiresAt.toISOString(),
     })
-    .select('id, token')
+    .select('id')
     .single()
 
   if (invitationError || !data) {
@@ -76,5 +71,5 @@ export async function inviteAdmin(formData: FormData) {
     },
   })
 
-  redirect(`/super-admin/admins/invite?token=${data.token}&email=${encodeURIComponent(email)}`)
+  redirect(`/super-admin/admins/invite?created=${data.id}`)
 }

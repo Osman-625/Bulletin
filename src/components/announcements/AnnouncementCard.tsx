@@ -12,7 +12,13 @@ import {
   normalizeAnnouncementDisplaySize,
   normalizeAnnouncementUrgency,
 } from '@/lib/announcements/presentation'
+import {
+  CAMPUS_TIME_ZONE,
+  daysUntilDeadline,
+  deadlineLabel,
+} from '@/lib/announcements/public-board'
 import { announcementPath, toSafeHttpUrl } from '@/lib/announcements/urls'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import type { AnnouncementWithRelations } from '@/lib/types'
 
 export type AnnouncementCardVisual = 'poster' | 'letterbox' | 'stamp' | 'ribbon'
@@ -33,6 +39,7 @@ function stripMarkdown(md: string): string {
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-MY', {
+    timeZone: CAMPUS_TIME_ZONE,
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -40,24 +47,8 @@ function formatDate(iso: string) {
 }
 
 function isExpiringSoon(expiresAt: string | null): boolean {
-  if (!expiresAt) return false
-  const diff = new Date(expiresAt).getTime() - Date.now()
-  return diff > 0 && diff < 7 * 24 * 60 * 60 * 1000
-}
-
-function daysUntil(expiresAt: string | null): number | null {
-  if (!expiresAt) return null
-  const diff = new Date(expiresAt).getTime() - Date.now()
-  if (diff <= 0) return null
-  return Math.ceil(diff / (24 * 60 * 60 * 1000))
-}
-
-function deadlineLabel(expiresAt: string | null) {
-  const days = daysUntil(expiresAt)
-  if (!expiresAt || days === null) return 'No deadline'
-  if (days === 1) return '1 day left'
-  if (days <= 14) return `${days} days left`
-  return formatDate(expiresAt)
+  const days = daysUntilDeadline(expiresAt)
+  return days !== null && days <= 7
 }
 
 function categoryBadgeStyle(color: string): CSSProperties {
@@ -167,7 +158,7 @@ function StandardCard({
     organizations,
   } = announcement
 
-  const catColor = categories?.color ?? '#C8102E'
+  const catColor = categories?.color ?? DEFAULT_CATEGORY_DISPLAY_COLOR
   const expiring = isExpiringSoon(expires_at)
   const urgency = normalizeAnnouncementUrgency(announcement.urgency)
   const displayFont = normalizeAnnouncementDisplayFont(announcement.display_font)
@@ -215,7 +206,7 @@ function StandardCard({
             {pinned && <StatusChip label="Pinned" tone="published" />}
             {categories && <CategoryChip color={catColor} label={categories.name} />}
             {registrationHref && !expiring && <StatusChip label="Registration open" tone="open" />}
-            {expiring && <StatusChip label={`Closes ${formatDate(expires_at!)}`} tone="closing" />}
+            {expiring && <StatusChip label={deadlineLabel(expires_at)} tone="closing" />}
           </div>
         )}
 
@@ -366,7 +357,7 @@ function FeaturedCard({
     organizations,
   } = announcement
 
-  const catColor = categories?.color ?? '#C8102E'
+  const catColor = categories?.color ?? DEFAULT_CATEGORY_DISPLAY_COLOR
   const expiring = isExpiringSoon(expires_at)
   const urgency = normalizeAnnouncementUrgency(announcement.urgency)
   const displayFont = normalizeAnnouncementDisplayFont(announcement.display_font)
@@ -428,7 +419,7 @@ function FeaturedCard({
             {pinned && <StatusChip label="Pinned" tone="published" />}
             {categories && <CategoryChip color={catColor} label={categories.name} />}
             {registrationHref && !expiring && <StatusChip label="Registration open" tone="open" />}
-            {expiring && <StatusChip label={`Closes ${formatDate(expires_at!)}`} tone="closing" />}
+            {expiring && <StatusChip label={deadlineLabel(expires_at)} tone="closing" />}
           </div>
         )}
 

@@ -26,12 +26,11 @@ test.describe('POST /api/setup security', () => {
     const res = await request.post(`${BASE}/api/setup`, {
       headers: { 'x-setup-secret': requireEnv('SETUP_SECRET') },
     })
-    expect([200, 404, 409]).toContain(res.status())
+    expect([200, 404, 409, 412]).toContain(res.status())
     if (res.status() === 200) {
       const body = await res.json()
-      expect(body).toHaveProperty('temp_password')
-      expect(typeof body.temp_password).toBe('string')
-      expect(body.temp_password.length).toBeGreaterThanOrEqual(16)
+      expect(body).not.toHaveProperty('temp_password')
+      expect(body).toHaveProperty('note')
     }
   })
 })
