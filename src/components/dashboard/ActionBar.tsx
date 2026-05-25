@@ -18,6 +18,7 @@ interface ActionBarProps {
   isPublishing: boolean
   saveLabel?: string
   publishLabel?: string
+  sticky?: boolean
 }
 
 export function ActionBar({
@@ -31,6 +32,7 @@ export function ActionBar({
   isPublishing,
   saveLabel = 'Save Draft',
   publishLabel = 'Submit for Review',
+  sticky = true,
 }: ActionBarProps) {
   const [showUnpublishConfirm, setShowUnpublishConfirm] = useState(false)
   const unpublishConfirmRef = useRef<HTMLDivElement | null>(null)
@@ -95,10 +97,10 @@ export function ActionBar({
   return (
     <div
       className={cn(
-        'sticky bottom-0 z-20',
+        sticky
+          ? 'sticky bottom-0 z-20 border-t border-[var(--color-border)] shadow-[0_-10px_30px_rgba(36,24,21,0.06)]'
+          : 'relative z-10 rounded-[1.25rem] border border-[var(--color-border)] shadow-[var(--shadow-soft)]',
         'bg-[var(--color-header-bg)]/95 backdrop-blur-xl',
-        'border-t border-[var(--color-border)]',
-        'shadow-[0_-10px_30px_rgba(36,24,21,0.06)]',
         'flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6'
       )}
     >
@@ -156,7 +158,7 @@ export function ActionBar({
                       disabled={isPublishing}
                       className={cn(
                         'min-h-11 rounded-xl px-4 text-sm font-medium transition-all duration-150',
-                        'bg-[var(--color-destructive)] text-white hover:opacity-90',
+                        'bg-[var(--color-destructive)] text-[var(--color-surface)] hover:opacity-90',
                         'active:scale-[0.98]',
                         'disabled:cursor-not-allowed disabled:opacity-50'
                       )}
@@ -188,7 +190,7 @@ export function ActionBar({
               disabled={isSaving}
               className={cn(
                 'min-h-11 rounded-xl px-5 text-sm font-semibold transition-all duration-150',
-                'bg-[var(--color-accent)] text-white',
+                'bg-[var(--color-accent)] text-[var(--color-surface)]',
                 'hover:bg-[var(--color-accent-hover)]',
                 'active:scale-[0.98]',
                 'disabled:cursor-not-allowed disabled:opacity-50',
@@ -223,7 +225,7 @@ export function ActionBar({
               disabled={isPublishing}
               className={cn(
                 'min-h-11 rounded-xl px-5 text-sm font-semibold transition-all duration-150',
-                'bg-[var(--color-accent)] text-white',
+                'bg-[var(--color-accent)] text-[var(--color-surface)]',
                 'hover:bg-[var(--color-accent-hover)]',
                 'active:scale-[0.98]',
                 'disabled:cursor-not-allowed disabled:opacity-50',

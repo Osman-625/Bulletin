@@ -13,7 +13,30 @@ const supabaseImageHost = (() => {
   }
 })()
 
+const PUBLIC_STATIC_CACHE_CONTROL = 'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400'
+
+const SECURITY_HEADERS = [
+  {
+    key: 'Strict-Transport-Security',
+    value: 'max-age=63072000; includeSubDomains; preload',
+  },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+  { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+]
+
+const PUBLIC_STATIC_CACHE_HEADERS = [
+  {
+    key: 'Cache-Control',
+    value: PUBLIC_STATIC_CACHE_CONTROL,
+  },
+]
+
 const nextConfig: NextConfig = {
+  poweredByHeader: false,
   turbopack: {
     root: path.resolve(__dirname),
   },
@@ -31,19 +54,24 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: '/robots.txt',
+        headers: PUBLIC_STATIC_CACHE_HEADERS,
+      },
+      {
+        source: '/sitemap.xml',
+        headers: PUBLIC_STATIC_CACHE_HEADERS,
+      },
+      {
+        source: '/opengraph-image',
+        headers: PUBLIC_STATIC_CACHE_HEADERS,
+      },
+      {
+        source: '/twitter-image',
+        headers: PUBLIC_STATIC_CACHE_HEADERS,
+      },
+      {
         source: '/(.*)',
-        headers: [
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload',
-          },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-          { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
-          { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-        ],
+        headers: SECURITY_HEADERS,
       },
     ]
   },

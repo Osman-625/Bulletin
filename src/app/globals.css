@@ -588,36 +588,50 @@
     position: relative;
     isolation: isolate;
     background:
-      linear-gradient(
-        color-mix(in oklab, var(--color-border) 20%, transparent) 1px,
-        transparent 1px
-      ),
-      linear-gradient(
-        90deg,
-        color-mix(in oklab, var(--color-border) 18%, transparent) 1px,
-        transparent 1px
+      radial-gradient(
+        circle at 16% 0%,
+        color-mix(in oklab, var(--color-gold) 24%, transparent),
+        transparent 24rem
       ),
       radial-gradient(
-        circle at 10% 0%,
-        color-mix(in oklab, var(--color-gold) 20%, transparent),
-        transparent 25rem
+        circle at 92% 18%,
+        color-mix(in oklab, var(--color-coral) 16%, transparent),
+        transparent 26rem
       ),
-      radial-gradient(
-        circle at 88% 12%,
-        color-mix(in oklab, var(--color-accent-inti) 10%, transparent),
-        transparent 27rem
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--color-surface) 52%, transparent),
+        transparent 42rem
       ),
       var(--color-canvas);
-    background-size:
-      28px 28px,
-      28px 28px,
-      auto,
-      auto,
-      auto;
+  }
+
+  .dark .dashboard-canvas {
+    background:
+      radial-gradient(
+        circle at 12% 0%,
+        color-mix(in oklab, var(--color-gold) 11%, transparent),
+        transparent 22rem
+      ),
+      radial-gradient(
+        circle at 88% 14%,
+        color-mix(in oklab, var(--color-coral) 7%, transparent),
+        transparent 24rem
+      ),
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--color-surface) 32%, transparent),
+        transparent 38rem
+      ),
+      var(--color-canvas);
   }
 
   .dashboard-page {
     animation: fade-up 520ms var(--ease-ui) both;
+  }
+
+  .publisher-dashboard-shell {
+    position: relative;
   }
 
   .dashboard-command-card {
@@ -625,18 +639,366 @@
     background:
       linear-gradient(
         135deg,
-        color-mix(in oklab, var(--color-surface) 96%, transparent),
-        color-mix(in oklab, var(--color-surface-elevated) 38%, var(--color-surface))
+        color-mix(in oklab, var(--color-surface) 98%, transparent),
+        color-mix(in oklab, var(--color-surface-elevated) 46%, var(--color-surface))
       ),
       var(--color-surface);
     box-shadow:
       0 1px 0 rgba(36, 24, 21, 0.05),
-      0 18px 42px rgba(95, 61, 22, 0.08);
+      0 16px 34px rgba(95, 61, 22, 0.07);
   }
 
-  .dashboard-rhythm-grid {
+  .publisher-command-layout {
     display: grid;
+    gap: clamp(1rem, 2vw, 1.4rem);
+  }
+
+  .publisher-overview-hero {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .publisher-overview-hero::after {
+    position: absolute;
+    right: -7rem;
+    bottom: -8rem;
+    width: 22rem;
+    height: 22rem;
+    border-radius: 999px;
+    background: radial-gradient(
+      circle,
+      color-mix(in oklab, var(--color-gold) 22%, transparent),
+      transparent 68%
+    );
+    content: '';
+    pointer-events: none;
+  }
+
+  .publisher-overview-hero > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .publisher-overview-note {
+    position: relative;
+    z-index: 1;
+  }
+
+  .publisher-next-actions {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklab, var(--color-border) 86%, transparent);
+    background: color-mix(in oklab, var(--color-surface) 72%, transparent);
+    box-shadow: inset 0 1px 0 color-mix(in oklab, var(--color-surface-high) 28%, transparent);
+  }
+
+  .publisher-action-stack {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .publisher-quiet-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: 1.5rem;
+    background: color-mix(in oklab, var(--color-surface) 82%, transparent);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .publisher-metric-item {
+    min-width: 0;
+    border-left: 1px solid var(--color-border-subtle);
+    padding: clamp(1rem, 2vw, 1.35rem);
+  }
+
+  .publisher-metric-item:first-child {
+    border-left: 0;
+  }
+
+  .publisher-workspace-board {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 25rem);
+    gap: clamp(1rem, 2vw, 1.4rem);
+    align-items: start;
+  }
+
+  .publisher-recent-list {
+    display: grid;
+    gap: 0;
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .publisher-recent-row {
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: transparent;
+  }
+
+  .publisher-recent-row:hover {
+    background: color-mix(in oklab, var(--color-surface-elevated) 34%, transparent);
+  }
+
+  @media (max-width: 1023px) {
+    .publisher-quiet-metrics {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .publisher-metric-item:nth-child(odd) {
+      border-left: 0;
+    }
+
+    .publisher-metric-item:nth-child(n + 3) {
+      border-top: 1px solid var(--color-border-subtle);
+    }
+
+    .publisher-workspace-board {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 767px) {
+    .dashboard-canvas {
+      background:
+        radial-gradient(
+          circle at 50% 3rem,
+          color-mix(in oklab, var(--color-gold) 16%, transparent),
+          transparent 16rem
+        ),
+        radial-gradient(
+          circle at 50% 40rem,
+          color-mix(in oklab, var(--color-accent-inti) 7%, transparent),
+          transparent 18rem
+        ),
+        var(--color-canvas);
+    }
+
+    .publisher-quiet-metrics {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .publisher-metric-item {
+      border-top: 1px solid var(--color-border-subtle);
+      border-left: 0;
+    }
+
+    .publisher-metric-item:first-child {
+      border-top: 0;
+    }
+  }
+
+  .admin-dashboard-shell,
+  .admin-review-page {
+    position: relative;
+  }
+
+  .admin-command-layout {
+    display: grid;
+    gap: clamp(1rem, 2vw, 1.4rem);
+  }
+
+  .admin-overview-header,
+  .admin-review-header {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .admin-quiet-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: 1.35rem;
+    background: color-mix(in oklab, var(--color-surface) 82%, transparent);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .admin-metric-item {
+    min-width: 0;
+    border-left: 1px solid var(--color-border-subtle);
+    padding: clamp(1rem, 2vw, 1.25rem);
+  }
+
+  .admin-metric-item:first-child {
+    border-left: 0;
+  }
+
+  .admin-workflow-board {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(18rem, 23rem);
+    gap: clamp(1rem, 2vw, 1.4rem);
+    align-items: start;
+  }
+
+  .admin-review-panel {
+    border: 1px solid var(--color-border);
+    background: color-mix(in oklab, var(--color-surface) 84%, transparent);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .admin-operations-panel {
+    border: 1px solid var(--color-border);
+    background: color-mix(in oklab, var(--color-surface) 84%, transparent);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .admin-review-list {
+    display: grid;
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 1.1rem;
+  }
+
+  .admin-review-row {
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: transparent;
+  }
+
+  .admin-review-row:last-child {
+    border-bottom: 0;
+  }
+
+  .admin-operation-list {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .admin-operation-row {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 0.8rem;
+    border: 1px solid transparent;
+    border-radius: 1rem;
+    padding: 0.75rem;
+    transition:
+      transform 200ms var(--ease-ui),
+      background 200ms var(--ease-ui),
+      border-color 200ms var(--ease-ui);
+  }
+
+  .admin-operation-row:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in oklab, var(--color-accent-inti) 20%, var(--color-border));
+    background: color-mix(in oklab, var(--color-surface-elevated) 38%, transparent);
+  }
+
+  @media (max-width: 1023px) {
+    .admin-quiet-metrics {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-metric-item:nth-child(odd) {
+      border-left: 0;
+    }
+
+    .admin-metric-item:nth-child(n + 3) {
+      border-top: 1px solid var(--color-border-subtle);
+    }
+
+    .admin-workflow-board {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (max-width: 767px) {
+    .admin-quiet-metrics {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-metric-item {
+      border-top: 1px solid var(--color-border-subtle);
+      border-left: 0;
+    }
+
+    .admin-metric-item:first-child {
+      border-top: 0;
+    }
+  }
+
+  .new-announcement-page {
+    position: relative;
+  }
+
+  .new-announcement-intro {
+    position: relative;
+  }
+
+  .announcement-form-shell {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+  }
+
+  .announcement-editor-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(20rem, 26rem);
+    gap: clamp(1rem, 2vw, 1.4rem);
+    align-items: start;
+  }
+
+  .announcement-editor-main,
+  .announcement-editor-aside {
+    display: grid;
+    min-width: 0;
+    gap: clamp(1rem, 2vw, 1.25rem);
+  }
+
+  .announcement-editor-aside {
+    position: sticky;
+    top: 5.5rem;
+  }
+
+  .announcement-section-card {
+    min-width: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 1.5rem;
+    background:
+      linear-gradient(
+        135deg,
+        color-mix(in oklab, var(--color-surface) 96%, transparent),
+        color-mix(in oklab, var(--color-surface-elevated) 38%, var(--color-surface))
+      ),
+      var(--color-surface);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .announcement-publishing-panel {
+    align-self: start;
+  }
+
+  .announcement-preview-panel {
+    min-width: 0;
+  }
+
+  .announcement-static-actionbar {
+    margin-top: clamp(1rem, 2vw, 1.4rem);
+  }
+
+  .announcement-readiness-list {
+    display: grid;
+    gap: 0;
+    border-top: 1px solid var(--color-border-subtle);
+  }
+
+  .announcement-readiness-item {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
     gap: 0.875rem;
+    align-items: start;
+    border-bottom: 1px solid var(--color-border-subtle);
+    padding-block: 1rem;
+  }
+
+  @media (max-width: 1180px) {
+    .announcement-editor-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .announcement-editor-aside {
+      position: static;
+    }
   }
 
   .dashboard-skeleton {

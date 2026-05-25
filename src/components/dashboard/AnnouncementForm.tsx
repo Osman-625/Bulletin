@@ -162,6 +162,8 @@ export function AnnouncementForm({
   const deleteConfirmRef = useRef<HTMLDivElement | null>(null)
   const deleteCancelRef = useRef<HTMLButtonElement | null>(null)
   const deleteTriggerRef = useRef<HTMLButtonElement | null>(null)
+  // Stable ref so the autosave interval always calls the latest handleSave
+  const handleSaveRef = useRef<() => Promise<void>>(async () => {})
 
   // Track dirty state
   useEffect(() => {
@@ -193,18 +195,22 @@ export function AnnouncementForm({
     }
   }, [body])
 
+  // Keep ref in sync so the interval always calls the latest handleSave closure
+  useEffect(() => {
+    handleSaveRef.current = handleSave
+  })
+
   // Autosave every 30 seconds if dirty
   useEffect(() => {
     if (isNew) return // Don't autosave new (unsaved) announcements
 
     const interval = setInterval(() => {
       if (dirtyRef.current && Date.now() - lastSaveRef.current > 30000) {
-        handleSave()
+        void handleSaveRef.current()
       }
     }, 5000)
 
     return () => clearInterval(interval)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew])
 
   useEffect(() => {
@@ -533,11 +539,31 @@ export function AnnouncementForm({
     | 'published'
     | 'rejected'
     | 'archived'
+  const readinessItems = [
+    'Title and body explain what students need to know.',
+    'Date, venue, contact, and registration details are current.',
+    'Banner image and urgency level still make sense on mobile.',
+  ]
+  const actionBar = (
+    <ActionBar
+      status={displayStatus}
+      saveState={saveState}
+      isPublished={isPublished}
+      onSaveDraft={handleSave}
+      onPublish={handlePublish}
+      onUnpublish={isPublished ? handleUnpublish : undefined}
+      isSaving={isSaving}
+      isPublishing={isPublishing}
+      saveLabel={status === 'draft' ? 'Save Draft' : 'Save Changes'}
+      publishLabel={isScheduled ? 'Submit Scheduled' : 'Submit for Review'}
+      sticky={!isNew}
+    />
+  )
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="announcement-form-shell">
       {/* Top bar with back button + delete */}
-      <div className="mx-auto flex w-full max-w-[720px] items-center justify-between px-6 py-4">
+      <div className="mx-auto flex w-full max-w-[82rem] items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
         <BackNavButton
           fallbackHref={backHref}
           className="min-w-0 rounded-lg border-transparent bg-transparent px-0 text-sm text-[var(--color-text-secondary)] shadow-none hover:border-transparent hover:bg-transparent hover:text-[var(--color-text-primary)] hover:shadow-none"
@@ -570,7 +596,7 @@ export function AnnouncementForm({
                   type="button"
                   onClick={handleDelete}
                   disabled={isPending}
-                  className="min-h-11 rounded-lg bg-[var(--color-destructive)] px-3 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                  className="min-h-11 rounded-lg bg-[var(--color-destructive)] px-3 text-xs font-medium text-[var(--color-surface)] transition-opacity hover:opacity-90 disabled:opacity-50"
                 >
                   {isPending ? 'Deleting…' : 'Confirm'}
                 </button>
@@ -599,568 +625,637 @@ export function AnnouncementForm({
       </div>
 
       {/* Form content */}
-      <div className="mx-auto w-full max-w-[720px] flex-1 space-y-8 px-6 pb-24">
-        {status === 'rejected' && initialData.rejection_comment && (
-          <div className="rounded-2xl border border-[var(--color-status-rejected-text)]/25 bg-[var(--color-status-rejected-bg)] p-4">
-            <div className="flex gap-3">
-              <AlertTriangle
-                size={18}
-                className="mt-0.5 flex-shrink-0 text-[var(--color-status-rejected-text)]"
-                aria-hidden="true"
-              />
-              <div>
-                <p className="text-sm font-semibold text-[var(--color-status-rejected-text)]">
-                  Changes requested
-                </p>
-                <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">
-                  {initialData.rejection_comment}
-                </p>
+      <div className="announcement-editor-layout mx-auto w-full max-w-[82rem] flex-1 px-4 pb-28 sm:px-6 lg:px-8">
+        <div className="announcement-editor-main">
+          {status === 'rejected' && initialData.rejection_comment && (
+            <div className="rounded-2xl border border-[var(--color-status-rejected-text)]/25 bg-[var(--color-status-rejected-bg)] p-4">
+              <div className="flex gap-3">
+                <AlertTriangle
+                  size={18}
+                  className="mt-0.5 flex-shrink-0 text-[var(--color-status-rejected-text)]"
+                  aria-hidden="true"
+                />
+                <div>
+                  <p className="text-sm font-semibold text-[var(--color-status-rejected-text)]">
+                    Changes requested
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-[var(--color-text-secondary)]">
+                    {initialData.rejection_comment}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Title */}
-        <div>
-          <div className="mb-1 flex items-end justify-between">
-            <label
-              htmlFor="announcement-title"
-              className="text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
-            >
-              Title
-            </label>
-            <span className="font-mono text-[15px] text-[var(--color-text-muted)]">
-              {title.length}/{ANNOUNCEMENT_TITLE_MAX}
-            </span>
-          </div>
-          <input
-            id="announcement-title"
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value.slice(0, ANNOUNCEMENT_TITLE_MAX))}
-            placeholder="Announcement title"
-            className={cn(
-              'w-full py-3 text-xl font-semibold',
-              'bg-transparent text-[var(--color-text-primary)]',
-              'placeholder:text-[var(--color-text-muted)]',
-              'border-0 border-b border-[var(--color-glass-border)]',
-              'focus:border-[var(--color-accent)] focus:outline-none',
-              'transition-colors duration-200'
-            )}
-          />
-        </div>
-
-        {/* Body */}
-        <div>
-          <label
-            htmlFor="announcement-body"
-            className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
-          >
-            Body
-          </label>
-          <textarea
-            id="announcement-body"
-            ref={bodyRef}
-            value={body}
-            onChange={(e) => setBody(e.target.value.slice(0, ANNOUNCEMENT_BODY_MAX))}
-            placeholder="Write the announcement body…"
-            rows={6}
-            maxLength={ANNOUNCEMENT_BODY_MAX}
-            aria-describedby="announcement-body-count"
-            className={cn(
-              'w-full resize-none py-3 text-base leading-relaxed',
-              'bg-transparent text-[var(--color-text-primary)]',
-              'placeholder:text-[var(--color-text-muted)]',
-              'border-0 border-b border-[var(--color-glass-border)]',
-              'focus:border-[var(--color-accent)] focus:outline-none',
-              'transition-colors duration-200'
-            )}
-          />
-          <div
-            id="announcement-body-count"
-            className="mt-1.5 text-right font-mono text-[15px] text-[var(--color-text-muted)]"
-          >
-            {body.length}/{ANNOUNCEMENT_BODY_MAX}
-          </div>
-        </div>
-
-        {formError && (
-          <div
-            role="alert"
-            className="rounded-2xl border border-[var(--color-destructive)]/25 bg-[var(--color-status-rejected-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-destructive)]"
-          >
-            {formError}
-          </div>
-        )}
-
-        {/* Category */}
-        <div>
-          <label
-            htmlFor="announcement-category"
-            className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
-          >
-            Category
-          </label>
-          <div className="relative">
-            {selectedCategory && (
-              <span
-                className="pointer-events-none absolute top-1/2 left-4 z-10 h-2.5 w-2.5 -translate-y-1/2 rounded-full"
-                style={{ backgroundColor: selectedCategory.color ?? 'var(--color-accent)' }}
-                aria-hidden="true"
-              />
-            )}
-            <select
-              id="announcement-category"
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className={cn(
-                'min-h-12 w-full rounded-xl border px-4 py-3 text-sm',
-                selectedCategory ? 'pl-9' : 'pl-4',
-                'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-primary)] backdrop-blur-sm',
-                'transition-all duration-200 outline-none',
-                'hover:border-[var(--color-accent)]/40 focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/30'
-              )}
-            >
-              <option value="">None</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Urgency */}
-        <div>
-          <div className="mb-2 flex items-center gap-2">
-            <AlertTriangle
-              size={14}
-              className="text-[var(--color-text-muted)]"
-              aria-hidden="true"
-            />
-            <label className="text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
-              Urgency
-            </label>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-            {ANNOUNCEMENT_URGENCIES.map((option) => {
-              const meta = URGENCY_META[option]
-              const active = urgency === option
-              return (
-                <button
-                  key={option}
-                  type="button"
-                  aria-pressed={active}
-                  onClick={() => setUrgency(option)}
-                  className={cn(
-                    'min-h-11 rounded-xl border px-3 text-sm font-semibold transition-all duration-200',
-                    'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
-                    active
-                      ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)] text-[var(--color-text-primary)]'
-                      : 'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40'
-                  )}
-                >
-                  <span style={{ color: active ? meta.tone : undefined }}>{meta.label}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Typography */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <Type size={14} className="text-[var(--color-text-muted)]" aria-hidden="true" />
-              <label className="text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
-                Font
-              </label>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {ANNOUNCEMENT_DISPLAY_FONTS.map((option) => {
-                const active = displayFont === option
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setDisplayFont(option)}
-                    className={cn(
-                      'min-h-11 rounded-xl border px-3 text-sm font-semibold transition-all duration-200',
-                      'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
-                      active
-                        ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)] text-[var(--color-text-primary)]'
-                        : 'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40'
-                    )}
-                  >
-                    <span className={getAnnouncementTitleFontClass(option)}>
-                      {DISPLAY_FONT_LABELS[option]}
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
-              Text Size
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {ANNOUNCEMENT_DISPLAY_SIZES.map((option) => {
-                const active = displaySize === option
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => setDisplaySize(option)}
-                    className={cn(
-                      'min-h-11 rounded-xl border px-2 text-sm font-semibold transition-all duration-200',
-                      'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
-                      active
-                        ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)] text-[var(--color-text-primary)]'
-                        : 'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40'
-                    )}
-                  >
-                    {DISPLAY_SIZE_LABELS[option]}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Banner Image Upload */}
-        <div>
-          <label className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
-            Banner Image
-          </label>
-
-          {bannerUrl ? (
-            <div className="relative overflow-hidden rounded-xl border border-[var(--color-glass-border)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={bannerUrl} alt="Banner preview" className="h-48 w-full object-contain" />
-              <button
-                type="button"
-                onClick={removeBanner}
-                className="absolute top-3 right-3 flex min-h-11 items-center gap-1.5 rounded-lg bg-black/50 px-3 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-black/70"
-              >
-                <X size={12} />
-                Remove
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragLeave={() => setIsDragOver(false)}
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className={cn(
-                'flex w-full flex-col items-center justify-center gap-3 rounded-xl py-12 text-center',
-                'border-2 border-dashed transition-all duration-200',
-                'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
-                isUploading && 'cursor-wait opacity-80',
-                isDragOver
-                  ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)]'
-                  : 'border-[var(--color-glass-border)] hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-surface-elevated)]'
-              )}
-            >
-              <Upload
-                size={24}
-                className={cn(
-                  'text-[var(--color-text-muted)]',
-                  isDragOver && 'text-[var(--color-accent)]'
-                )}
-              />
-              <div className="text-center">
-                <p className="text-sm text-[var(--color-text-secondary)]">
-                  {isUploading ? 'Uploading…' : 'Drop an image here or click to upload'}
-                </p>
-                <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                  JPG, PNG, or WebP — max {BANNER_MAX_FILE_SIZE_MB}MB
-                </p>
-                {bannerSizeError && (
-                  <p className="mt-1 text-xs font-semibold text-[var(--color-destructive)]">
-                    File exceeds {BANNER_MAX_FILE_SIZE_MB} MB limit. Choose a smaller image.
-                  </p>
-                )}
-                {bannerUploadError && (
-                  <p className="mt-1 text-xs font-semibold text-[var(--color-destructive)]">
-                    {bannerUploadError}
-                  </p>
-                )}
-              </div>
-            </button>
           )}
 
-          <input
-            id="banner-image-upload"
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            onChange={handleFileChange}
-            aria-label="Upload banner image"
-            className="hidden"
-          />
-        </div>
-
-        {/* Registration Link */}
-        <div>
-          <label
-            htmlFor="registration-link"
-            className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
-          >
-            Registration Link <span className="tracking-normal normal-case">(optional)</span>
-          </label>
-          <div className="relative">
-            <Link2
-              size={16}
-              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
-            />
-            <input
-              id="registration-link"
-              type="url"
-              value={registrationLink}
-              onChange={(e) => {
-                setRegistrationLink(e.target.value)
-                setUrlError('')
-              }}
-              onBlur={handleUrlBlur}
-              placeholder="https://forms.google.com/..."
-              className={cn(
-                'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
-                'bg-transparent text-[var(--color-text-primary)]',
-                'placeholder:text-[var(--color-text-muted)]',
-                'border transition-all duration-200',
-                urlError
-                  ? 'border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30'
-                  : 'border-[var(--color-glass-border)] focus:border-[var(--color-accent)]',
-                'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none'
-              )}
-            />
-          </div>
-          {urlError && <p className="mt-1.5 text-xs text-[var(--color-destructive)]">{urlError}</p>}
-        </div>
-
-        {/* Publishing Controls */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label
-              htmlFor="scheduled-publish-at"
-              className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
-            >
-              Schedule for later <span className="tracking-normal normal-case">(optional)</span>
-            </label>
-            <div className="relative">
-              <Clock
-                size={16}
-                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
-              />
-              <input
-                id="scheduled-publish-at"
-                type="datetime-local"
-                value={scheduledPublishAt}
-                onChange={(e) => setScheduledPublishAt(e.target.value)}
-                aria-invalid={Boolean(scheduledPublishError)}
-                aria-describedby={
-                  scheduledPublishError
-                    ? 'scheduled-publish-at-error scheduled-publish-at-help'
-                    : 'scheduled-publish-at-help'
-                }
-                className={cn(
-                  'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
-                  'bg-transparent text-[var(--color-text-primary)]',
-                  'border',
-                  scheduledPublishError
-                    ? 'border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30'
-                    : 'border-[var(--color-glass-border)] focus:border-[var(--color-accent)] focus:ring-[var(--color-accent)]/30',
-                  'focus:ring-2 focus:outline-none',
-                  'transition-all duration-200'
-                )}
-              />
-            </div>
-            {scheduledPublishError && (
-              <p
-                id="scheduled-publish-at-error"
-                className="mt-1.5 text-xs text-[var(--color-destructive)]"
-              >
-                {scheduledPublishError}
+          <section className="announcement-section-card space-y-7 p-5 sm:p-6">
+            <div>
+              <p className="future-kicker">Write the notice first</p>
+              <h2 className="font-display mt-3 text-2xl leading-tight font-extrabold text-[var(--color-text-primary)]">
+                Message details
+              </h2>
+              <p className="mt-2 max-w-[56ch] text-sm leading-6 text-[var(--color-text-secondary)]">
+                Keep the core message clear before adding visual style or publishing timing.
               </p>
-            )}
-            <p
-              id="scheduled-publish-at-help"
-              className="mt-1.5 text-xs text-[var(--color-text-muted)]"
-            >
-              Leave blank to go live right after approval.
-            </p>
-          </div>
-
-          <div>
-            <label
-              htmlFor="pinned-until"
-              className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
-            >
-              Pin Until <span className="tracking-normal normal-case">(optional)</span>
-            </label>
-            <div className="relative">
-              <Pin
-                size={16}
-                className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
-              />
-              <input
-                id="pinned-until"
-                type="datetime-local"
-                value={pinnedUntil}
-                onChange={(e) => setPinnedUntil(e.target.value)}
-                aria-invalid={Boolean(pinnedUntilError)}
-                aria-describedby={
-                  pinnedUntilError ? 'pinned-until-error pinned-until-help' : 'pinned-until-help'
-                }
-                className={cn(
-                  'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
-                  'bg-transparent text-[var(--color-text-primary)]',
-                  'border',
-                  pinnedUntilError
-                    ? 'border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30'
-                    : 'border-[var(--color-glass-border)] focus:border-[var(--color-accent)] focus:ring-[var(--color-accent)]/30',
-                  'focus:ring-2 focus:outline-none',
-                  'transition-all duration-200'
-                )}
-              />
             </div>
-            {pinnedUntilError && (
-              <p id="pinned-until-error" className="mt-1.5 text-xs text-[var(--color-destructive)]">
-                {pinnedUntilError}
-              </p>
-            )}
-            <p id="pinned-until-help" className="mt-1.5 text-xs text-[var(--color-text-muted)]">
-              Pinned posts stay first on the public board.
-            </p>
-          </div>
-        </div>
 
-        {/* Expires At */}
-        <div>
-          <label
-            htmlFor="expires-at"
-            className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
-          >
-            Expiry Date <span className="tracking-normal normal-case">(optional)</span>
-          </label>
-          <div className="relative">
-            <Calendar
-              size={16}
-              className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
-            />
-            <input
-              id="expires-at"
-              type="date"
-              value={expiresAt}
-              onChange={(e) => setExpiresAt(e.target.value)}
-              className={cn(
-                'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
-                'bg-transparent text-[var(--color-text-primary)]',
-                'border border-[var(--color-glass-border)]',
-                'focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
-                'transition-all duration-200'
-              )}
-            />
-          </div>
-        </div>
-
-        {/* Live Preview */}
-        <div>
-          <p className="mb-3 text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
-            Preview
-          </p>
-          <GlassCard hover={false} className="overflow-hidden">
-            {bannerUrl && (
-              <NextImage
-                src={bannerUrl}
-                alt="Preview banner"
-                width={600}
-                height={144}
-                className="h-36 w-full object-contain"
-                unoptimized
-              />
-            )}
-            <div className="space-y-2 p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                {urgency !== 'normal' && (
-                  <span
-                    className="rounded-md px-2.5 py-1 text-[15px] font-semibold"
-                    style={{ color: selectedUrgency.tone, background: selectedUrgency.background }}
-                  >
-                    {selectedUrgency.label}
-                  </span>
-                )}
-                {isScheduled && (
-                  <span className="rounded-md bg-[var(--color-accent-surface)] px-2.5 py-1 text-[15px] font-semibold text-[var(--color-accent-inti)]">
-                    Scheduled
-                  </span>
-                )}
-                {isPinned && (
-                  <span className="rounded-md bg-[var(--color-status-published-bg)] px-2.5 py-1 text-[15px] font-semibold text-[var(--color-status-published-text)]">
-                    Pinned
-                  </span>
-                )}
-                <span className="rounded-md bg-[var(--color-surface-elevated)] px-2.5 py-1 text-[15px] font-medium text-[var(--color-text-muted)]">
-                  {DISPLAY_FONT_LABELS[displayFont]} · {DISPLAY_SIZE_LABELS[displaySize]}
+            {/* Title */}
+            <div>
+              <div className="mb-1 flex items-end justify-between">
+                <label
+                  htmlFor="announcement-title"
+                  className="text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
+                >
+                  Title
+                </label>
+                <span className="font-mono text-[15px] text-[var(--color-text-muted)]">
+                  {title.length}/{ANNOUNCEMENT_TITLE_MAX}
                 </span>
               </div>
-              {selectedCategory && (
-                <div className="flex items-center gap-2">
-                  <span
-                    className="h-2 w-2 rounded-full"
-                    style={{ backgroundColor: selectedCategory.color ?? 'var(--color-accent)' }}
-                  />
-                  <span className="text-[13.5px] font-medium tracking-[0.2em] text-[var(--color-text-muted)] uppercase">
-                    {selectedCategory.name}
-                  </span>
-                </div>
-              )}
-              <h3
+              <input
+                id="announcement-title"
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value.slice(0, ANNOUNCEMENT_TITLE_MAX))}
+                placeholder="Announcement title"
                 className={cn(
-                  titleFontClass,
-                  'leading-tight font-semibold text-[var(--color-text-primary)]'
+                  'w-full py-3 text-xl font-semibold',
+                  'bg-transparent text-[var(--color-text-primary)]',
+                  'placeholder:text-[var(--color-text-muted)]',
+                  'border-0 border-b border-[var(--color-glass-border)]',
+                  'focus:border-[var(--color-accent)] focus:outline-none',
+                  'transition-colors duration-200'
                 )}
-                style={{ fontSize: CARD_TITLE_SIZES[displaySize] }}
+              />
+            </div>
+
+            {/* Body */}
+            <div>
+              <label
+                htmlFor="announcement-body"
+                className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
               >
-                {title || 'Untitled Announcement'}
-              </h3>
-              <p
-                className="line-clamp-3 leading-relaxed text-[var(--color-text-secondary)]"
-                style={{ fontSize: DETAIL_BODY_SIZES[displaySize] }}
+                Body
+              </label>
+              <textarea
+                id="announcement-body"
+                ref={bodyRef}
+                value={body}
+                onChange={(e) => setBody(e.target.value.slice(0, ANNOUNCEMENT_BODY_MAX))}
+                placeholder="Write the announcement body…"
+                rows={6}
+                maxLength={ANNOUNCEMENT_BODY_MAX}
+                aria-describedby="announcement-body-count"
+                className={cn(
+                  'w-full resize-none py-3 text-base leading-relaxed',
+                  'bg-transparent text-[var(--color-text-primary)]',
+                  'placeholder:text-[var(--color-text-muted)]',
+                  'border-0 border-b border-[var(--color-glass-border)]',
+                  'focus:border-[var(--color-accent)] focus:outline-none',
+                  'transition-colors duration-200'
+                )}
+              />
+              <div
+                id="announcement-body-count"
+                className="mt-1.5 text-right font-mono text-[15px] text-[var(--color-text-muted)]"
               >
-                {body || 'Announcement body will appear here…'}
+                {body.length}/{ANNOUNCEMENT_BODY_MAX}
+              </div>
+            </div>
+
+            {formError && (
+              <div
+                role="alert"
+                className="rounded-2xl border border-[var(--color-destructive)]/25 bg-[var(--color-status-rejected-bg)] px-4 py-3 text-sm font-semibold text-[var(--color-destructive)]"
+              >
+                {formError}
+              </div>
+            )}
+          </section>
+
+          <section className="announcement-section-card space-y-7 p-5 sm:p-6">
+            <div>
+              <p className="future-kicker">Appearance and details</p>
+              <h2 className="font-display mt-3 text-2xl leading-tight font-extrabold text-[var(--color-text-primary)]">
+                How it appears
+              </h2>
+              <p className="mt-2 max-w-[56ch] text-sm leading-6 text-[var(--color-text-secondary)]">
+                Add category, visual emphasis, poster image, and registration details only when they
+                help students act.
               </p>
-              {registrationLink && !urlError && (
-                <span className="inline-block text-[15px] font-medium tracking-wider text-[var(--color-accent)] uppercase">
-                  Register Here →
-                </span>
+            </div>
+
+            {/* Category */}
+            <div>
+              <label
+                htmlFor="announcement-category"
+                className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
+              >
+                Category
+              </label>
+              <div className="relative">
+                {selectedCategory && (
+                  <span
+                    className="pointer-events-none absolute top-1/2 left-4 z-10 h-2.5 w-2.5 -translate-y-1/2 rounded-full"
+                    style={{ backgroundColor: selectedCategory.color ?? 'var(--color-accent)' }}
+                    aria-hidden="true"
+                  />
+                )}
+                <select
+                  id="announcement-category"
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  className={cn(
+                    'min-h-12 w-full rounded-xl border px-4 py-3 text-sm',
+                    selectedCategory ? 'pl-9' : 'pl-4',
+                    'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-primary)] backdrop-blur-sm',
+                    'transition-all duration-200 outline-none',
+                    'hover:border-[var(--color-accent)]/40 focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/30'
+                  )}
+                >
+                  <option value="">None</option>
+                  {categories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Urgency */}
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <AlertTriangle
+                  size={14}
+                  className="text-[var(--color-text-muted)]"
+                  aria-hidden="true"
+                />
+                <label className="text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
+                  Urgency
+                </label>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {ANNOUNCEMENT_URGENCIES.map((option) => {
+                  const meta = URGENCY_META[option]
+                  const active = urgency === option
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => setUrgency(option)}
+                      className={cn(
+                        'min-h-11 rounded-xl border px-3 text-sm font-semibold transition-all duration-200',
+                        'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
+                        active
+                          ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)] text-[var(--color-text-primary)]'
+                          : 'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40'
+                      )}
+                    >
+                      <span style={{ color: active ? meta.tone : undefined }}>{meta.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Typography */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <div className="mb-2 flex items-center gap-2">
+                  <Type size={14} className="text-[var(--color-text-muted)]" aria-hidden="true" />
+                  <label className="text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
+                    Font
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {ANNOUNCEMENT_DISPLAY_FONTS.map((option) => {
+                    const active = displayFont === option
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setDisplayFont(option)}
+                        className={cn(
+                          'min-h-11 rounded-xl border px-3 text-sm font-semibold transition-all duration-200',
+                          'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
+                          active
+                            ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)] text-[var(--color-text-primary)]'
+                            : 'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40'
+                        )}
+                      >
+                        <span className={getAnnouncementTitleFontClass(option)}>
+                          {DISPLAY_FONT_LABELS[option]}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
+                  Text Size
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {ANNOUNCEMENT_DISPLAY_SIZES.map((option) => {
+                    const active = displaySize === option
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setDisplaySize(option)}
+                        className={cn(
+                          'min-h-11 rounded-xl border px-2 text-sm font-semibold transition-all duration-200',
+                          'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
+                          active
+                            ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)] text-[var(--color-text-primary)]'
+                            : 'border-[var(--color-glass-border)] bg-[var(--color-glass-bg)] text-[var(--color-text-secondary)] hover:border-[var(--color-accent)]/40'
+                        )}
+                      >
+                        {DISPLAY_SIZE_LABELS[option]}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Banner Image Upload */}
+            <div>
+              <label className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
+                Banner Image
+              </label>
+
+              {bannerUrl ? (
+                <div className="relative overflow-hidden rounded-xl border border-[var(--color-glass-border)]">
+                  <NextImage
+                    src={bannerUrl}
+                    alt="Banner preview"
+                    width={720}
+                    height={192}
+                    className="h-48 w-full object-contain"
+                    unoptimized
+                  />
+                  <button
+                    type="button"
+                    onClick={removeBanner}
+                    className="absolute top-3 right-3 flex min-h-11 items-center gap-1.5 rounded-lg bg-[color-mix(in_oklab,var(--color-text-primary)_62%,transparent)] px-3 text-xs font-medium text-[var(--color-canvas)] backdrop-blur-sm transition-colors hover:bg-[color-mix(in_oklab,var(--color-text-primary)_76%,transparent)]"
+                  >
+                    <X size={12} />
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={() => setIsDragOver(false)}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className={cn(
+                    'flex w-full flex-col items-center justify-center gap-3 rounded-xl py-12 text-center',
+                    'border-2 border-dashed transition-all duration-200',
+                    'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
+                    isUploading && 'cursor-wait opacity-80',
+                    isDragOver
+                      ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)]'
+                      : 'border-[var(--color-glass-border)] hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-surface-elevated)]'
+                  )}
+                >
+                  <Upload
+                    size={24}
+                    className={cn(
+                      'text-[var(--color-text-muted)]',
+                      isDragOver && 'text-[var(--color-accent)]'
+                    )}
+                  />
+                  <div className="text-center">
+                    <p className="text-sm text-[var(--color-text-secondary)]">
+                      {isUploading ? 'Uploading…' : 'Drop an image here or click to upload'}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                      JPG, PNG, or WebP — max {BANNER_MAX_FILE_SIZE_MB}MB
+                    </p>
+                    {bannerSizeError && (
+                      <p className="mt-1 text-xs font-semibold text-[var(--color-destructive)]">
+                        File exceeds {BANNER_MAX_FILE_SIZE_MB} MB limit. Choose a smaller image.
+                      </p>
+                    )}
+                    {bannerUploadError && (
+                      <p className="mt-1 text-xs font-semibold text-[var(--color-destructive)]">
+                        {bannerUploadError}
+                      </p>
+                    )}
+                  </div>
+                </button>
+              )}
+
+              <input
+                id="banner-image-upload"
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleFileChange}
+                aria-label="Upload banner image"
+                className="hidden"
+              />
+            </div>
+
+            {/* Registration Link */}
+            <div>
+              <label
+                htmlFor="registration-link"
+                className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
+              >
+                Registration Link <span className="tracking-normal normal-case">(optional)</span>
+              </label>
+              <div className="relative">
+                <Link2
+                  size={16}
+                  className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
+                />
+                <input
+                  id="registration-link"
+                  type="url"
+                  value={registrationLink}
+                  onChange={(e) => {
+                    setRegistrationLink(e.target.value)
+                    setUrlError('')
+                  }}
+                  onBlur={handleUrlBlur}
+                  placeholder="https://forms.google.com/..."
+                  className={cn(
+                    'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
+                    'bg-transparent text-[var(--color-text-primary)]',
+                    'placeholder:text-[var(--color-text-muted)]',
+                    'border transition-all duration-200',
+                    urlError
+                      ? 'border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30'
+                      : 'border-[var(--color-glass-border)] focus:border-[var(--color-accent)]',
+                    'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none'
+                  )}
+                />
+              </div>
+              {urlError && (
+                <p className="mt-1.5 text-xs text-[var(--color-destructive)]">{urlError}</p>
               )}
             </div>
-          </GlassCard>
+          </section>
         </div>
+
+        <aside className="announcement-editor-aside">
+          <section className="announcement-section-card announcement-publishing-panel space-y-6 p-5 sm:p-6">
+            <div>
+              <p className="future-kicker">Publishing</p>
+              <h2 className="font-display mt-3 text-2xl leading-tight font-extrabold text-[var(--color-text-primary)]">
+                Timing and visibility
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
+                Leave timing blank for a normal review flow, or schedule when the notice should
+                appear.
+              </p>
+            </div>
+
+            {/* Publishing Controls */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              <div>
+                <label
+                  htmlFor="scheduled-publish-at"
+                  className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
+                >
+                  Schedule for later <span className="tracking-normal normal-case">(optional)</span>
+                </label>
+                <div className="relative">
+                  <Clock
+                    size={16}
+                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
+                  />
+                  <input
+                    id="scheduled-publish-at"
+                    type="datetime-local"
+                    value={scheduledPublishAt}
+                    onChange={(e) => setScheduledPublishAt(e.target.value)}
+                    aria-invalid={Boolean(scheduledPublishError)}
+                    aria-describedby={
+                      scheduledPublishError
+                        ? 'scheduled-publish-at-error scheduled-publish-at-help'
+                        : 'scheduled-publish-at-help'
+                    }
+                    className={cn(
+                      'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
+                      'bg-transparent text-[var(--color-text-primary)]',
+                      'border',
+                      scheduledPublishError
+                        ? 'border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30'
+                        : 'border-[var(--color-glass-border)] focus:border-[var(--color-accent)] focus:ring-[var(--color-accent)]/30',
+                      'focus:ring-2 focus:outline-none',
+                      'transition-all duration-200'
+                    )}
+                  />
+                </div>
+                {scheduledPublishError && (
+                  <p
+                    id="scheduled-publish-at-error"
+                    className="mt-1.5 text-xs text-[var(--color-destructive)]"
+                  >
+                    {scheduledPublishError}
+                  </p>
+                )}
+                <p
+                  id="scheduled-publish-at-help"
+                  className="mt-1.5 text-xs text-[var(--color-text-muted)]"
+                >
+                  Leave blank to go live right after approval.
+                </p>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="pinned-until"
+                  className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
+                >
+                  Pin Until <span className="tracking-normal normal-case">(optional)</span>
+                </label>
+                <div className="relative">
+                  <Pin
+                    size={16}
+                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
+                  />
+                  <input
+                    id="pinned-until"
+                    type="datetime-local"
+                    value={pinnedUntil}
+                    onChange={(e) => setPinnedUntil(e.target.value)}
+                    aria-invalid={Boolean(pinnedUntilError)}
+                    aria-describedby={
+                      pinnedUntilError
+                        ? 'pinned-until-error pinned-until-help'
+                        : 'pinned-until-help'
+                    }
+                    className={cn(
+                      'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
+                      'bg-transparent text-[var(--color-text-primary)]',
+                      'border',
+                      pinnedUntilError
+                        ? 'border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30'
+                        : 'border-[var(--color-glass-border)] focus:border-[var(--color-accent)] focus:ring-[var(--color-accent)]/30',
+                      'focus:ring-2 focus:outline-none',
+                      'transition-all duration-200'
+                    )}
+                  />
+                </div>
+                {pinnedUntilError && (
+                  <p
+                    id="pinned-until-error"
+                    className="mt-1.5 text-xs text-[var(--color-destructive)]"
+                  >
+                    {pinnedUntilError}
+                  </p>
+                )}
+                <p id="pinned-until-help" className="mt-1.5 text-xs text-[var(--color-text-muted)]">
+                  Pinned posts stay first on the public board.
+                </p>
+              </div>
+            </div>
+
+            {/* Expires At */}
+            <div>
+              <label
+                htmlFor="expires-at"
+                className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
+              >
+                Expiry Date <span className="tracking-normal normal-case">(optional)</span>
+              </label>
+              <div className="relative">
+                <Calendar
+                  size={16}
+                  className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
+                />
+                <input
+                  id="expires-at"
+                  type="date"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                  className={cn(
+                    'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
+                    'bg-transparent text-[var(--color-text-primary)]',
+                    'border border-[var(--color-glass-border)]',
+                    'focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
+                    'transition-all duration-200'
+                  )}
+                />
+              </div>
+            </div>
+          </section>
+
+          <section className="announcement-section-card p-5 sm:p-6">
+            <p className="future-kicker">Publishing readiness</p>
+            <h2 className="font-display mt-3 text-2xl leading-tight font-extrabold text-[var(--color-text-primary)]">
+              Check before sending
+            </h2>
+            <div className="announcement-readiness-list mt-5">
+              {readinessItems.map((item, index) => (
+                <div key={item} className="announcement-readiness-item">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[0.75rem] bg-[var(--color-accent-surface)] font-mono text-xs font-bold text-[var(--color-accent)]">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{item}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Live Preview */}
+          <section className="announcement-preview-panel">
+            <p className="mb-3 text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
+              Preview
+            </p>
+            <GlassCard hover={false} className="overflow-hidden">
+              {bannerUrl && (
+                <NextImage
+                  src={bannerUrl}
+                  alt="Preview banner"
+                  width={600}
+                  height={144}
+                  className="h-36 w-full object-contain"
+                  unoptimized
+                />
+              )}
+              <div className="space-y-2 p-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  {urgency !== 'normal' && (
+                    <span
+                      className="rounded-md px-2.5 py-1 text-[15px] font-semibold"
+                      style={{
+                        color: selectedUrgency.tone,
+                        background: selectedUrgency.background,
+                      }}
+                    >
+                      {selectedUrgency.label}
+                    </span>
+                  )}
+                  {isScheduled && (
+                    <span className="rounded-md bg-[var(--color-accent-surface)] px-2.5 py-1 text-[15px] font-semibold text-[var(--color-accent-inti)]">
+                      Scheduled
+                    </span>
+                  )}
+                  {isPinned && (
+                    <span className="rounded-md bg-[var(--color-status-published-bg)] px-2.5 py-1 text-[15px] font-semibold text-[var(--color-status-published-text)]">
+                      Pinned
+                    </span>
+                  )}
+                  <span className="rounded-md bg-[var(--color-surface-elevated)] px-2.5 py-1 text-[15px] font-medium text-[var(--color-text-muted)]">
+                    {DISPLAY_FONT_LABELS[displayFont]} · {DISPLAY_SIZE_LABELS[displaySize]}
+                  </span>
+                </div>
+                {selectedCategory && (
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: selectedCategory.color ?? 'var(--color-accent)' }}
+                    />
+                    <span className="text-[13.5px] font-medium tracking-[0.2em] text-[var(--color-text-muted)] uppercase">
+                      {selectedCategory.name}
+                    </span>
+                  </div>
+                )}
+                <h3
+                  className={cn(
+                    titleFontClass,
+                    'leading-tight font-semibold text-[var(--color-text-primary)]'
+                  )}
+                  style={{ fontSize: CARD_TITLE_SIZES[displaySize] }}
+                >
+                  {title || 'Untitled Announcement'}
+                </h3>
+                <p
+                  className="line-clamp-3 leading-relaxed text-[var(--color-text-secondary)]"
+                  style={{ fontSize: DETAIL_BODY_SIZES[displaySize] }}
+                >
+                  {body || 'Announcement body will appear here…'}
+                </p>
+                {registrationLink && !urlError && (
+                  <span className="inline-block text-[15px] font-medium tracking-wider text-[var(--color-accent)] uppercase">
+                    Register Here →
+                  </span>
+                )}
+              </div>
+            </GlassCard>
+          </section>
+        </aside>
       </div>
 
-      {/* Sticky ActionBar */}
-      <ActionBar
-        status={displayStatus}
-        saveState={saveState}
-        isPublished={isPublished}
-        onSaveDraft={handleSave}
-        onPublish={handlePublish}
-        onUnpublish={isPublished ? handleUnpublish : undefined}
-        isSaving={isSaving}
-        isPublishing={isPublishing}
-        saveLabel={status === 'draft' ? 'Save Draft' : 'Save Changes'}
-        publishLabel={isScheduled ? 'Submit Scheduled' : 'Submit for Review'}
-      />
+      {isNew ? (
+        <div className="announcement-static-actionbar mx-auto w-full max-w-[82rem] px-4 pb-8 sm:px-6 lg:px-8">
+          {actionBar}
+        </div>
+      ) : (
+        actionBar
+      )}
     </div>
   )
 }

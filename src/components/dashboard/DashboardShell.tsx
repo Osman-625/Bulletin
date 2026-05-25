@@ -83,7 +83,7 @@ export function DashboardShell({
         announcementSearchHref={ANNOUNCEMENT_SEARCH_HREFS[variant]}
       />
 
-      <main className="min-h-[100dvh] pt-16 pl-0 transition-[padding-left] duration-300 ease-[var(--ease-ui)] md:pl-[4.25rem] xl:pl-[18.5rem]">
+      <main className="min-h-[100dvh] pt-16 pl-0 transition-[padding-left] duration-300 ease-[var(--ease-ui)] md:pl-[5rem] xl:pl-[19rem]">
         {children}
       </main>
     </div>

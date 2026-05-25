@@ -266,14 +266,20 @@ export function DashboardSidebar({
         className={cn(
           'hidden md:flex',
           'fixed inset-y-0 left-0 z-40 flex-col',
-          'w-[4.25rem] xl:w-[18.5rem]',
+          'w-[5rem] xl:w-[19rem]',
           'bg-[var(--color-header-bg)]/88 backdrop-blur-2xl',
           'border-r border-[var(--color-border)]',
           'overflow-hidden shadow-[10px_0_36px_rgba(95,61,22,0.08)] transition-[width] duration-300 ease-[var(--ease-ui)]'
         )}
       >
-        <div className="flex items-center justify-center overflow-hidden border-b border-[var(--color-border)] px-2 py-4 xl:justify-start xl:px-5">
-          <BrandMark size="sm" showText textClassName="hidden xl:block" className="xl:gap-3" />
+        <div className="flex items-center justify-center overflow-hidden border-b border-[var(--color-border)] px-3 py-3 xl:justify-start xl:px-5">
+          <BrandMark
+            size="md"
+            showText
+            preload
+            textClassName="hidden xl:block [&>p:first-child]:text-lg"
+            className="xl:gap-3"
+          />
         </div>
 
         <nav className="min-h-0 flex-1 space-y-1.5 overflow-y-auto px-2 py-4 xl:px-4">

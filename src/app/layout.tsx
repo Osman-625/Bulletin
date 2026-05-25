@@ -62,7 +62,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  await headers()
+  const requestHeaders = await headers()
+  const nonce = requestHeaders.get('x-nonce') ?? undefined
 
   return (
     <html
@@ -78,7 +79,7 @@ export default async function RootLayout({
         >
           Skip to content
         </a>
-        <Providers>{children}</Providers>
+        <Providers nonce={nonce}>{children}</Providers>
         <Analytics />
         <SpeedInsights />
       </body>

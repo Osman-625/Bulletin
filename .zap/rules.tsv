@@ -1,4 +1,4 @@
 # ZAP baseline rules
 #
-# Add one tab-delimited exception per line only after triage:
-# <plugin-id> <action> (<reason>)
+# Keep finding-specific risk changes explicit. Do not add broad IGNORE suppressions
+# without a documented security review.

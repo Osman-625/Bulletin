@@ -13,6 +13,7 @@ const PUBLIC_FILE = /\.[^/]+$/
 
 type ContentSecurityPolicyOptions = {
   allowUnsafeEval?: boolean
+  supabaseHost?: string
 }
 
 export function createContentSecurityPolicy(
@@ -24,6 +25,8 @@ export function createContentSecurityPolicy(
     scriptSrc.push("'unsafe-eval'")
   }
 
+  const supabaseHost = options.supabaseHost ?? '*.supabase.co'
+
   return [
     "default-src 'self'",
     "base-uri 'self'",
@@ -32,9 +35,9 @@ export function createContentSecurityPolicy(
     "object-src 'none'",
     scriptSrc.join(' '),
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https://*.supabase.co",
+    `img-src 'self' data: blob: https://${supabaseHost}`,
     "font-src 'self'",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://vitals.vercel-insights.com https://*.sentry.io https://*.posthog.com https://*.i.posthog.com",
+    `connect-src 'self' https://${supabaseHost} wss://${supabaseHost} https://vitals.vercel-insights.com https://*.sentry.io https://*.posthog.com https://*.i.posthog.com`,
   ].join('; ')
 }
 
@@ -82,7 +85,10 @@ export async function proxy(request: NextRequest) {
   }
 
   const nonce = btoa(crypto.randomUUID())
-  const contentSecurityPolicy = createContentSecurityPolicy(nonce)
+  const supabaseHost = process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).host
+    : '*.supabase.co'
+  const contentSecurityPolicy = createContentSecurityPolicy(nonce, { supabaseHost })
   const requestHeaders = createRequestHeaders(request, nonce, contentSecurityPolicy)
   let supabaseResponse = createNextResponse(requestHeaders, contentSecurityPolicy)
 

@@ -5,17 +5,14 @@ import { derivePublicTopics } from '@/lib/announcements/feed'
 import AnnouncementCard from '@/components/announcements/AnnouncementCard'
 import type { AnnouncementCardVisual } from '@/components/announcements/AnnouncementCard'
 import CategoryFilter from '@/components/announcements/CategoryFilter'
-import { BrandMark } from '@/components/layout/BrandMark'
 import { PublicFeedAnalytics } from '@/components/analytics/PublicFeedAnalytics'
 import { announcementPath } from '@/lib/announcements/urls'
 import {
-  BOARD_SORT_OPTIONS,
   buildAnnouncementSections,
   daysUntilDeadline,
   formatCampusLongDate,
   normalizeBoardSort,
   sortAnnouncementsForPublicBoard,
-  type BoardSort,
 } from '@/lib/announcements/public-board'
 import {
   URGENCY_META,
@@ -23,6 +20,13 @@ import {
   normalizeAnnouncementUrgency,
 } from '@/lib/announcements/presentation'
 import type { AnnouncementWithRelations } from '@/lib/types'
+import { CampusMetric } from '@/components/public/CampusMetric'
+import { FilterSkeleton } from '@/components/public/FilterSkeleton'
+import { PublicEmptyState } from '@/components/public/PublicEmptyState'
+import { BoardOrderControls } from '@/components/public/BoardOrderControls'
+import { BoardStructurePanel } from '@/components/public/BoardStructurePanel'
+import { FeedPagination } from '@/components/public/FeedPagination'
+import { buildFeedHref } from '@/components/public/FeedHref'
 
 export const metadata = { title: { absolute: 'Campus Bulletin' } }
 
@@ -239,7 +243,7 @@ export default async function PublicFeedPage({
           />
 
           {announcements.length === 0 ? (
-            <EmptyState category={activeCategory} search={search} />
+            <PublicEmptyState category={activeCategory} search={search} />
           ) : (
             <section
               id="announcements"
@@ -365,26 +369,6 @@ export default async function PublicFeedPage({
   )
 }
 
-function buildFeedHref({
-  category,
-  q,
-  sort,
-  page,
-}: {
-  category?: string
-  q?: string
-  sort: BoardSort
-  page?: number
-}) {
-  const params = new URLSearchParams()
-  if (category) params.set('category', category)
-  if (q) params.set('q', q)
-  if (sort !== 'priority') params.set('sort', sort)
-  if (page && page > 1) params.set('page', String(page))
-  const query = params.toString()
-  return query ? `/?${query}` : '/'
-}
-
 function bentoTileClass(announcement: AnnouncementWithRelations) {
   return `public-page-reveal dense-bento-item dense-bento-standard ${
     announcement.banner_url ? 'card-with-image' : 'card-without-image'
@@ -407,291 +391,8 @@ function imageBentoVariant(
   return 'letterbox'
 }
 
-function isUrgentCard(announcement: AnnouncementWithRelations, now = Date.now()): boolean {
+function isUrgentCard(announcement: AnnouncementWithRelations, now: number): boolean {
   const rank = URGENCY_META[normalizeAnnouncementUrgency(announcement.urgency)].rank
   const days = daysUntilDeadline(announcement.expires_at, now)
   return rank > 0 || (days !== null && days <= 5)
-}
-
-function BoardOrderControls({
-  activeSort,
-  category,
-  search,
-  activeCategory,
-  count,
-}: {
-  activeSort: BoardSort
-  category?: string
-  search: string
-  activeCategory?: string | null
-  count: number
-}) {
-  const activeOption = BOARD_SORT_OPTIONS.find((option) => option.sort === activeSort)!
-
-  return (
-    <section
-      className="public-board-sort public-page-reveal future-bento-cell grid gap-3 rounded-[1.2rem] p-3 delay-4 sm:gap-4 sm:rounded-[1.35rem] sm:p-4 lg:grid-cols-[minmax(16rem,0.55fr)_minmax(0,1fr)] lg:items-center"
-      aria-labelledby="board-order-title"
-    >
-      <div>
-        <p className="future-kicker">{activeOption.eyebrow}</p>
-        <h2
-          id="board-order-title"
-          className="font-display mt-2 text-3xl leading-none font-bold text-[var(--color-text-primary)]"
-        >
-          {activeOption.label}
-        </h2>
-        <p className="mt-2 max-w-[30rem] text-sm leading-6 text-[var(--color-text-muted)]">
-          {activeCategory ?? 'All topics'} · {count} visible notices
-        </p>
-      </div>
-
-      <nav
-        className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] sm:grid sm:grid-cols-3 sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden"
-        aria-label="Sort order"
-      >
-        {BOARD_SORT_OPTIONS.map((option) => {
-          const active = option.sort === activeSort
-
-          return (
-            <Link
-              key={option.sort}
-              href={buildFeedHref({ category, q: search, sort: option.sort })}
-              data-sort={option.sort}
-              aria-current={active ? 'true' : undefined}
-              className="group min-h-11 min-w-[8.75rem] shrink-0 rounded-[0.95rem] border px-3 py-2 transition-[background,border-color,box-shadow,transform,color] duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] active:scale-[0.99] sm:min-h-24 sm:min-w-0 sm:p-4"
-              style={{
-                background: active ? 'var(--color-text-primary)' : 'var(--color-surface)',
-                borderColor: active ? 'var(--color-text-primary)' : 'var(--color-border)',
-                boxShadow: active ? 'var(--shadow-button-hover)' : 'none',
-                color: active ? 'var(--color-canvas)' : 'var(--color-text-primary)',
-              }}
-            >
-              <span className="font-mono text-[0.64rem] font-bold tracking-[0.16em] uppercase opacity-70">
-                {option.eyebrow}
-              </span>
-              <span className="mt-2 block text-base leading-tight font-bold">{option.label}</span>
-              <span className="mt-1 hidden text-xs leading-5 opacity-72 sm:block">
-                {option.summary}
-              </span>
-            </Link>
-          )
-        })}
-      </nav>
-    </section>
-  )
-}
-
-function FeedPagination({
-  page,
-  totalPages,
-  visibleStart,
-  visibleEnd,
-  total,
-  category,
-  search,
-  activeSort,
-}: {
-  page: number
-  totalPages: number
-  visibleStart: number
-  visibleEnd: number
-  total: number
-  category?: string
-  search: string
-  activeSort: BoardSort
-}) {
-  const progress =
-    totalPages > 0 ? `${Math.max(0, Math.min(100, (page / totalPages) * 100))}%` : '0%'
-
-  return (
-    <nav
-      className="mt-8 flex flex-col gap-3 rounded-[1.15rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
-      aria-label="Announcement pagination"
-    >
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-[var(--color-text-muted)]">
-          Showing{' '}
-          <span className="font-semibold text-[var(--color-text-primary)]">{visibleStart}</span> to{' '}
-          <span className="font-semibold text-[var(--color-text-primary)]">{visibleEnd}</span> of{' '}
-          <span className="font-semibold text-[var(--color-text-primary)]">{total}</span>
-        </p>
-        <div
-          className="pagination-progress mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-elevated)]"
-          aria-label="Pagination progress"
-          role="progressbar"
-          aria-valuemin={0}
-          aria-valuemax={totalPages}
-          aria-valuenow={page}
-        >
-          <div
-            className="h-full rounded-full bg-[var(--color-accent-inti)] transition-[width] duration-300 ease-[var(--ease-ui)]"
-            style={{ width: progress }}
-          />
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        {page > 1 ? (
-          <Link
-            href={buildFeedHref({ category, q: search, sort: activeSort, page: page - 1 })}
-            className="action-lift inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border)] px-3 text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
-          >
-            Previous
-          </Link>
-        ) : (
-          <span
-            aria-disabled="true"
-            className="inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-muted)] opacity-55"
-          >
-            Previous
-          </span>
-        )}
-
-        <span className="rounded-[0.85rem] bg-[var(--color-surface-elevated)] px-3 py-2 font-mono text-xs font-bold text-[var(--color-text-muted)]">
-          {page} / {totalPages}
-        </span>
-
-        {page < totalPages ? (
-          <Link
-            href={buildFeedHref({ category, q: search, sort: activeSort, page: page + 1 })}
-            className="action-lift inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border)] px-3 text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
-          >
-            Load more notices
-          </Link>
-        ) : (
-          <span
-            aria-disabled="true"
-            className="inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-muted)] opacity-55"
-          >
-            All caught up
-          </span>
-        )}
-      </div>
-    </nav>
-  )
-}
-
-function BoardStructurePanel({
-  activeSort,
-  featuredIsPinned,
-}: {
-  activeSort: BoardSort
-  featuredIsPinned: boolean
-}) {
-  const rows = [
-    {
-      label: featuredIsPinned ? 'Pinned first' : 'Featured first',
-      summary: featuredIsPinned ? 'Pinned notices are promoted first.' : 'A useful notice leads.',
-    },
-    { label: 'New today', summary: 'Fresh notices from today.' },
-    { label: 'Closing soon', summary: 'Deadlines move up when selected.' },
-    { label: 'Plan ahead', summary: 'Upcoming notices with time to plan.' },
-  ]
-
-  return (
-    <aside
-      className="future-bento-cell hidden rounded-[1.35rem] p-5 xl:flex xl:flex-col xl:justify-between"
-      aria-label="Board order structure"
-    >
-      <div>
-        <p className="future-kicker">Board order</p>
-        <h3 className="font-display mt-2 text-3xl leading-none font-bold text-[var(--color-text-primary)]">
-          How we sort this board
-        </h3>
-        <p className="mt-3 text-sm leading-6 text-[var(--color-text-muted)]">
-          Sorted by: {BOARD_SORT_OPTIONS.find((option) => option.sort === activeSort)?.label}
-        </p>
-      </div>
-
-      <div className="mt-6 grid gap-2">
-        {rows.map((row) => (
-          <div
-            key={row.label}
-            className="rounded-[0.95rem] border bg-[var(--color-surface)] px-4 py-3"
-            style={{ borderColor: 'var(--color-border-subtle)' }}
-          >
-            <p className="text-base leading-tight font-bold text-[var(--color-text-primary)]">
-              {row.label}
-            </p>
-            <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">{row.summary}</p>
-          </div>
-        ))}
-      </div>
-    </aside>
-  )
-}
-
-function CampusMetric({
-  value,
-  label,
-  wide = false,
-}: {
-  value: number | string
-  label: string
-  wide?: boolean
-}) {
-  return (
-    <div
-      className={
-        wide
-          ? 'rounded-[1.15rem] bg-[var(--color-surface)]/72 p-4 sm:col-span-1'
-          : 'rounded-[1.15rem] bg-[var(--color-surface)]/72 p-4'
-      }
-      style={{ border: '1px solid var(--color-border-subtle)' }}
-    >
-      <p
-        className={
-          wide
-            ? 'font-mono text-sm leading-5 font-bold text-[var(--color-text-primary)] sm:text-base'
-            : 'font-mono text-3xl leading-none font-bold text-[var(--color-text-primary)]'
-        }
-      >
-        {value}
-      </p>
-      <p className="mt-2 font-mono text-[0.65rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
-        {label}
-      </p>
-    </div>
-  )
-}
-
-function FilterSkeleton() {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {[40, 72, 64, 80, 56].map((width, index) => (
-        <div key={index} className="skeleton-shimmer h-11 rounded-[0.9rem]" style={{ width }} />
-      ))}
-    </div>
-  )
-}
-
-function EmptyState({ category, search }: { category?: string | null; search?: string }) {
-  return (
-    <div className="public-page-reveal future-bento-cell flex min-h-[38vh] flex-col items-center justify-center rounded-[1.75rem] px-5 py-16 text-center lg:min-h-[22rem]">
-      <BrandMark size="lg" showText={false} className="campus-logo-halo mb-6 rounded-[1.35rem]" />
-      <p className="font-display text-4xl leading-tight font-bold text-[var(--color-text-primary)] sm:text-5xl">
-        {search
-          ? 'No matching notices'
-          : category
-            ? 'No notices in this topic'
-            : 'The board is quiet'}
-      </p>
-      <p className="mt-4 max-w-[30rem] text-base leading-8 text-[var(--color-text-muted)]">
-        {search
-          ? `Nothing matches "${search}". Try a different term or clear your filters.`
-          : category
-            ? `No notices in ${category} right now. Browse all topics to keep scanning.`
-            : 'Check back tomorrow for new campus updates.'}
-      </p>
-      {(search || category) && (
-        <Link
-          href="/"
-          className="action-lift mt-6 inline-flex min-h-12 items-center rounded-[1rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-5 text-base font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
-        >
-          Browse all
-        </Link>
-      )}
-    </div>
-  )
 }

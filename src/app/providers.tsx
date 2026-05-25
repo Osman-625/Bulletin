@@ -3,9 +3,9 @@
 import { ThemeProvider } from 'next-themes'
 import { IdleLogout } from '@/components/auth/IdleLogout'
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children, nonce }: { children: React.ReactNode; nonce?: string }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem nonce={nonce}>
       <IdleLogout />
       {children}
     </ThemeProvider>

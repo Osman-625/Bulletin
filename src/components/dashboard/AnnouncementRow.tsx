@@ -1,6 +1,6 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, Clock, Edit2, Eye, FileImage, Pin } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -32,15 +32,14 @@ export type AnnouncementRowData = {
 
 interface AnnouncementRowProps {
   announcement: AnnouncementRowData
+  nowMs: number
   style?: React.CSSProperties
 }
 
-export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
-  const router = useRouter()
+export function AnnouncementRow({ announcement, nowMs, style }: AnnouncementRowProps) {
   const isDraft = announcement.status === 'draft'
   const urgency = normalizeAnnouncementUrgency(announcement.urgency)
   const urgencyMeta = URGENCY_META[urgency]
-  const nowMs = new Date().getTime()
   const scheduledDate = announcement.scheduled_publish_at
     ? new Date(announcement.scheduled_publish_at)
     : null
@@ -53,17 +52,7 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
   const isPinned =
     pinnedUntil !== null && !Number.isNaN(pinnedUntil.getTime()) && pinnedUntil.getTime() > nowMs
 
-  function handleRowClick(e: React.MouseEvent) {
-    // Prevent navigation if clicking action buttons
-    const target = e.target as HTMLElement
-    if (target.closest('[data-action]')) return
-    router.push(`/dashboard/announcements/${announcement.id}/edit`)
-  }
-
-  function handleEditClick(e: React.MouseEvent) {
-    e.stopPropagation()
-    router.push(`/dashboard/announcements/${announcement.id}/edit`)
-  }
+  const editHref = `/dashboard/announcements/${announcement.id}/edit`
 
   const dateSource =
     isScheduled && announcement.scheduled_publish_at
@@ -76,26 +65,20 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
   })
 
   return (
-    <div style={style}>
+    <div style={style} className="relative">
       <GlassCard
         hover
-        className={cn(
-          'group cursor-pointer overflow-hidden',
-          isDraft && 'border-dashed opacity-75'
-        )}
+        className={cn('group relative overflow-hidden', isDraft && 'border-dashed opacity-75')}
       >
-        <div
-          className="grid gap-4 p-4 sm:grid-cols-[5rem_minmax(0,1fr)_auto_auto] sm:items-center sm:gap-5"
-          onClick={handleRowClick}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault()
-              router.push(`/dashboard/announcements/${announcement.id}/edit`)
-            }
-          }}
-        >
+        {/* Stretched link — enables right-click / middle-click / keyboard nav on the whole card */}
+        <Link
+          href={editHref}
+          className="absolute inset-0 rounded-[inherit] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:outline-none focus-visible:ring-inset"
+          aria-label={`Edit: ${announcement.title}`}
+        />
+
+        <div className="grid gap-4 p-4 sm:grid-cols-[5rem_minmax(0,1fr)_auto_auto] sm:items-center sm:gap-5">
+          {/* Thumbnail */}
           <div className="flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-[0.9rem] border border-[var(--color-glass-border)] bg-[var(--color-surface-elevated)] sm:h-20 sm:w-20">
             {announcement.banner_url ? (
               <Image
@@ -112,23 +95,20 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
             )}
           </div>
 
+          {/* Content */}
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              {(() => {
-                return (
-                  <StatusBadge
-                    status={
-                      announcement.status as
-                        | 'draft'
-                        | 'submitted'
-                        | 'published'
-                        | 'rejected'
-                        | 'expired'
-                        | 'archived'
-                    }
-                  />
-                )
-              })()}
+              <StatusBadge
+                status={
+                  announcement.status as
+                    | 'draft'
+                    | 'submitted'
+                    | 'published'
+                    | 'rejected'
+                    | 'expired'
+                    | 'archived'
+                }
+              />
               {urgency !== 'normal' && (
                 <span
                   className="rounded-[0.45rem] px-2 py-1 font-mono text-[0.68rem] font-bold tracking-[0.12em] uppercase"
@@ -193,6 +173,7 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
             )}
           </div>
 
+          {/* Meta */}
           <div className="w-full shrink-0 text-left sm:w-auto sm:text-right">
             <p className="font-mono text-sm text-[var(--color-text-muted)]">{dateLabel}</p>
             <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">
@@ -210,23 +191,17 @@ export function AnnouncementRow({ announcement, style }: AnnouncementRowProps) {
             </p>
           </div>
 
+          {/* Visual actions — z-10 sits above the stretched link; aria-hidden since the link carries the label */}
           <div
-            className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto"
-            data-action="true"
+            className="relative z-10 flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto"
+            aria-hidden="true"
           >
-            <button
-              type="button"
-              data-action="true"
-              onClick={handleEditClick}
-              className="flex min-h-11 min-w-11 items-center justify-center rounded-[0.85rem] text-[var(--color-text-muted)] transition-[transform,background,color] duration-200 hover:-translate-y-px hover:bg-[var(--color-accent-surface)] hover:text-[var(--color-accent)] active:scale-[0.98]"
-              aria-label="Edit announcement"
-            >
+            <span className="flex min-h-11 min-w-11 items-center justify-center rounded-[0.85rem] text-[var(--color-text-muted)] transition-[background,color] duration-200 group-hover:bg-[var(--color-accent-surface)] group-hover:text-[var(--color-accent)]">
               <Edit2 size={16} />
-            </button>
+            </span>
             <ArrowRight
               size={16}
               className="hidden text-[var(--color-text-muted)] transition-transform duration-200 group-hover:translate-x-1 group-hover:text-[var(--color-accent)] sm:block"
-              aria-hidden="true"
             />
           </div>
         </div>

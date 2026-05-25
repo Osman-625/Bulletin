@@ -127,11 +127,13 @@ src/
     layout.tsx             Root layout, metadata, analytics providers
   proxy.ts                 Session refresh, CSP, role redirects
   components/
-    public/                Public cards, filters, branding, theme controls
-    dashboard/             Announcement forms and dashboard UI
-    admin/                 Admin and review components
-    owner/                 Owner resource components
-    ui/                    Shared UI primitives
+    announcements/         Public announcement cards, category filter, registration links
+    layout/                Header, footer, brand mark, theme toggle
+    navigation/            Back navigation
+    auth/                  Idle logout handler
+    analytics/             Public feed analytics
+    dashboard/             Announcement form and dashboard shell
+    account/               Account settings UI
   lib/
     announcements/         Public board grouping and sorting
     auth/                  Authorization helpers
@@ -370,14 +372,14 @@ The public UI uses the "Future Commons" system:
 - Branded poster and announcement card treatments
 - Intentional light/dark theme tokens
 
-Global tokens and animation primitives live in `src/app/globals.css`. Public-facing components live mostly under `src/components/public`.
+Global tokens and animation primitives live in `src/app/globals.css`. Public-facing components live under `src/components/announcements/` and `src/components/layout/`.
 
 ## Operational Notes
 
 - Do not bypass server actions for protected writes; they contain authorization and audit behavior.
 - Do not expose `SUPABASE_SERVICE_ROLE_KEY` to client components.
 - Use the generated `src/lib/database.types.ts` types when adding database-facing code.
-- Keep announcement date logic centralized in `src/lib/announcements/public-board.ts` and `src/lib/date-format.ts`.
+- Keep announcement date logic centralized in `src/lib/announcements/public-board.ts`.
 - Banner cleanup should be tested with `?dryRun=1` before deleting in a new environment.
 - Public announcement images depend on the `banner-images` bucket policies and Next remote image configuration.
 

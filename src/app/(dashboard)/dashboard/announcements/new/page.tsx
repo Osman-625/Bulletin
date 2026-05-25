@@ -11,7 +11,7 @@ import {
 } from '@/lib/announcements/presentation'
 import type { AnnouncementFormData } from '@/components/dashboard/AnnouncementForm'
 
-export const metadata = { title: 'New Announcement — Bulletin' }
+export const metadata = { title: 'New Announcement' }
 
 export default async function NewAnnouncementPage() {
   const access = await getCurrentAccessContext()
@@ -50,13 +50,28 @@ export default async function NewAnnouncementPage() {
   }
 
   return (
-    <AnnouncementForm
-      initialData={initialData}
-      categories={categories ?? []}
-      onSave={createAnnouncement}
-      onSaveAndPublish={createAndSubmitAnnouncement}
-      organizationId={organizationId}
-      isNew
-    />
+    <main className="dashboard-page new-announcement-page w-full py-5 sm:py-8 lg:py-10">
+      <section className="new-announcement-intro mx-auto mb-5 w-full max-w-[82rem] px-4 sm:px-6 lg:px-8">
+        <div className="dashboard-command-card rounded-[1.5rem] p-5 sm:p-6">
+          <p className="future-kicker">Publisher editor</p>
+          <h1 className="font-display mt-3 text-3xl leading-tight font-extrabold text-[var(--color-text-primary)] sm:text-4xl">
+            New announcement
+          </h1>
+          <p className="mt-3 max-w-[62ch] text-sm leading-6 text-[var(--color-text-secondary)]">
+            Write the notice first, then tune category, timing, and preview details before sending
+            it for review.
+          </p>
+        </div>
+      </section>
+
+      <AnnouncementForm
+        initialData={initialData}
+        categories={categories ?? []}
+        onSave={createAnnouncement}
+        onSaveAndPublish={createAndSubmitAnnouncement}
+        organizationId={organizationId}
+        isNew
+      />
+    </main>
   )
 }

@@ -18,6 +18,7 @@ import type {
   AnnouncementWithRelations,
   AnnouncementForReview,
   DbCategory,
+  OrgWithOwner,
   OrgWithMembers,
   PublisherWithOrgs,
 } from './types'
@@ -281,12 +282,16 @@ export async function getAnnouncementForReview(id: string): Promise<Announcement
   const access = await getCurrentAccessContext()
   if (!access || !canAccessAdminArea(access.role)) return null
 
+  if (access.role === 'admin' && access.orgIds.length === 0) return null
+
   const supabase = await createClient()
-  const { data, error: reviewAnnouncementError } = await supabase
-    .from('announcements')
-    .select(REVIEW_SELECT)
-    .eq('id', id)
-    .single()
+  let query = supabase.from('announcements').select(REVIEW_SELECT).eq('id', id)
+
+  if (access.role === 'admin') {
+    query = query.in('organization_id', access.orgIds)
+  }
+
+  const { data, error: reviewAnnouncementError } = await query.single()
 
   if (reviewAnnouncementError) {
     if (!isNoRowsError(reviewAnnouncementError)) {
@@ -299,10 +304,7 @@ export async function getAnnouncementForReview(id: string): Promise<Announcement
     return null
   }
 
-  if (!data) return null
-  if (access.role === 'admin' && !access.orgIds.includes(data.organization_id)) return null
-
-  return data as AnnouncementForReview | null
+  return (data ?? null) as AnnouncementForReview | null
 }
 
 /**
@@ -314,7 +316,7 @@ export async function getAnnouncementForReview(id: string): Promise<Announcement
  *
  * @returns Array of organizations with nested user relations, or empty array on error.
  */
-export async function getAllOrganizations() {
+export async function getAllOrganizations(): Promise<OrgWithOwner[]> {
   const access = await getCurrentAccessContext()
   if (!access || !canAccessAdminArea(access.role)) return []
 
@@ -323,7 +325,7 @@ export async function getAllOrganizations() {
   const supabase = await createClient()
   let query = supabase
     .from('organizations')
-    .select('*, users ( display_name, email )')
+    .select('*, owner:users!organizations_owner_id_fkey ( display_name, email )')
     .order('created_at', { ascending: false })
 
   if (access.role === 'admin') {
@@ -339,7 +341,7 @@ export async function getAllOrganizations() {
     })
     return []
   }
-  return data ?? []
+  return (data ?? []) as OrgWithOwner[]
 }
 
 /**
@@ -381,7 +383,57 @@ export async function getAllPublishers(): Promise<PublisherWithOrgs[]> {
   const access = await getCurrentAccessContext()
   if (!access || !canAccessAdminArea(access.role)) return []
 
+  if (access.role === 'admin' && access.orgIds.length === 0) return []
+
   const supabase = await createClient()
+
+  if (access.role === 'admin') {
+    // Fetch only publisher user IDs that belong to the admin's orgs, then
+    // query those users with their filtered memberships. Avoids loading all
+    // publishers into memory for JS-side org filtering.
+    const { data: memberships, error: membershipError } = await supabase
+      .from('organization_members')
+      .select('user_id')
+      .in('organization_id', access.orgIds)
+
+    if (membershipError) {
+      reportServerError('data.publishers.membership_query_failed', membershipError, {
+        actorId: access.userId,
+        role: access.role,
+        orgCount: access.orgIds.length,
+      })
+      return []
+    }
+
+    const publisherIds = [...new Set((memberships ?? []).map((m) => m.user_id))]
+    if (publisherIds.length === 0) return []
+
+    const { data, error: publishersError } = await supabase
+      .from('users')
+      .select(
+        '*, organization_members ( organization_id, member_role, organizations ( name, slug ) )'
+      )
+      .eq('role', 'publisher')
+      .in('id', publisherIds)
+      .order('created_at', { ascending: false })
+
+    if (publishersError) {
+      reportServerError('data.publishers.query_failed', publishersError, {
+        actorId: access.userId,
+        role: access.role,
+        orgCount: access.orgIds.length,
+      })
+      return []
+    }
+
+    return ((data ?? []) as PublisherWithOrgs[]).map((publisher) => ({
+      ...publisher,
+      organization_members: (publisher.organization_members ?? []).filter((m) =>
+        access.orgIds.includes(m.organization_id)
+      ),
+    }))
+  }
+
   const { data, error: publishersError } = await supabase
     .from('users')
     .select(
@@ -399,16 +451,7 @@ export async function getAllPublishers(): Promise<PublisherWithOrgs[]> {
     return []
   }
 
-  if (access.role !== 'admin') return (data ?? []) as PublisherWithOrgs[]
-
-  return ((data ?? []) as PublisherWithOrgs[])
-    .map((publisher) => ({
-      ...publisher,
-      organization_members: (publisher.organization_members ?? []).filter((membership) =>
-        access.orgIds.includes(membership.organization_id)
-      ),
-    }))
-    .filter((publisher) => publisher.organization_members.length > 0)
+  return (data ?? []) as PublisherWithOrgs[]
 }
 
 /**

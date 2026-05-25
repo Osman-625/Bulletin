@@ -46,6 +46,10 @@ export type OrgWithMembers = DbOrganization & {
   }[]
 }
 
+export type OrgWithOwner = DbOrganization & {
+  owner: Pick<DbUser, 'display_name' | 'email'> | null
+}
+
 export type PublisherWithOrgs = DbUser & {
   organization_members: {
     organization_id: string

@@ -1,0 +1,71 @@
+{
+  "project": {
+    "name": "Bulletin",
+    "rootInstructionFile": "AGENTS.md",
+    "stack": [
+      "Next.js 16.2.6 App Router",
+      "React 19",
+      "TypeScript",
+      "Tailwind CSS v4",
+      "Supabase Auth/Postgres/RLS/Storage",
+      "Vercel"
+    ],
+    "timezone": "Asia/Kuala_Lumpur"
+  },
+  "commands": {
+    "dev": "npm run dev",
+    "build": "npm run build",
+    "start": "npm run start",
+    "lint": "npm run lint",
+    "format": "npm run format",
+    "formatCheck": "npm run format:check",
+    "typecheck": "npx tsc --noEmit",
+    "test": "npm test",
+    "testWatch": "npm run test:watch",
+    "testE2E": "npm run test:e2e",
+    "testSmoke": "npm run test:smoke"
+  },
+  "mustReadBeforeCode": [
+    "AGENTS.md",
+    "node_modules/next/dist/docs/",
+    "src/lib/database.types.ts",
+    "src/app/globals.css",
+    "src/proxy.ts"
+  ],
+  "rules": {
+    "codeQuality": ".codex/rules/code-quality.md",
+    "database": ".codex/rules/database.md",
+    "errorHandling": ".codex/rules/error-handling.md",
+    "frontend": ".codex/rules/frontend.md",
+    "security": ".codex/rules/security.md",
+    "testing": ".codex/rules/testing.md"
+  },
+  "reviewers": {
+    "code": ".codex/agents/code-reviewer.md",
+    "security": ".codex/agents/security-reviewer.md",
+    "performance": ".codex/agents/performance-reviewer.md",
+    "frontend": ".codex/agents/frontend-designer.md",
+    "docs": ".codex/agents/doc-reviewer.md"
+  },
+  "workflows": {
+    "implement": ".codex/workflows/implement.md",
+    "debugFix": ".codex/workflows/debug-fix.md",
+    "review": ".codex/workflows/review.md",
+    "ship": ".codex/workflows/ship.md"
+  },
+  "protectedPaths": [
+    ".env",
+    ".env.*",
+    "secrets/**",
+    "**/*.pem",
+    "**/*.key",
+    "**/*.pfx",
+    "src/lib/database.types.ts"
+  ],
+  "notes": [
+    "Codex reads AGENTS.md automatically; this settings file is a project index, not an execution engine.",
+    "The project uses src/proxy.ts, not src/middleware.ts.",
+    "Never expose SUPABASE_SERVICE_ROLE_KEY to client code.",
+    "All announcement display dates use Asia/Kuala_Lumpur."
+  ]
+}

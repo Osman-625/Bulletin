@@ -72,7 +72,7 @@ export default async function OrgsPage() {
                   {org.name}
                 </p>
                 <p className="text-xs text-[var(--color-text-muted)]">
-                  Owner: {(org as { users?: { display_name?: string } }).users?.display_name ?? '—'}
+                  Owner: {org.owner?.display_name ?? '—'}
                 </p>
               </div>
               <p className="shrink-0 font-mono text-xs text-[var(--color-text-muted)]">

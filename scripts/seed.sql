@@ -1,1 +1,0 @@
-\ir ../supabase/seed.sql

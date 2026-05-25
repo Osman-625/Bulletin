@@ -6,7 +6,7 @@ import {
   AnnouncementsClient,
   type AnnouncementTab,
   type AnnouncementTabCounts,
-} from './AnnouncementsClient'
+} from '@/components/dashboard/AnnouncementsClient'
 import { CountUp } from '@/components/dashboard/CountUp'
 import { getCurrentAccessContext } from '@/lib/auth/authz'
 import { shouldScopeAnnouncementsToMembership } from '@/lib/announcements/access'
@@ -85,7 +85,9 @@ export default async function AnnouncementsPage({
   const currentPage = normalizeDashboardPage(page)
   const from = (currentPage - 1) * DASHBOARD_ANNOUNCEMENTS_PAGE_SIZE
   const to = from + DASHBOARD_ANNOUNCEMENTS_PAGE_SIZE - 1
-  const nowIso = new Date().toISOString()
+  const now = new Date()
+  const nowIso = now.toISOString()
+  const nowMs = now.getTime()
 
   let query = supabase.from('announcements').select(
     `
@@ -284,6 +286,7 @@ export default async function AnnouncementsPage({
           totalPages={totalPages}
           totalResults={totalResults}
           tabCounts={tabCounts}
+          nowMs={nowMs}
         />
       </section>
     </div>
