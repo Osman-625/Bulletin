@@ -17,12 +17,54 @@ function persistentBackendConfigured() {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
 }
 
+function productionRateLimitRequired() {
+  return process.env['NODE_ENV'] === 'production'
+}
+
+function failClosedRateLimit(options: RateLimitOptions): RateLimitResult {
+  const now = options.now ?? Date.now()
+  return {
+    limited: true,
+    remaining: 0,
+    resetAt: now + options.windowMs,
+    retryAfterSeconds: Math.max(Math.ceil(options.windowMs / 1000), 1),
+  }
+}
+
 export async function checkPersistentRateLimit(
   key: string,
   options: RateLimitOptions
 ): Promise<RateLimitResult> {
-  if (!persistentBackendConfigured() || process.env.RATE_LIMIT_BACKEND === 'memory') {
-    return fallbackRateLimit(key, options)
+  const persistentBackendRequired = productionRateLimitRequired()
+
+  if (process.env.RATE_LIMIT_BACKEND === 'memory') {
+    if (!persistentBackendRequired) return fallbackRateLimit(key, options)
+
+    reportServerError(
+      'security.rate_limit.persistent_unavailable',
+      new Error('RATE_LIMIT_BACKEND=memory is not allowed in production'),
+      {
+        key_fingerprint: keyFingerprint(key),
+        limit: options.limit,
+        window_ms: options.windowMs,
+      }
+    )
+    return failClosedRateLimit(options)
+  }
+
+  if (!persistentBackendConfigured()) {
+    if (!persistentBackendRequired) return fallbackRateLimit(key, options)
+
+    reportServerError(
+      'security.rate_limit.persistent_unavailable',
+      new Error('Persistent rate limit backend is not configured'),
+      {
+        key_fingerprint: keyFingerprint(key),
+        limit: options.limit,
+        window_ms: options.windowMs,
+      }
+    )
+    return failClosedRateLimit(options)
   }
 
   const now = options.now ?? Date.now()
@@ -55,6 +97,7 @@ export async function checkPersistentRateLimit(
       limit: options.limit,
       window_ms: options.windowMs,
     })
+    if (persistentBackendRequired) return failClosedRateLimit(options)
     return fallbackRateLimit(key, options)
   }
 }

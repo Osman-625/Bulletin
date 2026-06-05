@@ -30,7 +30,7 @@ export default async function LoginPage({
 
         <section className="relative flex flex-col justify-between gap-5 bg-[linear-gradient(140deg,var(--color-surface-elevated),var(--color-surface)_58%,var(--color-accent-surface))] px-6 py-6 pt-20 sm:gap-10 sm:px-10 sm:py-10 sm:pt-24 lg:px-14 lg:py-14">
           <div
-            className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,color-mix(in_oklab,var(--color-accent-inti)_13%,transparent),transparent_24%),radial-gradient(circle_at_88%_82%,rgba(212,148,31,0.12),transparent_26%)]"
+            className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,color-mix(in_oklab,var(--color-accent-inti)_13%,transparent),transparent_24%),radial-gradient(circle_at_88%_82%,color-mix(in_oklab,var(--color-gold)_12%,transparent),transparent_26%)]"
             aria-hidden="true"
           />
           <div className="relative">
@@ -77,13 +77,12 @@ export default async function LoginPage({
             )}
 
             {registered && (
-              <div
-                className="mb-5 rounded-lg border border-[var(--color-status-published-text)]/25 bg-[var(--color-status-published-bg)] px-4 py-3 text-sm text-[var(--color-status-published-text)]"
-                role="status"
+              <output
+                className="mb-5 block rounded-lg border border-[var(--color-status-published-text)]/25 bg-[var(--color-status-published-bg)] px-4 py-3 text-sm text-[var(--color-status-published-text)]"
                 aria-live="polite"
               >
                 Account created. Sign in with your new credentials.
-              </div>
+              </output>
             )}
 
             <form action={login} className="flex flex-col gap-4">
@@ -139,7 +138,7 @@ export default async function LoginPage({
 
             <Link
               href="/forgot-password"
-              className="mt-5 inline-flex w-full items-center justify-center rounded-xl px-3 py-3 text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)]"
+              className="mt-5 inline-flex w-full items-center justify-center rounded-xl p-3 text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)]"
             >
               Forgot password?
             </Link>

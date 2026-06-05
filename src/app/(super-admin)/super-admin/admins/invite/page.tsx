@@ -1,11 +1,12 @@
 import Link from 'next/link'
+import { ArrowLeft, Check, ShieldCheck } from 'lucide-react'
+import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { BackNavButton } from '@/components/navigation/BackNavButton'
 import { getCurrentAccessContext } from '@/lib/auth/authz'
 import { createClient } from '@/lib/supabase/server'
 import { inviteAdmin } from './actions'
 
-export const metadata = { title: 'Invite Admin — Bulletin Super Admin' }
+export const metadata = { title: 'Invite Admin, Bulletin Super Admin' }
 
 async function getCreatedInvite(created?: string) {
   if (!created) return null
@@ -37,89 +38,99 @@ export default async function InviteAdminPage({
     : null
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 px-6 py-8">
-      <BackNavButton
-        fallbackHref="/super-admin/admins"
-        className="min-w-0 rounded-lg border-transparent bg-transparent px-0 text-sm text-[var(--color-text-muted)] shadow-none hover:border-transparent hover:bg-transparent hover:text-[var(--color-text-primary)] hover:shadow-none"
-      >
-        Back to admins
-      </BackNavButton>
-
-      <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
-        Invite Admin
-      </h1>
+    <DashboardDeskPage className="flex flex-col gap-5">
+      <DashboardDeskHeader
+        kicker="Super directory"
+        title="Invite admin"
+        description="Generate an invite for admin or super-admin access."
+        action={{
+          href: '/super-admin/admins',
+          label: 'Back to admins',
+          icon: ArrowLeft,
+          variant: 'secondary',
+        }}
+      />
 
       {error && (
-        <div className="rounded-xl bg-[var(--color-status-rejected-bg)] px-4 py-3 text-sm text-[var(--color-status-rejected-text)]">
+        <div className="rounded-[var(--radius-control)] bg-[var(--color-status-rejected-bg)] px-4 py-3 text-sm text-[var(--color-status-rejected-text)]">
           {error}
         </div>
       )}
 
-      {inviteLink && createdInvite ? (
-        <GlassCard hover={false} className="space-y-4 p-6">
-          <div className="flex items-center gap-2 text-[var(--color-status-published-text)]">
-            <span className="text-xl">✓</span>
-            <p className="font-semibold">Invite created for {createdInvite.email}</p>
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <div>
+          {inviteLink && createdInvite ? (
+            <GlassCard hover={false} className="space-y-4 p-6">
+              <div className="flex items-center gap-2 text-[var(--color-status-published-text)]">
+                <Check size={18} aria-hidden="true" />
+                <p className="font-semibold">Invite created for {createdInvite.email}</p>
+              </div>
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                Share this link. It expires in 7 days.
+              </p>
+              <div className="rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3">
+                <code className="font-mono text-xs break-all text-[var(--color-text-primary)]">
+                  {inviteLink}
+                </code>
+              </div>
+              <Link href="/super-admin/admins/invite" className="pub-public-link justify-center">
+                Create another invite
+              </Link>
+            </GlassCard>
+          ) : (
+            <GlassCard hover={false} className="p-6">
+              <form action={inviteAdmin} className="space-y-5">
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-[var(--color-text-secondary)]"
+                  >
+                    Email
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    placeholder="admin@inti.edu.my"
+                    className="input-inti w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="role"
+                    className="block text-sm font-medium text-[var(--color-text-secondary)]"
+                  >
+                    Role
+                  </label>
+                  <select
+                    id="role"
+                    name="role"
+                    className="input-inti w-full rounded-[var(--radius-control)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] focus:outline-none"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="super_admin">Super Admin</option>
+                  </select>
+                </div>
+                <button type="submit" className="pub-btn-primary w-full justify-center">
+                  Generate invite link
+                </button>
+              </form>
+            </GlassCard>
+          )}
+        </div>
+
+        <GlassCard hover={false} className="h-fit p-5 xl:sticky xl:top-5">
+          <div className="mb-4 flex size-10 items-center justify-center rounded-[var(--radius-control)] bg-[var(--color-accent-surface)] text-[var(--color-accent-inti)]">
+            <ShieldCheck size={18} aria-hidden="true" />
           </div>
-          <p className="text-sm text-[var(--color-text-secondary)]">
-            Share this link. It expires in 7 days.
+          <h2 className="text-base font-semibold text-[var(--color-text-primary)]">Access level</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]">
+            Admins review submissions and manage publishers. Super admins can also manage platform
+            structure and access.
           </p>
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3">
-            <code className="font-mono text-xs break-all text-[var(--color-text-primary)]">
-              {inviteLink}
-            </code>
-          </div>
-          <Link
-            href="/super-admin/admins/invite"
-            className="block text-center text-sm text-[var(--color-accent)] hover:underline"
-          >
-            Create another invite
-          </Link>
         </GlassCard>
-      ) : (
-        <GlassCard hover={false} className="p-6">
-          <form action={inviteAdmin} className="space-y-5">
-            <div className="space-y-1.5">
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-[var(--color-text-secondary)]"
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                placeholder="admin@inti.edu.my"
-                className="input-inti w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label
-                htmlFor="role"
-                className="block text-sm font-medium text-[var(--color-text-secondary)]"
-              >
-                Role
-              </label>
-              <select
-                id="role"
-                name="role"
-                className="input-inti w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] focus:outline-none"
-              >
-                <option value="admin">Admin</option>
-                <option value="super_admin">Super Admin</option>
-              </select>
-            </div>
-            <button
-              type="submit"
-              className="w-full rounded-xl bg-[var(--color-accent)] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)]"
-            >
-              Generate Invite Link
-            </button>
-          </form>
-        </GlassCard>
-      )}
-    </div>
+      </div>
+    </DashboardDeskPage>
   )
 }

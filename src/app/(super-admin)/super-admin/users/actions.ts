@@ -10,6 +10,10 @@ import {
   getDefaultAppPath,
   type AppRole,
 } from '@/lib/auth/authz'
+import {
+  TEMPORARY_PASSWORD_MIN_LENGTH,
+  validateTemporaryPassword,
+} from '@/lib/auth/password-policy'
 import { reportServerError } from '@/lib/error-reporting'
 import { createAdminClient } from '@/lib/supabase/admin'
 
@@ -34,8 +38,9 @@ export async function resetUserPassword(formData: FormData) {
   const targetUserId = formData.get('user_id') as string
   const tempPassword = formData.get('temp_password') as string
 
-  if (!tempPassword || tempPassword.length < 8) {
-    redirect('/super-admin/users?error=Password+must+be+at+least+8+characters')
+  const passwordValidation = validateTemporaryPassword(tempPassword, TEMPORARY_PASSWORD_MIN_LENGTH)
+  if (!passwordValidation.valid) {
+    redirect(usersErrorHref(passwordValidation.message))
   }
 
   const adminClient = createAdminClient()
@@ -114,8 +119,9 @@ export async function fulfillPasswordResetRequest(
   const tempPassword = (formData.get('temp_password') as string | null) ?? ''
 
   if (!requestId) return { error: 'Missing reset request.' }
-  if (tempPassword.length < 8) {
-    return { error: 'Temporary password must be at least 8 characters.' }
+  const passwordValidation = validateTemporaryPassword(tempPassword, TEMPORARY_PASSWORD_MIN_LENGTH)
+  if (!passwordValidation.valid) {
+    return { error: passwordValidation.message }
   }
 
   const adminClient = createAdminClient()

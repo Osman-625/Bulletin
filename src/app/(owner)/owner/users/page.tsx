@@ -1,7 +1,11 @@
+import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { UserPlus } from 'lucide-react'
 import { GlassCard } from '@/components/dashboard/GlassCard'
+import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
 import { logAuditEvent } from '@/lib/audit'
+import { formatCampusShortDate } from '@/lib/announcements/public-board'
 import { createServiceClient } from '@/lib/supabase/server'
 import {
   canAccessOwnerArea,
@@ -11,8 +15,13 @@ import {
   getDefaultAppPath,
   type AppRole,
 } from '@/lib/auth/authz'
+import {
+  TEMPORARY_PASSWORD_MIN_LENGTH,
+  validateTemporaryPassword,
+} from '@/lib/auth/password-policy'
 import { syncAuthUsersToProfiles } from '@/lib/auth/sync-users'
 import { reportServerError } from '@/lib/error-reporting'
+import type { DbUser } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'All Users — Bulletin Owner' }
@@ -26,10 +35,11 @@ const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
   publisher: 'Publisher',
 }
+const OWNER_ROLE_KEYS = Object.keys(ROLE_LABELS)
 
 const LEVEL_COLOR: Record<number, string> = {
   0: 'var(--color-gold)',
-  1: '#7C3AED',
+  1: 'var(--color-navy)',
   2: 'var(--color-accent-inti)',
   3: 'var(--color-text-muted)',
 }
@@ -83,7 +93,7 @@ function UserPagination({
         Page {page} of {totalPages}
       </p>
       <div className="flex items-center gap-2">
-        <a
+        <Link
           href={ownerUsersHref({ role, page: previousPage })}
           aria-disabled={page <= 1}
           className={`inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
@@ -93,8 +103,8 @@ function UserPagination({
           }`}
         >
           Previous
-        </a>
-        <a
+        </Link>
+        <Link
           href={ownerUsersHref({ role, page: nextPage })}
           aria-disabled={page >= totalPages}
           className={`inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
@@ -104,9 +114,356 @@ function UserPagination({
           }`}
         >
           Next
-        </a>
+        </Link>
       </div>
     </nav>
+  )
+}
+
+function ownerUserFormError(error: string) {
+  if (error === 'missing_fields') return 'All fields are required.'
+  if (error === 'invalid_role') return 'That role is not allowed from this screen.'
+  return error
+}
+
+function OwnerNewUserForm({ err, assignableRoles }: { err?: string; assignableRoles: AppRole[] }) {
+  return (
+    <GlassCard hover={false} className="p-6">
+      <p className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">New User</p>
+      {err && (
+        <p className="mb-3 text-xs text-[var(--color-status-rejected-text)]">
+          {ownerUserFormError(err)}
+        </p>
+      )}
+      <form action={createUser} className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label
+              htmlFor="owner-user-display-name"
+              className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]"
+            >
+              Username *
+            </label>
+            <input
+              id="owner-user-display-name"
+              name="display_name"
+              required
+              placeholder="john_doe"
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="owner-user-email"
+              className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]"
+            >
+              Email <span className="opacity-50">(optional)</span>
+            </label>
+            <input
+              id="owner-user-email"
+              name="email"
+              type="email"
+              placeholder="user@inti.edu.my"
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="owner-user-password"
+              className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]"
+            >
+              Temporary password *
+            </label>
+            <input
+              id="owner-user-password"
+              name="password"
+              type="password"
+              required
+              minLength={TEMPORARY_PASSWORD_MIN_LENGTH}
+              placeholder={`At least ${TEMPORARY_PASSWORD_MIN_LENGTH} characters`}
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="owner-user-role"
+              className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]"
+            >
+              Role *
+            </label>
+            <select
+              id="owner-user-role"
+              name="role"
+              required
+              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
+            >
+              {assignableRoles.map((role) => (
+                <option key={role} value={role}>
+                  {ROLE_LABELS[role]} (L{PRIVILEGE[role]})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <button
+          type="submit"
+          className="rounded-xl bg-[var(--color-accent)] px-5 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90"
+        >
+          Create User
+        </button>
+        <p className="text-xs text-[var(--color-text-muted)]">
+          The user must replace this temporary password the first time they sign in.
+        </p>
+      </form>
+    </GlassCard>
+  )
+}
+
+function OwnerRoleFilterTabs({
+  filterRole,
+  roleCounts,
+  allUsersTotal,
+}: {
+  filterRole?: string
+  roleCounts: Record<string, number>
+  allUsersTotal: number
+}) {
+  const tabs = [
+    { key: '', label: `All (${allUsersTotal})` },
+    ...OWNER_ROLE_KEYS.map((role) => ({
+      key: role,
+      label: `${ROLE_LABELS[role]} (${roleCounts[role] ?? 0})`,
+    })),
+  ]
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {tabs.map(({ key, label }) => (
+        <Link
+          key={key}
+          href={ownerUsersHref({ role: key || undefined })}
+          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            filterRole === key || (!filterRole && !key)
+              ? 'bg-[var(--color-accent)] text-white'
+              : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+          }`}
+        >
+          {label}
+        </Link>
+      ))}
+    </div>
+  )
+}
+
+function OwnerUsersEmptyState({ filterRole }: { filterRole?: string }) {
+  return (
+    <GlassCard hover={false} className="p-8">
+      <output className="mx-auto block max-w-md text-center">
+        <span className="block text-sm font-semibold text-[var(--color-text-primary)]">
+          No users match this view
+        </span>
+        <span className="mt-1 block text-sm text-[var(--color-text-secondary)]">
+          {filterRole
+            ? `There are no ${ROLE_LABELS[filterRole] ?? filterRole} users on the platform.`
+            : 'No synced users are available yet.'}
+        </span>
+        {filterRole && (
+          <Link
+            href="/owner/users"
+            className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-[var(--color-surface-elevated)] px-4 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+          >
+            Clear the role filter
+          </Link>
+        )}
+      </output>
+    </GlassCard>
+  )
+}
+
+function OwnerUserEditPanel({
+  user,
+  role,
+  assignableRoles,
+}: {
+  user: DbUser
+  role: UserRole
+  assignableRoles: AppRole[]
+}) {
+  return (
+    <div className="space-y-4 border-t border-[var(--color-border)] px-5 pt-3 pb-4">
+      <p className="text-xs font-medium tracking-wider text-[var(--color-text-secondary)] uppercase">
+        Assign Role
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {assignableRoles.map((assignableRole) => (
+          <form key={assignableRole} action={setRole.bind(null, user.id, assignableRole)}>
+            <button
+              type="submit"
+              className={`rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+                role === assignableRole
+                  ? 'bg-[var(--color-accent)] text-white'
+                  : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-surface)] hover:text-[var(--color-accent)]'
+              }`}
+            >
+              {ROLE_LABELS[assignableRole]}{' '}
+              <span className="font-mono opacity-50">L{PRIVILEGE[assignableRole]}</span>
+            </button>
+          </form>
+        ))}
+      </div>
+      <form action={resetPassword.bind(null, user.id)} className="flex items-center gap-2">
+        <input
+          name="temp_password"
+          type="password"
+          aria-label={`New temporary password for ${user.display_name}`}
+          required
+          minLength={TEMPORARY_PASSWORD_MIN_LENGTH}
+          placeholder={`At least ${TEMPORARY_PASSWORD_MIN_LENGTH} characters`}
+          className="w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
+        />
+        <button
+          type="submit"
+          className="shrink-0 rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-2 text-xs font-semibold text-[var(--color-status-submitted-text)] transition-opacity hover:opacity-80"
+        >
+          Set Password
+        </button>
+      </form>
+    </div>
+  )
+}
+
+function OwnerUserDeletePanel({ user }: { user: DbUser }) {
+  return (
+    <div className="space-y-3 border-t border-[var(--color-border)] px-5 pt-3 pb-4">
+      <p className="text-sm font-semibold text-[var(--color-status-rejected-text)]">
+        Delete {user.display_name}?
+      </p>
+      <p className="text-xs text-[var(--color-text-secondary)]">
+        This permanently removes their account and all associated data. This cannot be undone.
+      </p>
+      <form action={deleteUser.bind(null, user.id)}>
+        <button
+          type="submit"
+          className="rounded-xl bg-[var(--color-status-rejected-text)] px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-80"
+        >
+          Yes, delete permanently
+        </button>
+      </form>
+    </div>
+  )
+}
+
+function OwnerUserCard({
+  user,
+  myId,
+  actor,
+  base,
+  separator,
+  edit,
+  confirm,
+  assignableRoles,
+}: {
+  user: DbUser
+  myId: string
+  actor: { id: string; role: AppRole; orgIds: string[] }
+  base: string
+  separator: string
+  edit?: string
+  confirm?: string
+  assignableRoles: AppRole[]
+}) {
+  const isMe = user.id === myId
+  const role = user.role as UserRole
+  const level = PRIVILEGE[role] ?? 3
+  const isEditing = edit === user.id
+  const isConfirming = confirm === user.id
+  const canManage = canManageUser(actor, { id: user.id, role: role as AppRole, orgIds: [] })
+
+  return (
+    <GlassCard
+      data-testid="user-card"
+      data-user-email={user.email}
+      data-user-role={role}
+      data-current-user={isMe ? 'true' : 'false'}
+      hover={false}
+      className={
+        isConfirming
+          ? 'ring-1 ring-[var(--color-status-rejected-text)]'
+          : isEditing
+            ? 'ring-1 ring-[var(--color-accent)]'
+            : ''
+      }
+    >
+      <div className="flex items-center gap-4 px-5 py-4">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-elevated)]">
+          <span className="text-sm font-bold text-[var(--color-text-secondary)]">
+            {user.display_name.charAt(0).toUpperCase()}
+          </span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+              {user.display_name}
+            </p>
+            <span className="rounded bg-[var(--color-surface-elevated)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-text-muted)] uppercase">
+              {ROLE_LABELS[role] ?? role}
+            </span>
+            <span
+              className="rounded bg-[var(--color-surface-elevated)] px-1.5 py-0.5 font-mono text-[15px] font-bold"
+              style={{ color: LEVEL_COLOR[level] }}
+            >
+              L{level}
+            </span>
+            {isMe && (
+              <span className="rounded bg-[var(--color-accent-surface)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-accent)] uppercase">
+                You
+              </span>
+            )}
+            {user.force_password_change && (
+              <span className="rounded bg-[var(--color-status-submitted-bg)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-status-submitted-text)] uppercase">
+                Must change pw
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{user.email}</p>
+        </div>
+
+        <p className="hidden shrink-0 font-mono text-xs text-[var(--color-text-muted)] sm:block">
+          {formatCampusShortDate(user.created_at)}
+        </p>
+
+        {canManage && !isEditing && !isConfirming && (
+          <div className="flex shrink-0 gap-2">
+            <Link
+              href={`${base}${separator}edit=${user.id}`}
+              className="rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+            >
+              Edit
+            </Link>
+            <Link
+              href={`${base}${separator}confirm=${user.id}`}
+              className="rounded-lg bg-[var(--color-status-rejected-bg)] px-3 py-1.5 text-xs font-medium text-[var(--color-status-rejected-text)] transition-opacity hover:opacity-80"
+            >
+              Delete
+            </Link>
+          </div>
+        )}
+        {(isEditing || isConfirming) && (
+          <Link
+            href={base}
+            className="shrink-0 rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+          >
+            Cancel
+          </Link>
+        )}
+      </div>
+
+      {isEditing && canManage && (
+        <OwnerUserEditPanel user={user} role={role} assignableRoles={assignableRoles} />
+      )}
+      {isConfirming && canManage && <OwnerUserDeletePanel user={user} />}
+    </GlassCard>
   )
 }
 
@@ -117,7 +474,6 @@ async function createUser(formData: FormData) {
   if (!access) redirect('/login')
   if (!canAccessOwnerArea(access.role)) redirect(getDefaultAppPath(access.role))
 
-  const supabase = await createServiceClient()
   const displayName = (formData.get('display_name') as string).trim()
   const rawEmail = (formData.get('email') as string).trim()
   const email = rawEmail || `${displayName.toLowerCase().replace(/\s+/g, '_')}@bulletin.internal`
@@ -126,6 +482,9 @@ async function createUser(formData: FormData) {
   const assignableRoles = getAssignableRoles(access.role)
   if (!displayName || !password || !role) redirect('/owner/users?add=true&err=missing_fields')
   if (!assignableRoles.includes(role)) redirect('/owner/users?add=true&err=invalid_role')
+  const passwordValidation = validateTemporaryPassword(password)
+  if (!passwordValidation.valid) redirect(userErrorHref(passwordValidation.message, true))
+  const supabase = await createServiceClient()
   const { data: authData, error: authCreateError } = await supabase.auth.admin.createUser({
     email,
     password,
@@ -254,7 +613,8 @@ async function resetPassword(userId: string, formData: FormData) {
   )
     return
   const temp = formData.get('temp_password') as string
-  if (!temp || temp.length < 8) redirect('/owner/users?msg=Password+must+be+at+least+8+characters.')
+  const passwordValidation = validateTemporaryPassword(temp)
+  if (!passwordValidation.valid) redirect(userErrorHref(passwordValidation.message))
   const { error: authUpdateError } = await supabase.auth.admin.updateUserById(userId, {
     password: temp,
   })
@@ -356,9 +716,9 @@ export default async function OwnerUsersPage({
     page?: string
   }>
 }) {
-  const { role: filterRole, msg, edit, confirm, add, err, error, page } = await searchParams
+  const [{ role: filterRole, msg, edit, confirm, add, err, error, page }, access] =
+    await Promise.all([searchParams, getCurrentAccessContext()])
   const isAdding = add === 'true'
-  const access = await getCurrentAccessContext()
   if (!access) redirect('/login')
   if (!canAccessOwnerArea(access.role)) redirect(getDefaultAppPath(access.role))
 
@@ -377,7 +737,25 @@ export default async function OwnerUsersPage({
     .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
   if (filterRole && ROLE_LABELS[filterRole]) query = query.eq('role', filterRole as AppRole)
-  const { data: usersData, count: usersTotal, error: usersError } = await query.range(from, to)
+  const [{ data: usersData, count: usersTotal, error: usersError }, roleCountEntries] =
+    await Promise.all([
+      query.range(from, to),
+      Promise.all(
+        OWNER_ROLE_KEYS.map(async (role) => {
+          const { count, error: roleCountError } = await supabase
+            .from('users')
+            .select('id', { count: 'exact', head: true })
+            .eq('role', role as AppRole)
+          if (roleCountError) {
+            reportServerError('owner.users.role_count_query', roleCountError, {
+              actorId: access.userId,
+              countedRole: role,
+            })
+          }
+          return [role, count ?? 0] as const
+        })
+      ),
+    ])
   if (usersError) {
     reportServerError('owner.users.list_query', usersError, {
       actorId: access.userId,
@@ -386,125 +764,31 @@ export default async function OwnerUsersPage({
     })
   }
 
-  const roleCountEntries = await Promise.all(
-    Object.keys(ROLE_LABELS).map(async (role) => {
-      const { count, error: roleCountError } = await supabase
-        .from('users')
-        .select('id', { count: 'exact', head: true })
-        .eq('role', role as AppRole)
-      if (roleCountError) {
-        reportServerError('owner.users.role_count_query', roleCountError, {
-          actorId: access.userId,
-          countedRole: role,
-        })
-      }
-      return [role, count ?? 0] as const
-    })
-  )
-
   const users = usersError ? [] : (usersData ?? [])
   const roleCounts = Object.fromEntries(roleCountEntries)
   const allUsersTotal = Object.values(roleCounts).reduce((sum, count) => sum + count, 0)
   const visibleUsersTotal = usersTotal ?? users.length
   const totalPages = Math.max(1, Math.ceil(visibleUsersTotal / OWNER_USERS_PAGE_SIZE))
+  const base = ownerUsersHref({ role: filterRole, page: usersPage })
+  const separator = base.includes('?') ? '&' : '?'
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
-            All Users
-          </h1>
-          <p className="mt-1 text-[var(--color-text-secondary)]">
-            {visibleUsersTotal} users
-            {filterRole ? ` · ${ROLE_LABELS[filterRole] ?? filterRole}` : ''}
-          </p>
-        </div>
-        <a
-          href={isAdding ? '/owner/users' : '/owner/users?add=true'}
-          className={`shrink-0 rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${isAdding ? 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]' : 'bg-[var(--color-accent)] text-white hover:opacity-90'}`}
-        >
-          {isAdding ? 'Cancel' : '+ Add User'}
-        </a>
-      </div>
+    <DashboardDeskPage className="flex flex-col gap-5">
+      <DashboardDeskHeader
+        kicker="Owner directory"
+        title="All users"
+        description={`${visibleUsersTotal} users${
+          filterRole ? ` · ${ROLE_LABELS[filterRole] ?? filterRole}` : ''
+        } across Bulletin roles and access levels.`}
+        action={{
+          href: isAdding ? '/owner/users' : '/owner/users?add=true',
+          label: isAdding ? 'Cancel' : 'Add user',
+          icon: UserPlus,
+          variant: isAdding ? 'secondary' : 'primary',
+        }}
+      />
 
-      {isAdding && (
-        <GlassCard hover={false} className="p-6">
-          <p className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">New User</p>
-          {err && (
-            <p className="mb-3 text-xs text-[var(--color-status-rejected-text)]">
-              {err === 'missing_fields'
-                ? 'All fields are required.'
-                : err === 'invalid_role'
-                  ? 'That role is not allowed from this screen.'
-                  : err}
-            </p>
-          )}
-          <form action={createUser} className="space-y-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
-                  Username *
-                </label>
-                <input
-                  name="display_name"
-                  required
-                  placeholder="john_doe"
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
-                  Email <span className="opacity-50">(optional)</span>
-                </label>
-                <input
-                  name="email"
-                  type="email"
-                  placeholder="user@inti.edu.my"
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
-                  Temporary password *
-                </label>
-                <input
-                  name="password"
-                  type="password"
-                  required
-                  placeholder="Must be changed on login"
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]">
-                  Role *
-                </label>
-                <select
-                  name="role"
-                  required
-                  className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-                >
-                  {assignableRoles.map((r) => (
-                    <option key={r} value={r}>
-                      {ROLE_LABELS[r]} (L{PRIVILEGE[r]})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <button
-              type="submit"
-              className="rounded-xl bg-[var(--color-accent)] px-5 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90"
-            >
-              Create User
-            </button>
-            <p className="text-xs text-[var(--color-text-muted)]">
-              The user must replace this temporary password the first time they sign in.
-            </p>
-          </form>
-        </GlassCard>
-      )}
+      {isAdding && <OwnerNewUserForm err={err} assignableRoles={assignableRoles} />}
 
       {msg && (
         <div className="rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-3 font-mono text-sm text-[var(--color-status-submitted-text)]">
@@ -518,214 +802,29 @@ export default async function OwnerUsersPage({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        {[
-          { key: '', label: `All (${allUsersTotal})` },
-          ...Object.keys(ROLE_LABELS).map((r) => ({
-            key: r,
-            label: `${ROLE_LABELS[r]} (${roleCounts[r] ?? 0})`,
-          })),
-        ].map(({ key, label }) => (
-          <a
-            key={key}
-            href={ownerUsersHref({ role: key || undefined })}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-              filterRole === key || (!filterRole && !key)
-                ? 'bg-[var(--color-accent)] text-white'
-                : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-            }`}
-          >
-            {label}
-          </a>
-        ))}
-      </div>
+      <OwnerRoleFilterTabs
+        filterRole={filterRole}
+        roleCounts={roleCounts}
+        allUsersTotal={allUsersTotal}
+      />
 
       <div className="space-y-2">
-        {users.length === 0 && (
-          <GlassCard hover={false} className="p-8">
-            <div role="status" className="mx-auto max-w-md text-center">
-              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                No users match this view
-              </p>
-              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                {filterRole
-                  ? `There are no ${ROLE_LABELS[filterRole] ?? filterRole} users on the platform.`
-                  : 'No synced users are available yet.'}
-              </p>
-              {filterRole && (
-                <a
-                  href="/owner/users"
-                  className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-[var(--color-surface-elevated)] px-4 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
-                >
-                  Clear the role filter
-                </a>
-              )}
-            </div>
-          </GlassCard>
-        )}
-        {users.map((u) => {
-          const isMe = u.id === myId
-          const role = u.role as UserRole
-          const level = PRIVILEGE[role] ?? 3
-          const isEditing = edit === u.id
-          const isConfirming = confirm === u.id
-          const canManage = canManageUser(
-            { id: access.userId, role: access.role, orgIds: access.orgIds },
-            { id: u.id, role: role as AppRole, orgIds: [] }
-          )
-          const base = ownerUsersHref({ role: filterRole, page: usersPage })
-          const separator = base.includes('?') ? '&' : '?'
-
-          return (
-            <GlassCard
-              key={u.id}
-              data-testid="user-card"
-              data-user-email={u.email}
-              data-user-role={role}
-              data-current-user={isMe ? 'true' : 'false'}
-              hover={false}
-              className={
-                isConfirming
-                  ? 'ring-1 ring-[var(--color-status-rejected-text)]'
-                  : isEditing
-                    ? 'ring-1 ring-[var(--color-accent)]'
-                    : ''
-              }
-            >
-              <div className="flex items-center gap-4 px-5 py-4">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-elevated)]">
-                  <span className="text-sm font-bold text-[var(--color-text-secondary)]">
-                    {u.display_name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                      {u.display_name}
-                    </p>
-                    <span className="rounded bg-[var(--color-surface-elevated)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-text-muted)] uppercase">
-                      {ROLE_LABELS[role] ?? role}
-                    </span>
-                    <span
-                      className="rounded bg-[var(--color-surface-elevated)] px-1.5 py-0.5 font-mono text-[15px] font-bold"
-                      style={{ color: LEVEL_COLOR[level] }}
-                    >
-                      L{level}
-                    </span>
-                    {isMe && (
-                      <span className="rounded bg-[var(--color-accent-surface)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-accent)] uppercase">
-                        You
-                      </span>
-                    )}
-                    {u.force_password_change && (
-                      <span className="rounded bg-[var(--color-status-submitted-bg)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-status-submitted-text)] uppercase">
-                        Must change pw
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-0.5 text-xs text-[var(--color-text-muted)]">{u.email}</p>
-                </div>
-
-                <p className="hidden shrink-0 font-mono text-xs text-[var(--color-text-muted)] sm:block">
-                  {new Date(u.created_at).toLocaleDateString('en-MY', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  })}
-                </p>
-
-                {canManage && !isEditing && !isConfirming && (
-                  <div className="flex shrink-0 gap-2">
-                    <a
-                      href={`${base}${separator}edit=${u.id}`}
-                      className="rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
-                    >
-                      Edit
-                    </a>
-                    <a
-                      href={`${base}${separator}confirm=${u.id}`}
-                      className="rounded-lg bg-[var(--color-status-rejected-bg)] px-3 py-1.5 text-xs font-medium text-[var(--color-status-rejected-text)] transition-opacity hover:opacity-80"
-                    >
-                      Delete
-                    </a>
-                  </div>
-                )}
-                {(isEditing || isConfirming) && (
-                  <a
-                    href={base}
-                    className="shrink-0 rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
-                  >
-                    Cancel
-                  </a>
-                )}
-              </div>
-
-              {isEditing && canManage && (
-                <div className="space-y-4 border-t border-[var(--color-border)] px-5 pt-3 pb-4">
-                  <p className="text-xs font-medium tracking-wider text-[var(--color-text-secondary)] uppercase">
-                    Assign Role
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {assignableRoles.map((r) => (
-                      <form key={r} action={setRole.bind(null, u.id, r)}>
-                        <button
-                          type="submit"
-                          className={`rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
-                            role === r
-                              ? 'bg-[var(--color-accent)] text-white'
-                              : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-surface)] hover:text-[var(--color-accent)]'
-                          }`}
-                        >
-                          {ROLE_LABELS[r]}{' '}
-                          <span className="font-mono opacity-50">L{PRIVILEGE[r]}</span>
-                        </button>
-                      </form>
-                    ))}
-                  </div>
-                  <form action={resetPassword.bind(null, u.id)} className="flex items-center gap-2">
-                    <input
-                      name="temp_password"
-                      type="password"
-                      required
-                      minLength={8}
-                      placeholder="New temp password"
-                      className="w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-                    />
-                    <button
-                      type="submit"
-                      className="shrink-0 rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-2 text-xs font-semibold text-[var(--color-status-submitted-text)] transition-opacity hover:opacity-80"
-                    >
-                      Set Password
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {isConfirming && canManage && (
-                <div className="space-y-3 border-t border-[var(--color-border)] px-5 pt-3 pb-4">
-                  <p className="text-sm font-semibold text-[var(--color-status-rejected-text)]">
-                    Delete {u.display_name}?
-                  </p>
-                  <p className="text-xs text-[var(--color-text-secondary)]">
-                    This permanently removes their account and all associated data. This cannot be
-                    undone.
-                  </p>
-                  <form action={deleteUser.bind(null, u.id)}>
-                    <button
-                      type="submit"
-                      className="rounded-xl bg-[var(--color-status-rejected-text)] px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-80"
-                    >
-                      Yes, delete permanently
-                    </button>
-                  </form>
-                </div>
-              )}
-            </GlassCard>
-          )
-        })}
+        {users.length === 0 && <OwnerUsersEmptyState filterRole={filterRole} />}
+        {users.map((user) => (
+          <OwnerUserCard
+            key={user.id}
+            user={user}
+            myId={myId}
+            actor={{ id: access.userId, role: access.role, orgIds: access.orgIds }}
+            base={base}
+            separator={separator}
+            edit={edit}
+            confirm={confirm}
+            assignableRoles={assignableRoles}
+          />
+        ))}
       </div>
       <UserPagination page={usersPage} totalPages={totalPages} role={filterRole} />
-    </div>
+    </DashboardDeskPage>
   )
 }

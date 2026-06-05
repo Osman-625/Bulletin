@@ -4,21 +4,15 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from './supabase/server'
 import { getCurrentAccessContext } from './auth/authz'
 
-const NOTIFICATION_PATHS = [
-  '/dashboard/notifications',
-  '/admin/notifications',
-  '/super-admin/notifications',
-  '/owner/notifications',
-  '/dashboard',
-  '/admin',
-  '/super-admin',
-  '/owner',
-]
-
 function revalidateNotificationPaths() {
-  for (const path of NOTIFICATION_PATHS) {
-    revalidatePath(path)
-  }
+  revalidatePath('/dashboard/notifications')
+  revalidatePath('/admin/notifications')
+  revalidatePath('/super-admin/notifications')
+  revalidatePath('/owner/notifications')
+  revalidatePath('/dashboard')
+  revalidatePath('/admin')
+  revalidatePath('/super-admin')
+  revalidatePath('/owner')
 }
 
 export async function markNotificationRead(notificationId: string) {

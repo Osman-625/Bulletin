@@ -1,7 +1,12 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { DashboardShell } from '@/components/dashboard/DashboardShell'
-import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath, type AppRole } from '@/lib/auth/authz'
+import {
+  canAccessAdminArea,
+  getCurrentAccessContext,
+  getDefaultAppPath,
+  type AppRole,
+} from '@/lib/auth/authz'
 import { getUnreadNotificationCount } from '@/lib/notifications'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -26,8 +31,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     }
   }
 
-  const { count: pendingCount } = await pendingQuery
-  const unreadNotificationCount = await getUnreadNotificationCount()
+  const [{ count: pendingCount }, unreadNotificationCount] = await Promise.all([
+    pendingQuery,
+    getUnreadNotificationCount(),
+  ])
 
   return (
     <DashboardShell

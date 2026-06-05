@@ -23,7 +23,10 @@ export default async function RegisterPage({
           <p className="text-sm text-[var(--color-text-muted)]">
             This link is missing a token. Please request a new invite.
           </p>
-          <Link href="/login" className="text-sm text-[var(--color-accent)] hover:underline">
+          <Link
+            href="/login"
+            className="inline-flex min-h-11 items-center text-sm text-[var(--color-accent-inti)] hover:text-[var(--color-accent-hover)] hover:underline"
+          >
             Go to login
           </Link>
         </div>
@@ -52,7 +55,10 @@ export default async function RegisterPage({
           <p className="text-sm text-[var(--color-text-muted)]">
             Please request a new invite from your administrator.
           </p>
-          <Link href="/login" className="text-sm text-[var(--color-accent)] hover:underline">
+          <Link
+            href="/login"
+            className="inline-flex min-h-11 items-center text-sm text-[var(--color-accent-inti)] hover:text-[var(--color-accent-hover)] hover:underline"
+          >
             Go to login
           </Link>
         </div>
@@ -131,7 +137,7 @@ export default async function RegisterPage({
 
           <button
             type="submit"
-            className="w-full rounded-xl bg-[var(--color-accent)] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)]"
+            className="w-full rounded-xl bg-[var(--color-accent)] py-2.5 text-sm font-semibold text-[var(--color-on-accent)] transition-colors hover:bg-[var(--color-accent-hover)]"
           >
             Create account
           </button>
@@ -139,7 +145,10 @@ export default async function RegisterPage({
 
         <p className="text-center text-xs text-[var(--color-text-muted)]">
           Already have an account?{' '}
-          <Link href="/login" className="text-[var(--color-accent)] hover:underline">
+          <Link
+            href="/login"
+            className="text-[var(--color-accent-inti)] hover:text-[var(--color-accent-hover)] hover:underline"
+          >
             Sign in
           </Link>
         </p>

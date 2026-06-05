@@ -8,6 +8,50 @@ import {
 export const CAMPUS_TIME_ZONE = 'Asia/Kuala_Lumpur'
 export const BOARD_SORTS = ['priority', 'issued', 'closing'] as const
 
+const CAMPUS_DAY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: CAMPUS_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
+const CAMPUS_DATE_FORMATTERS = {
+  compact: new Intl.DateTimeFormat('en-MY', {
+    timeZone: CAMPUS_TIME_ZONE,
+    day: 'numeric',
+    month: 'short',
+  }),
+  short: new Intl.DateTimeFormat('en-MY', {
+    timeZone: CAMPUS_TIME_ZONE,
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }),
+  long: new Intl.DateTimeFormat('en-MY', {
+    timeZone: CAMPUS_TIME_ZONE,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }),
+  dayShort: new Intl.DateTimeFormat('en-MY', {
+    timeZone: CAMPUS_TIME_ZONE,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }),
+  dateTime: new Intl.DateTimeFormat('en-MY', {
+    timeZone: CAMPUS_TIME_ZONE,
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+  }),
+} as const
+
+type CampusDateInput = Date | number | string | null | undefined
+type CampusDateFormat = keyof typeof CAMPUS_DATE_FORMATTERS
+
 export type BoardSort = (typeof BOARD_SORTS)[number]
 export type BoardSectionId = 'daily' | 'closing' | 'future' | 'campus'
 
@@ -66,14 +110,39 @@ export function normalizeBoardSort(value?: string): BoardSort {
   return BOARD_SORTS.includes(value as BoardSort) ? (value as BoardSort) : 'priority'
 }
 
-export function formatCampusLongDate(date: Date | number = new Date()) {
-  return new Date(date).toLocaleDateString('en-MY', {
-    timeZone: CAMPUS_TIME_ZONE,
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
+function toValidCampusDate(date: CampusDateInput) {
+  if (date === null || date === undefined) return null
+  const value = date instanceof Date ? date : new Date(date)
+  return Number.isNaN(value.getTime()) ? null : value
+}
+
+export function formatCampusDate(
+  date: CampusDateInput,
+  format: CampusDateFormat = 'short',
+  fallback = 'Pending'
+) {
+  const value = toValidCampusDate(date)
+  return value ? CAMPUS_DATE_FORMATTERS[format].format(value) : fallback
+}
+
+export function formatCampusCompactDate(date: CampusDateInput, fallback = 'Pending') {
+  return formatCampusDate(date, 'compact', fallback)
+}
+
+export function formatCampusShortDate(date: CampusDateInput, fallback = 'Pending') {
+  return formatCampusDate(date, 'short', fallback)
+}
+
+export function formatCampusLongDate(date: CampusDateInput = Date.now(), fallback = 'Pending') {
+  return formatCampusDate(date, 'long', fallback)
+}
+
+export function formatCampusDayDate(date: CampusDateInput, fallback = 'Pending') {
+  return formatCampusDate(date, 'dayShort', fallback)
+}
+
+export function formatCampusDateTime(date: CampusDateInput, fallback = 'Pending') {
+  return formatCampusDate(date, 'dateTime', fallback)
 }
 
 export function dateValue(iso?: string | null) {
@@ -83,12 +152,7 @@ export function dateValue(iso?: string | null) {
 }
 
 function campusDayValue(date: Date | number) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: CAMPUS_TIME_ZONE,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(new Date(date))
+  const parts = CAMPUS_DAY_FORMATTER.formatToParts(new Date(date))
 
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
   return Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day))
@@ -110,12 +174,7 @@ export function deadlineLabel(iso?: string | null, now = Date.now()) {
   if (days === 0) return 'Closes today'
   if (days === 1) return '1 day left'
   if (days <= 14) return `${days} days left`
-  return new Date(iso).toLocaleDateString('en-MY', {
-    timeZone: CAMPUS_TIME_ZONE,
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+  return formatCampusShortDate(iso, 'No deadline')
 }
 
 function futureDeadlineValue(iso?: string | null, now = Date.now()) {
@@ -137,7 +196,7 @@ export function sortAnnouncementsForPublicBoard(
   sort: BoardSort,
   now = Date.now()
 ) {
-  return [...announcements].sort((a, b) => {
+  return announcements.toSorted((a, b) => {
     if (sort === 'issued') {
       return dateValue(b.published_at) - dateValue(a.published_at)
     }

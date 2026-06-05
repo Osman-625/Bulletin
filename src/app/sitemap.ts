@@ -68,12 +68,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'daily',
       priority: 1,
     },
-    {
-      url: `${siteUrl}/login`,
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.3,
-    },
     ...announcementEntries,
   ]
 }

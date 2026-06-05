@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { unstable_rethrow } from 'next/navigation'
+import { formatCampusDateTime } from '@/lib/announcements/public-board'
 import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import { reportServerError, reportServerWarning } from '@/lib/error-reporting'
 
@@ -476,10 +477,5 @@ function parseSupabaseProjectUrl(value: string) {
 }
 
 function formatDateTime(value: number | string) {
-  return new Date(value).toLocaleString('en-MY', {
-    day: 'numeric',
-    month: 'short',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
+  return formatCampusDateTime(value)
 }

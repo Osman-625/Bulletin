@@ -21,12 +21,9 @@ export function FeedPagination({
   search: string
   activeSort: BoardSort
 }) {
-  const progress =
-    totalPages > 0 ? `${Math.max(0, Math.min(100, (page / totalPages) * 100))}%` : '0%'
-
   return (
     <nav
-      className="mt-8 flex flex-col gap-3 rounded-[1.15rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4 sm:flex-row sm:items-center sm:justify-between"
+      className="mt-8 flex flex-col gap-3 rounded-[1.15rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:flex-row sm:items-center sm:justify-between"
       aria-label="Announcement pagination"
     >
       <div className="min-w-0 flex-1">
@@ -36,19 +33,12 @@ export function FeedPagination({
           <span className="font-semibold text-[var(--color-text-primary)]">{visibleEnd}</span> of{' '}
           <span className="font-semibold text-[var(--color-text-primary)]">{total}</span>
         </p>
-        <div
-          className="pagination-progress mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--color-surface-elevated)]"
+        <progress
+          className="pagination-progress mt-3 block h-1.5 w-full [appearance:none] overflow-hidden rounded-full bg-[var(--color-surface-elevated)] [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-[var(--color-accent-inti)] [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-[var(--color-surface-elevated)] [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-[var(--color-accent-inti)]"
           aria-label="Pagination progress"
-          role="progressbar"
-          aria-valuemin={0}
-          aria-valuemax={totalPages}
-          aria-valuenow={page}
-        >
-          <div
-            className="h-full rounded-full bg-[var(--color-accent-inti)] transition-[width] duration-300 ease-[var(--ease-ui)]"
-            style={{ width: progress }}
-          />
-        </div>
+          value={page}
+          max={Math.max(totalPages, 1)}
+        />
       </div>
 
       <div className="flex items-center gap-2">

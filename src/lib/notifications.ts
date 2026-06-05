@@ -1,6 +1,7 @@
 import { cache } from 'react'
 import { createClient, createServiceClient } from './supabase/server'
 import { getCurrentAccessContext } from './auth/authz'
+import { dateValue, formatCampusDateTime } from '@/lib/announcements/public-board'
 import { reportServerError } from '@/lib/error-reporting'
 import type { Database } from './database.types'
 import type { DbNotification } from './types'
@@ -139,13 +140,10 @@ export async function notifyAnnouncementReviewed({
   scheduledPublishAt,
   comment,
 }: ReviewedNotificationInput) {
-  const scheduledTime = scheduledPublishAt ? new Date(scheduledPublishAt) : null
+  const scheduledTime = dateValue(scheduledPublishAt)
   const approvedBody =
-    scheduledTime && scheduledTime.getTime() > Date.now()
-      ? `approved and scheduled for ${scheduledTime.toLocaleString('en-MY', {
-          dateStyle: 'medium',
-          timeStyle: 'short',
-        })}.`
+    scheduledTime > Date.now()
+      ? `approved and scheduled for ${formatCampusDateTime(scheduledPublishAt)}.`
       : 'approved and published.'
 
   await createNotificationsForUsers([authorId], {

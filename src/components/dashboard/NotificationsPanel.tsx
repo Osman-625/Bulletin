@@ -1,18 +1,11 @@
 import Link from 'next/link'
 import { Bell, CheckCheck, ExternalLink } from 'lucide-react'
 import { GlassCard } from './GlassCard'
+import { DashboardDeskHeader, DashboardDeskPage } from './DashboardDesk'
 import { getNotificationsForCurrentUser } from '@/lib/notifications'
 import { markAllNotificationsRead, markNotificationRead } from '@/lib/notification-actions'
+import { formatCampusDateTime } from '@/lib/announcements/public-board'
 import type { DbNotification } from '@/lib/types'
-
-function formatNotificationTime(iso: string) {
-  return new Date(iso).toLocaleString('en-MY', {
-    day: 'numeric',
-    month: 'short',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-}
 
 function notificationTone(type: DbNotification['type']) {
   if (type === 'password_reset_requested') {
@@ -51,33 +44,25 @@ export async function NotificationsPanel() {
   const unreadCount = notifications.filter((notification) => !notification.read_at).length
 
   return (
-    <div className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
-            Notifications
-          </h1>
-          <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-            Stay updated on approvals and submission activity.
-          </p>
-        </div>
+    <DashboardDeskPage className="flex flex-col gap-5">
+      <DashboardDeskHeader
+        kicker="Inbox"
+        title="Notifications"
+        description="Stay updated on approvals, submission activity, and account requests."
+      />
 
-        {unreadCount > 0 && (
-          <form action={markAllNotificationsRead}>
-            <button
-              type="submit"
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 text-sm font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
-            >
-              <CheckCheck size={16} aria-hidden="true" />
-              Mark all read
-            </button>
-          </form>
-        )}
-      </div>
+      {unreadCount > 0 && (
+        <form action={markAllNotificationsRead} className="flex justify-end">
+          <button type="submit" className="pub-public-link">
+            <CheckCheck size={16} aria-hidden="true" />
+            Mark all read
+          </button>
+        </form>
+      )}
 
       {notifications.length === 0 ? (
-        <div className="flex min-h-[22rem] flex-col items-center justify-center rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-6 text-center">
-          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--color-accent-surface)] text-[var(--color-accent-inti)]">
+        <div className="desk-panel flex min-h-[24rem] flex-col items-center justify-center px-6 text-center">
+          <div className="mb-4 flex size-12 items-center justify-center rounded-[var(--radius-control)] bg-[var(--color-accent-surface)] text-[var(--color-accent-inti)]">
             <Bell size={20} aria-hidden="true" />
           </div>
           <h2 className="text-base font-semibold text-[var(--color-text-primary)]">All quiet</h2>
@@ -86,30 +71,30 @@ export async function NotificationsPanel() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-2">
           {notifications.map((notification) => {
             const tone = notificationTone(notification.type)
             const isUnread = !notification.read_at
 
             return (
-              <GlassCard key={notification.id} hover={false} className="p-5">
+              <GlassCard key={notification.id} hover={false} className="p-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
                   <div className="flex min-w-0 flex-1 gap-3">
                     <span
-                      className="mt-1 h-2.5 w-2.5 flex-shrink-0 rounded-full"
+                      className="mt-1 size-2.5 flex-shrink-0 rounded-full"
                       style={{ background: isUnread ? tone.color : 'var(--color-border)' }}
                       aria-hidden="true"
                     />
                     <div className="min-w-0">
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         <span
-                          className="rounded-md px-2.5 py-1 text-xs font-semibold"
+                          className="rounded-[var(--radius-tag)] px-2.5 py-1 font-mono text-[0.66rem] font-bold tracking-[0.08em] uppercase"
                           style={{ color: tone.color, background: tone.background }}
                         >
                           {tone.label}
                         </span>
                         <span className="font-mono text-xs text-[var(--color-text-muted)]">
-                          {formatNotificationTime(notification.created_at)}
+                          {formatCampusDateTime(notification.created_at)}
                         </span>
                       </div>
                       <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
@@ -127,7 +112,7 @@ export async function NotificationsPanel() {
                     {notification.href && (
                       <Link
                         href={notification.href}
-                        className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[var(--color-accent-inti)] px-3 text-sm font-semibold text-white transition-transform active:scale-[0.98]"
+                        className="inline-flex min-h-10 items-center gap-1.5 rounded-[var(--radius-control)] bg-[var(--color-accent-inti)] px-3 text-sm font-semibold text-white transition-transform active:scale-[0.98]"
                       >
                         Open
                         <ExternalLink size={14} aria-hidden="true" />
@@ -137,7 +122,7 @@ export async function NotificationsPanel() {
                       <form action={markNotificationRead.bind(null, notification.id)}>
                         <button
                           type="submit"
-                          className="inline-flex min-h-11 items-center rounded-lg border border-[var(--color-border)] px-3 text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
+                          className="inline-flex min-h-10 items-center rounded-[var(--radius-control)] border border-[var(--color-border)] px-3 text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
                         >
                           Mark read
                         </button>
@@ -150,6 +135,6 @@ export async function NotificationsPanel() {
           })}
         </div>
       )}
-    </div>
+    </DashboardDeskPage>
   )
 }

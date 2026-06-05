@@ -33,7 +33,9 @@ describe('server error reporting', () => {
 
     reportServerError('owner.categories.delete', new Error('delete failed'), {
       actorId: 'user-1',
+      email: 'owner@example.edu',
       targetId: 'category-1',
+      token: 'raw-token',
     })
 
     expect(spy).toHaveBeenCalledWith(
@@ -43,7 +45,9 @@ describe('server error reporting', () => {
         message: 'delete failed',
         metadata: {
           actorId: 'user-1',
+          email: '[redacted]',
           targetId: 'category-1',
+          token: '[redacted]',
         },
       })
     )
@@ -82,6 +86,7 @@ describe('server error reporting', () => {
 
     reportServerWarning('owner.resources.external_api_failed', new Error('Supabase returned 400'), {
       label: 'Supabase health check',
+      secret: 'service-role',
       status: 400,
     })
 
@@ -92,6 +97,7 @@ describe('server error reporting', () => {
         message: 'Supabase returned 400',
         metadata: {
           label: 'Supabase health check',
+          secret: '[redacted]',
           status: 400,
         },
       })

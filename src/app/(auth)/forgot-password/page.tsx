@@ -40,13 +40,10 @@ export default async function ForgotPasswordPage({
         </div>
 
         {sent ? (
-          <div
-            className="rounded-lg border border-[var(--color-status-published-text)]/25 bg-[var(--color-status-published-bg)] px-3 py-3 text-xs leading-5 text-[var(--color-status-published-text)]"
-            role="status"
-          >
+          <output className="block rounded-lg border border-[var(--color-status-published-text)]/25 bg-[var(--color-status-published-bg)] p-3 text-xs leading-5 text-[var(--color-status-published-text)]">
             If this email belongs to a Bulletin account, your request has been submitted. An
             administrator will be in touch.
-          </div>
+          </output>
         ) : (
           <form action={requestPasswordReset} className="flex flex-col gap-3">
             <div className="relative">

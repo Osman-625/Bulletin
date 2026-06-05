@@ -7,7 +7,15 @@ const root = resolve(__dirname, '..')
 loadEnv({ path: resolve(root, '.env.test.local') })
 loadEnv({ path: resolve(root, '.env.local') })
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000'
+const allowLocalSmoke = process.env.ALLOW_LOCAL_SMOKE === '1'
+const baseURL =
+  process.env.PLAYWRIGHT_BASE_URL ?? (allowLocalSmoke ? 'http://localhost:3000' : undefined)
+
+if (!baseURL) {
+  throw new Error(
+    'PLAYWRIGHT_BASE_URL is required for deployment smoke tests. Set ALLOW_LOCAL_SMOKE=1 only for explicit local smoke runs.'
+  )
+}
 
 export default defineConfig({
   testDir: resolve(root, 'tests/e2e'),

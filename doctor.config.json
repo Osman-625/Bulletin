@@ -1,0 +1,27 @@
+{
+  "serverAuthFunctionNames": ["getCurrentAccessContext", "verifyAnnouncementAccess"],
+  "ignore": {
+    "overrides": [
+      {
+        "files": ["src/app/**/announcements/**/actions.ts"],
+        "rules": ["react-doctor/server-auth-actions"]
+      },
+      {
+        "files": ["src/app/**/forgot-password/actions.ts"],
+        "rules": ["react-doctor/server-auth-actions"]
+      },
+      {
+        "files": ["src/app/register/actions.ts"],
+        "rules": ["react-doctor/server-auth-actions"]
+      },
+      {
+        "files": ["src/app/(dashboard)/dashboard/announcements/[id]/edit/actions.ts"],
+        "rules": ["react-doctor/server-sequential-independent-await"]
+      },
+      {
+        "files": ["src/app/opengraph-image.tsx"],
+        "rules": ["react-doctor/only-export-components"]
+      }
+    ]
+  }
+}

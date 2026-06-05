@@ -19,7 +19,7 @@ export default function AuthError({
   return (
     <div className="flex flex-col items-center gap-4 text-center">
       <h2 className="text-lg font-semibold">Something went wrong</h2>
-      <button onClick={reset} className="text-sm underline underline-offset-4">
+      <button type="button" onClick={reset} className="text-sm underline underline-offset-4">
         Try again
       </button>
     </div>

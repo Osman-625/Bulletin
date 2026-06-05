@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useEffectEvent } from 'react'
 import { captureProductEvent } from '@/lib/product-analytics'
 
 export function PublicFeedAnalytics({
@@ -18,6 +18,24 @@ export function PublicFeedAnalytics({
   visibleCount: number
   total: number
 }) {
+  const reportPublicFeedView = useEffectEvent(
+    (properties: {
+      category: string
+      has_search: boolean
+      searchLength: number
+      sort: string
+      page: number
+      visible_count: number
+      total: number
+    }) => {
+      captureProductEvent('public_feed_viewed', properties)
+
+      if (properties.searchLength > 0) {
+        captureProductEvent('public_feed_searched', properties)
+      }
+    }
+  )
+
   useEffect(() => {
     const properties = {
       category: category || 'all',
@@ -29,11 +47,7 @@ export function PublicFeedAnalytics({
       total,
     }
 
-    captureProductEvent('public_feed_viewed', properties)
-
-    if (searchLength > 0) {
-      captureProductEvent('public_feed_searched', properties)
-    }
+    reportPublicFeedView(properties)
   }, [category, searchLength, sort, page, visibleCount, total])
 
   return null

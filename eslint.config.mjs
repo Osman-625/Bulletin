@@ -17,6 +17,10 @@ const eslintConfig = defineConfig([
     'graphify-out/**',
     'out/**',
     'build/**',
+    '_handoff_extract/**',
+    '_grab.cjs',
+    '_shots.py',
+    '_*.png',
     'next-env.d.ts',
   ]),
 ])

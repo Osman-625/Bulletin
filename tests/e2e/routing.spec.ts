@@ -42,9 +42,11 @@ test.describe('Admin route restrictions', () => {
     await expect(page).toHaveURL('/admin')
   })
 
-  test('admin can access /dashboard publisher tools', async ({ page }) => {
+  test('admin cannot access /dashboard publisher tools — redirected to /admin', async ({
+    page,
+  }) => {
     await page.goto('/dashboard')
-    await expect(page).toHaveURL('/dashboard')
+    await expect(page).toHaveURL('/admin')
   })
 
   test('admin can access /admin', async ({ page }) => {
@@ -63,14 +65,16 @@ test.describe('Super-admin route restrictions', () => {
     await expect(page).toHaveURL('/super-admin')
   })
 
-  test('super_admin can access /admin area', async ({ page }) => {
+  test('super_admin cannot access /admin area — redirected to /super-admin', async ({ page }) => {
     await page.goto('/admin')
-    await expect(page).toHaveURL('/admin')
+    await expect(page).toHaveURL('/super-admin')
   })
 
-  test('super_admin can access /dashboard publisher tools', async ({ page }) => {
+  test('super_admin cannot access /dashboard publisher tools — redirected to /super-admin', async ({
+    page,
+  }) => {
     await page.goto('/dashboard')
-    await expect(page).toHaveURL('/dashboard')
+    await expect(page).toHaveURL('/super-admin')
   })
 
   test('super_admin can access /super-admin', async ({ page }) => {

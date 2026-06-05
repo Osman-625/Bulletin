@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from 'react'
 import { KeyRound } from 'lucide-react'
+import { TEMPORARY_PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
 import { fulfillPasswordResetRequest, type PasswordResetRequestState } from './actions'
 
 const initialState: PasswordResetRequestState = {}
@@ -29,10 +30,11 @@ export function PasswordResetRequestButton({ requestId }: { requestId: string })
           id={`temp-password-${requestId}`}
           name="temp_password"
           type="password"
+          aria-label="Temporary password for reset request"
           required
-          minLength={8}
+          minLength={TEMPORARY_PASSWORD_MIN_LENGTH}
           autoComplete="new-password"
-          placeholder="Temporary password"
+          placeholder={`At least ${TEMPORARY_PASSWORD_MIN_LENGTH} characters`}
           className="input-inti min-h-9 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] sm:w-48"
         />
         <button

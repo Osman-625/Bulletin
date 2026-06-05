@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test'
 
-const BASE = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000'
+const BASE = process.env.PLAYWRIGHT_BASE_URL
+
+if (!BASE) {
+  throw new Error('PLAYWRIGHT_BASE_URL is required for deployment smoke tests.')
+}
 
 test.describe('deployment smoke', () => {
   test.setTimeout(60_000)

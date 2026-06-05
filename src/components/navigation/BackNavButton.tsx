@@ -16,6 +16,26 @@ type HistoryStateWithIndex = {
   idx?: unknown
 }
 
+function hasKnownExternalReferrer() {
+  if (!document.referrer) return false
+
+  try {
+    return new URL(document.referrer).origin !== window.location.origin
+  } catch {
+    return true
+  }
+}
+
+function hasInternalHistoryState() {
+  const state = window.history.state as HistoryStateWithIndex | null
+  return typeof state?.idx === 'number' && state.idx > 0
+}
+
+function canUseBrowserBack() {
+  if (hasInternalHistoryState()) return true
+  return window.history.length > 1 && !hasKnownExternalReferrer()
+}
+
 export function BackNavButton({
   fallbackHref = '/',
   className,
@@ -24,26 +44,6 @@ export function BackNavButton({
 }: BackNavButtonProps) {
   const router = useRouter()
   const resolvedAriaLabel = ariaLabel ?? (children ? undefined : 'Go back')
-
-  function hasKnownExternalReferrer() {
-    if (!document.referrer) return false
-
-    try {
-      return new URL(document.referrer).origin !== window.location.origin
-    } catch {
-      return true
-    }
-  }
-
-  function hasInternalHistoryState() {
-    const state = window.history.state as HistoryStateWithIndex | null
-    return typeof state?.idx === 'number' && state.idx > 0
-  }
-
-  function canUseBrowserBack() {
-    if (hasInternalHistoryState()) return true
-    return window.history.length > 1 && !hasKnownExternalReferrer()
-  }
 
   function handleBack() {
     if (canUseBrowserBack()) {
@@ -66,7 +66,7 @@ export function BackNavButton({
         className
       )}
     >
-      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+      <ArrowLeft className="size-4" aria-hidden="true" />
       {children ? <span className="ml-2">{children}</span> : null}
     </button>
   )

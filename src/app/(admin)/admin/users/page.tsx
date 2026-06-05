@@ -1,7 +1,10 @@
 import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { Users } from 'lucide-react'
 import { GlassCard } from '@/components/dashboard/GlassCard'
+import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { formatCampusShortDate } from '@/lib/announcements/public-board'
 import { logAuditEvent } from '@/lib/audit'
 import {
   canAccessAdminArea,
@@ -21,6 +24,7 @@ const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
   publisher: 'Publisher',
 }
+const ADMIN_ROLE_KEYS = Object.keys(ROLE_LABELS)
 
 const LEVEL_COLOR: Record<string, string> = {
   admin: 'var(--color-accent-inti)',
@@ -261,8 +265,10 @@ export default async function AdminUsersPage({
     page?: string
   }>
 }) {
-  const { role: filterRole, msg, edit, confirm, error, page } = await searchParams
-  const access = await getCurrentAccessContext()
+  const [{ role: filterRole, msg, edit, confirm, error, page }, access] = await Promise.all([
+    searchParams,
+    getCurrentAccessContext(),
+  ])
   if (!access) redirect('/login')
   if (!canAccessAdminArea(access.role)) redirect(getDefaultAppPath(access.role))
 
@@ -287,24 +293,15 @@ export default async function AdminUsersPage({
   const separator = base.includes('?') ? '&' : '?'
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
-            Users
-          </h1>
-          <p className="mt-1 text-[var(--color-text-secondary)]">
-            {visibleUsersPage.total} users
-            {filterRole ? ` - ${ROLE_LABELS[filterRole] ?? filterRole}` : ''}
-          </p>
-        </div>
-        <Link
-          href="/admin/publishers/invite"
-          className="shrink-0 rounded-xl bg-[var(--color-accent)] px-4 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90"
-        >
-          Invite Publisher
-        </Link>
-      </div>
+    <DashboardDeskPage className="flex flex-col gap-5">
+      <DashboardDeskHeader
+        kicker="Admin directory"
+        title="Users"
+        description={`${visibleUsersPage.total} users${
+          filterRole ? ` · ${ROLE_LABELS[filterRole] ?? filterRole}` : ''
+        } visible in your admin scope.`}
+        action={{ href: '/admin/publishers/invite', label: 'Invite publisher', icon: Users }}
+      />
 
       {msg && (
         <div className="rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-3 font-mono text-sm text-[var(--color-status-submitted-text)]">
@@ -321,12 +318,12 @@ export default async function AdminUsersPage({
       <div className="flex flex-wrap gap-2">
         {[
           { key: '', label: `All (${visibleUsersPage.allTotal})` },
-          ...Object.keys(ROLE_LABELS).map((role) => ({
+          ...ADMIN_ROLE_KEYS.map((role) => ({
             key: role,
             label: `${ROLE_LABELS[role]} (${roleCounts[role] ?? 0})`,
           })),
         ].map(({ key, label }) => (
-          <a
+          <Link
             key={key}
             href={adminUsersHref({ role: key || undefined })}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
@@ -336,22 +333,22 @@ export default async function AdminUsersPage({
             }`}
           >
             {label}
-          </a>
+          </Link>
         ))}
       </div>
 
       <div className="space-y-2">
         {users.length === 0 && (
           <GlassCard hover={false} className="p-8">
-            <div role="status" className="mx-auto max-w-md text-center">
-              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+            <output className="mx-auto block max-w-md text-center">
+              <span className="block text-sm font-semibold text-[var(--color-text-primary)]">
                 No users match this view
-              </p>
-              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+              </span>
+              <span className="mt-1 block text-sm text-[var(--color-text-secondary)]">
                 {filterRole
                   ? `There are no ${ROLE_LABELS[filterRole] ?? filterRole} users in your scope.`
                   : 'No users are visible in your admin scope yet.'}
-              </p>
+              </span>
               {filterRole && (
                 <Link
                   href="/admin/users"
@@ -360,7 +357,7 @@ export default async function AdminUsersPage({
                   Clear the role filter
                 </Link>
               )}
-            </div>
+            </output>
           </GlassCard>
         )}
         {users.map((user) => {
@@ -393,7 +390,7 @@ export default async function AdminUsersPage({
               }
             >
               <div className="flex items-center gap-4 px-5 py-4">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-elevated)]">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-elevated)]">
                   <span className="text-sm font-bold text-[var(--color-text-secondary)]">
                     {user.display_name.charAt(0).toUpperCase()}
                   </span>
@@ -428,37 +425,33 @@ export default async function AdminUsersPage({
                 </div>
 
                 <p className="hidden shrink-0 font-mono text-xs text-[var(--color-text-muted)] sm:block">
-                  {new Date(user.created_at).toLocaleDateString('en-MY', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  })}
+                  {formatCampusShortDate(user.created_at)}
                 </p>
 
                 {canManage && !isEditing && !isConfirming && (
                   <div className="flex shrink-0 gap-2">
-                    <a
+                    <Link
                       href={`${base}${separator}edit=${user.id}`}
                       className="rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
                     >
                       Edit
-                    </a>
-                    <a
+                    </Link>
+                    <Link
                       href={`${base}${separator}confirm=${user.id}`}
                       className="rounded-lg bg-[var(--color-status-rejected-bg)] px-3 py-1.5 text-xs font-medium text-[var(--color-status-rejected-text)] transition-opacity hover:opacity-80"
                     >
                       Delete
-                    </a>
+                    </Link>
                   </div>
                 )}
 
                 {(isEditing || isConfirming) && (
-                  <a
+                  <Link
                     href={base}
                     className="shrink-0 rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
                   >
                     Cancel
-                  </a>
+                  </Link>
                 )}
               </div>
 
@@ -482,6 +475,7 @@ export default async function AdminUsersPage({
                     <input
                       name="temp_password"
                       type="password"
+                      aria-label={`New temporary password for ${user.display_name}`}
                       required
                       minLength={8}
                       placeholder="New temp password"
@@ -525,6 +519,6 @@ export default async function AdminUsersPage({
         totalPages={visibleUsersPage.totalPages}
         role={filterRole}
       />
-    </div>
+    </DashboardDeskPage>
   )
 }

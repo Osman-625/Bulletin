@@ -18,7 +18,7 @@ function errorForCapture(error: unknown, fallbackMessage: string) {
   return error instanceof Error ? error : new Error(fallbackMessage)
 }
 
-function sentryMetadata(metadata: ErrorMetadata) {
+function redactMetadata(metadata: ErrorMetadata) {
   return Object.fromEntries(
     Object.entries(metadata).map(([key, value]) => [
       key,
@@ -38,7 +38,7 @@ export function buildServerErrorLog(context: string, error: unknown, metadata: E
     code: errorField(error, 'code'),
     details: errorField(error, 'details'),
     hint: errorField(error, 'hint'),
-    metadata,
+    metadata: redactMetadata(metadata),
     occurred_at: new Date().toISOString(),
   }
 }
@@ -53,7 +53,7 @@ export function reportServerError(context: string, error: unknown, metadata: Err
         code: log.code,
         details: log.details,
         hint: log.hint,
-        metadata: sentryMetadata(metadata),
+        metadata: log.metadata,
         occurred_at: log.occurred_at,
       },
     })

@@ -1,9 +1,17 @@
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { CountUp } from '@/components/dashboard/CountUp'
+import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { formatCampusCompactDate } from '@/lib/announcements/public-board'
 import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import { createServiceClient } from '@/lib/supabase/server'
 
 export const metadata = { title: 'Analytics — Bulletin Owner' }
+
+const ROLE_ROWS = [
+  { role: 'super_admin', label: 'Super Admins', color: 'var(--color-navy)' },
+  { role: 'admin', label: 'Admins', color: 'var(--color-accent-inti)' },
+  { role: 'publisher', label: 'Publishers', color: 'var(--color-text-muted)' },
+] as const
 
 export default async function OwnerAnalyticsPage() {
   const supabase = await createServiceClient()
@@ -68,22 +76,13 @@ export default async function OwnerAnalyticsPage() {
   const totalAnnouncements = Object.values(statusCounts).reduce((s, n) => s + n, 0)
   const totalUsers = users?.length ?? 0
 
-  const roleRows = [
-    { role: 'super_admin', label: 'Super Admins', color: '#7C3AED' },
-    { role: 'admin', label: 'Admins', color: 'var(--color-accent-inti)' },
-    { role: 'publisher', label: 'Publishers', color: 'var(--color-text-muted)' },
-  ]
-
   return (
-    <div className="mx-auto max-w-5xl space-y-8 px-6 py-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
-          Platform Analytics
-        </h1>
-        <p className="mt-1 text-[var(--color-text-secondary)]">
-          Full system view — all roles, all data.
-        </p>
-      </div>
+    <DashboardDeskPage className="flex flex-col gap-6">
+      <DashboardDeskHeader
+        kicker="Owner analytics"
+        title="Platform analytics"
+        description="Full system view across roles, announcements, organizations, categories, and account movement."
+      />
 
       {/* Top stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -112,14 +111,14 @@ export default async function OwnerAnalyticsPage() {
             Users by Role
           </h2>
           <GlassCard hover={false} className="space-y-4 p-6">
-            {roleRows.map(({ role, label, color }) => {
+            {ROLE_ROWS.map(({ role, label, color }) => {
               const count = roleCounts[role] ?? 0
               const pct = totalUsers > 0 ? Math.round((count / totalUsers) * 100) : 0
               return (
                 <div key={role}>
                   <div className="mb-1.5 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+                      <span className="size-2.5 rounded-full" style={{ background: color }} />
                       <span className="text-sm text-[var(--color-text-primary)]">{label}</span>
                     </div>
                     <div className="flex items-center gap-2">
@@ -195,14 +194,14 @@ export default async function OwnerAnalyticsPage() {
             </div>
           ) : (
             <GlassCard hover={false} className="p-6">
-              <div role="status" className="text-sm">
+              <output className="block text-sm">
                 <p className="font-semibold text-[var(--color-text-primary)]">
                   No organization activity yet
                 </p>
                 <p className="mt-1 text-[var(--color-text-secondary)]">
                   Published announcement counts will appear after organizations start posting.
                 </p>
-              </div>
+              </output>
             </GlassCard>
           )}
         </div>
@@ -215,7 +214,7 @@ export default async function OwnerAnalyticsPage() {
             <div className="space-y-2">
               {sortedCats.map(([name, { count, color }]) => (
                 <GlassCard key={name} hover={false} className="flex items-center gap-4 px-5 py-3">
-                  <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: color }} />
+                  <span className="size-3 shrink-0 rounded-full" style={{ background: color }} />
                   <p className="flex-1 text-sm font-medium text-[var(--color-text-primary)]">
                     {name}
                   </p>
@@ -228,14 +227,14 @@ export default async function OwnerAnalyticsPage() {
             </div>
           ) : (
             <GlassCard hover={false} className="p-6">
-              <div role="status" className="text-sm">
+              <output className="block text-sm">
                 <p className="font-semibold text-[var(--color-text-primary)]">
                   No published categories yet
                 </p>
                 <p className="mt-1 text-[var(--color-text-secondary)]">
                   Category rankings will appear after announcements are published.
                 </p>
-              </div>
+              </output>
             </GlassCard>
           )}
         </div>
@@ -253,7 +252,7 @@ export default async function OwnerAnalyticsPage() {
                 hover={false}
                 className="flex items-center gap-4 px-5 py-3"
               >
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-elevated)]">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-elevated)]">
                   <span className="text-xs font-bold text-[var(--color-text-secondary)]">
                     {u.display_name.charAt(0).toUpperCase()}
                   </span>
@@ -266,25 +265,22 @@ export default async function OwnerAnalyticsPage() {
                   {(u.role as string).replace('_', ' ')}
                 </span>
                 <p className="shrink-0 font-mono text-xs text-[var(--color-text-muted)]">
-                  {new Date(u.created_at).toLocaleDateString('en-MY', {
-                    day: 'numeric',
-                    month: 'short',
-                  })}
+                  {formatCampusCompactDate(u.created_at)}
                 </p>
               </GlassCard>
             ))}
           </div>
         ) : (
           <GlassCard hover={false} className="p-6">
-            <div role="status" className="text-sm">
+            <output className="block text-sm">
               <p className="font-semibold text-[var(--color-text-primary)]">No recent users yet</p>
               <p className="mt-1 text-[var(--color-text-secondary)]">
                 New account activity will appear here after users join.
               </p>
-            </div>
+            </output>
           </GlassCard>
         )}
       </div>
-    </div>
+    </DashboardDeskPage>
   )
 }

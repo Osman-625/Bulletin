@@ -36,8 +36,7 @@ function throwAnnouncementActionError(
 }
 
 export async function createAnnouncement(formData: FormData) {
-  const supabase = await createClient()
-  const access = await getCurrentAccessContext()
+  const [supabase, access] = await Promise.all([createClient(), getCurrentAccessContext()])
   if (!access) throw new Error('Unauthorized')
 
   const organizationId = await getWritableOrganizationId(supabase, access)
@@ -120,8 +119,7 @@ export async function createAnnouncement(formData: FormData) {
 }
 
 export async function createAndSubmitAnnouncement(formData: FormData) {
-  const supabase = await createClient()
-  const access = await getCurrentAccessContext()
+  const [supabase, access] = await Promise.all([createClient(), getCurrentAccessContext()])
   if (!access) throw new Error('Unauthorized')
 
   const organizationId = await getWritableOrganizationId(supabase, access)

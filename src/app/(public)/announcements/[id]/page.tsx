@@ -14,6 +14,7 @@ import {
   normalizeAnnouncementUrgency,
 } from '@/lib/announcements/presentation'
 import { announcementPath, announcementPathSegment, toSafeHttpUrl } from '@/lib/announcements/urls'
+import { formatCampusLongDate } from '@/lib/announcements/public-board'
 import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import type { Metadata } from 'next'
 import BackButton from '@/components/announcements/BackButton'
@@ -29,14 +30,6 @@ export async function generateMetadata({
   const a = await getAnnouncementById(id)
   if (!a) return {}
   return { title: a.title }
-}
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-MY', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
 }
 
 function categoryBadgeStyle(color: string): CSSProperties {
@@ -86,7 +79,7 @@ function DetailMetaTile({
 }) {
   return (
     <div
-      className="rounded-[1rem] border px-4 py-3"
+      className="rounded-[12px] border px-4 py-3"
       style={{
         background: active ? 'var(--color-accent-surface)' : 'var(--color-surface-elevated)',
         borderColor: active
@@ -145,7 +138,7 @@ export default async function AnnouncementPage({ params }: { params: Promise<{ i
         organizationId={announcement.organization_id ?? null}
         hasRegistrationLink={Boolean(registrationHref)}
       />
-      <main className="mx-auto w-full max-w-[1500px] px-4 py-10 sm:px-6 lg:px-10 xl:px-12">
+      <main className="mx-auto w-full max-w-[1461px] px-3 py-10 sm:px-5 lg:px-8">
         <article className="animate-fade-up mx-auto max-w-[82rem]">
           <BackButton />
 
@@ -160,7 +153,7 @@ export default async function AnnouncementPage({ params }: { params: Promise<{ i
                 <div className="mb-5 flex flex-wrap items-center gap-3">
                   {urgency !== 'normal' && (
                     <span
-                      className="rounded-full px-3 py-1 text-xs font-semibold tracking-[0.06em]"
+                      className="rounded-[var(--radius-tag)] px-3 py-1.5 text-xs font-bold tracking-[0.04em]"
                       style={{ color: urgencyMeta.tone, background: urgencyMeta.background }}
                     >
                       {urgencyMeta.label}
@@ -168,11 +161,11 @@ export default async function AnnouncementPage({ params }: { params: Promise<{ i
                   )}
                   {categories && (
                     <span
-                      className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold tracking-[0.06em]"
+                      className="inline-flex items-center gap-1.5 rounded-[var(--radius-tag)] border px-3 py-1.5 text-xs font-bold tracking-[0.04em]"
                       style={categoryBadgeStyle(catColor)}
                     >
                       <span
-                        className="h-1.5 w-1.5 rounded-full"
+                        className="size-1.5 rounded-full"
                         style={{ background: catColor }}
                         aria-hidden="true"
                       />
@@ -180,7 +173,7 @@ export default async function AnnouncementPage({ params }: { params: Promise<{ i
                     </span>
                   )}
                   {organizations?.name && (
-                    <span className="text-xs font-semibold tracking-[0.1em] text-[var(--color-text-muted)] uppercase">
+                    <span className="font-mono text-[0.66rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
                       {organizations.name}
                     </span>
                   )}
@@ -202,14 +195,11 @@ export default async function AnnouncementPage({ params }: { params: Promise<{ i
                   </p>
                 )}
 
-                <div className="mt-7 grid gap-3 sm:grid-cols-2">
-                  <DetailMetaTile
-                    label="Issued"
-                    value={published_at ? formatDate(published_at) : 'Pending'}
-                  />
+                <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                  <DetailMetaTile label="Issued" value={formatCampusLongDate(published_at)} />
                   <DetailMetaTile
                     label="Deadline"
-                    value={expires_at ? formatDate(expires_at) : 'No deadline'}
+                    value={formatCampusLongDate(expires_at, 'No deadline')}
                     active={Boolean(expires_at)}
                   />
                 </div>
@@ -303,14 +293,14 @@ export default async function AnnouncementPage({ params }: { params: Promise<{ i
                   value={organizations?.name ?? 'Campus bulletin'}
                 />
                 {expires_at && (
-                  <DetailMetaTile label="Expires" value={formatDate(expires_at)} active />
+                  <DetailMetaTile label="Expires" value={formatCampusLongDate(expires_at)} active />
                 )}
               </div>
               {registrationHref && (
                 <RegistrationLink
                   href={registrationHref}
                   announcementId={announcement.id}
-                  className="action-lift mt-5 inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-[1rem] bg-[var(--color-accent-inti)] px-5 font-sans text-sm font-semibold text-white focus:outline-none focus-visible:ring-2"
+                  className="action-lift mt-5 inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-[10px] bg-[var(--color-accent-inti)] px-5 font-sans text-sm font-semibold text-[var(--color-on-accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2"
                   style={{ boxShadow: 'var(--shadow-button)' }}
                 >
                   Register

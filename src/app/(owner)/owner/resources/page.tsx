@@ -1,17 +1,8 @@
 import Link from 'next/link'
-import {
-  Activity,
-  ArrowUpRight,
-  Database,
-  Eye,
-  HardDrive,
-  LockKeyhole,
-  Server,
-  ShieldCheck,
-} from 'lucide-react'
+import { Activity, ArrowUpRight, Database, Eye, HardDrive, LockKeyhole, Server } from 'lucide-react'
 import { CountUp } from '@/components/dashboard/CountUp'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { BackNavButton } from '@/components/navigation/BackNavButton'
+import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
 import { createServiceClient } from '@/lib/supabase/server'
 import {
   type ExternalResourceCard,
@@ -24,13 +15,14 @@ export const metadata = { title: 'Resources — Bulletin Owner' }
 const toneClasses: Record<NonNullable<ExternalResourceCard['metrics'][number]['tone']>, string> = {
   neutral: 'text-[var(--color-text-primary)]',
   good: 'text-[var(--color-status-published-text)]',
-  warn: 'text-[var(--color-gold)]',
+  warn: 'text-[var(--color-gold-text)]',
   bad: 'text-[var(--color-status-rejected-text)]',
 }
 
 const resourceStatusStyles: Record<ExternalResourceCard['status'], string> = {
   ready: 'bg-[var(--color-status-published-bg)] text-[var(--color-status-published-text)]',
-  attention: 'bg-[rgba(212,148,31,0.12)] text-[var(--color-gold)]',
+  attention:
+    'bg-[color-mix(in_oklab,var(--color-gold)_12%,transparent)] text-[var(--color-gold-text)]',
   not_configured: 'bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)]',
   error: 'bg-[var(--color-status-rejected-bg)] text-[var(--color-status-rejected-text)]',
 }
@@ -40,28 +32,18 @@ export default async function OwnerResourcesPage() {
   const overview = await getOwnerResourceOverview(supabase)
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-8 px-4 py-6 sm:px-6 sm:py-8">
-      <header className="flex flex-col gap-4 border-b border-[var(--color-border)] pb-6 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-[var(--color-accent-surface)] px-3 py-1 text-xs font-semibold tracking-[0.14em] text-[var(--color-accent-inti)] uppercase">
-            <ShieldCheck size={13} aria-hidden="true" />
-            Owner only · Read-only
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
-            Resources
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--color-text-secondary)]">
-            Platform health, announcement view counters, storage footprint, and optional Vercel and
-            Supabase resource signals.
-          </p>
-        </div>
-        <BackNavButton
-          fallbackHref="/owner/analytics"
-          className="inline-flex min-h-11 w-fit items-center gap-2 rounded-xl border border-[var(--color-border)] px-4 text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text-primary)]"
-        >
-          Back to analytics
-        </BackNavButton>
-      </header>
+    <DashboardDeskPage className="flex flex-col gap-6">
+      <DashboardDeskHeader
+        kicker="Owner only · Read-only"
+        title="Resources"
+        description="Platform health, announcement view counters, storage footprint, and optional Vercel and Supabase resource signals."
+        action={{
+          href: '/owner/analytics',
+          label: 'Analytics',
+          icon: ArrowUpRight,
+          variant: 'secondary',
+        }}
+      />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard
@@ -119,7 +101,7 @@ export default async function OwnerResourcesPage() {
           }))}
         />
       </section>
-    </div>
+    </DashboardDeskPage>
   )
 }
 
@@ -144,7 +126,7 @@ function MetricCard({
         </p>
         <span
           className={
-            tone === 'warn' ? 'text-[var(--color-gold)]' : 'text-[var(--color-accent-inti)]'
+            tone === 'warn' ? 'text-[var(--color-gold-text)]' : 'text-[var(--color-accent-inti)]'
           }
         >
           <Icon size={17} aria-hidden="true" />
@@ -170,7 +152,7 @@ function ExternalResourcePanel({
     <GlassCard hover={false} className="p-5">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-surface-elevated)] text-[var(--color-accent-inti)]">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-[var(--color-surface-elevated)] text-[var(--color-accent-inti)]">
             <Icon size={18} aria-hidden="true" />
           </div>
           <div>
@@ -193,7 +175,7 @@ function ExternalResourcePanel({
         {resource.metrics.map((metric) => (
           <div
             key={`${resource.name}-${metric.label}`}
-            className="rounded-xl bg-[var(--color-surface-elevated)] px-3 py-3"
+            className="rounded-xl bg-[var(--color-surface-elevated)] p-3"
           >
             <p className="text-[11px] font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
               {metric.label}
@@ -232,14 +214,14 @@ function TopAnnouncements({ overview }: { overview: OwnerResourceOverview }) {
       <div className="space-y-2">
         {overview.topAnnouncements.length === 0 ? (
           <GlassCard hover={false} className="p-6">
-            <div role="status" className="text-sm">
+            <output className="block text-sm">
               <p className="font-semibold text-[var(--color-text-primary)]">
                 No tracked announcement views yet
               </p>
               <p className="mt-1 text-[var(--color-text-secondary)]">
                 Announcement rankings will appear after public detail pages receive visits.
               </p>
-            </div>
+            </output>
           </GlassCard>
         ) : (
           overview.topAnnouncements.map((announcement, index) => (
@@ -339,14 +321,14 @@ function DistributionPanel({
       <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">{title}</h2>
       <GlassCard hover={false} className="p-5">
         {rows.length === 0 ? (
-          <div role="status" className="text-sm">
+          <output className="block text-sm">
             <p className="font-semibold text-[var(--color-text-primary)]">
               No view distribution yet
             </p>
             <p className="mt-1 text-[var(--color-text-secondary)]">
               View distribution will appear after announcements receive tracked visits.
             </p>
-          </div>
+          </output>
         ) : (
           <div className="space-y-4">
             {rows.map((row) => (
@@ -355,7 +337,7 @@ function DistributionPanel({
                   <div className="flex min-w-0 items-center gap-2">
                     {row.color && (
                       <span
-                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        className="size-2.5 shrink-0 rounded-full"
                         style={{ background: row.color }}
                         aria-hidden="true"
                       />

@@ -12,6 +12,7 @@ type BrandMarkProps = {
   preload?: boolean
   showText?: boolean
   size?: BrandMarkSize
+  tagline?: string
   textClassName?: string
 }
 
@@ -46,6 +47,7 @@ export function BrandMark({
   preload = false,
   showText = true,
   size = 'md',
+  tagline = 'Independent campus board',
   textClassName,
 }: BrandMarkProps) {
   const imageWidth = imageWidths[size]
@@ -94,7 +96,7 @@ export function BrandMark({
             Bulletin
           </p>
           <p className="mt-1 font-mono text-[0.65rem] font-bold tracking-[0.16em] text-[var(--color-accent-inti)] uppercase">
-            Independent campus board
+            {tagline}
           </p>
         </div>
       ) : null}

@@ -4,11 +4,22 @@ import path from 'path'
 
 const supabaseImageHost = (() => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  if (!supabaseUrl) return null
+  const requiresSupabaseImageHost =
+    process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL_ENV)
+
+  if (!supabaseUrl) {
+    if (requiresSupabaseImageHost) {
+      throw new Error('NEXT_PUBLIC_SUPABASE_URL is required to configure production image hosts.')
+    }
+    return null
+  }
 
   try {
     return new URL(supabaseUrl).hostname
   } catch {
+    if (requiresSupabaseImageHost) {
+      throw new Error('NEXT_PUBLIC_SUPABASE_URL must be a valid URL for production image hosts.')
+    }
     return null
   }
 })()

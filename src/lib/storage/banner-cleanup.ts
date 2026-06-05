@@ -89,6 +89,7 @@ async function listBannerPaths(bucket: StorageBucket, prefix = '', depth = 0): P
     throw new Error(`Could not list banner storage path "${prefix || '/'}": ${errorMessage(error)}`)
 
   const paths: string[] = []
+  const nestedPathPromises: Array<Promise<string[]>> = []
   for (const entry of data ?? []) {
     if (entry.name === '.emptyFolderPlaceholder') continue
 
@@ -96,11 +97,12 @@ async function listBannerPaths(bucket: StorageBucket, prefix = '', depth = 0): P
     if (isStorageFile(entry, depth)) {
       paths.push(path)
     } else if (depth < MAX_FOLDER_DEPTH) {
-      paths.push(...(await listBannerPaths(bucket, path, depth + 1)))
+      nestedPathPromises.push(listBannerPaths(bucket, path, depth + 1))
     }
   }
 
-  return paths
+  const nestedPathGroups = await Promise.all(nestedPathPromises)
+  return paths.concat(nestedPathGroups.flat())
 }
 
 export async function cleanupOrphanBannerImages(
@@ -132,9 +134,19 @@ export async function cleanupOrphanBannerImages(
   let deleted = 0
 
   if (!dryRun) {
+    const deleteBatches: string[][] = []
     for (let index = 0; index < orphanedPaths.length; index += batchSize) {
-      const batch = orphanedPaths.slice(index, index + batchSize)
-      const { error } = await bucket.remove(batch)
+      deleteBatches.push(orphanedPaths.slice(index, index + batchSize))
+    }
+
+    const deleteResults = await Promise.all(
+      deleteBatches.map(async (batch) => {
+        const result = await bucket.remove(batch)
+        return { batch, error: result.error }
+      })
+    )
+
+    for (const { batch, error } of deleteResults) {
       if (error) {
         errors.push(errorMessage(error))
       } else {

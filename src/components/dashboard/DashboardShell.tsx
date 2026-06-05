@@ -8,6 +8,7 @@ import { DashboardTopNav } from './DashboardTopNav'
 interface DashboardShellProps {
   children: React.ReactNode
   displayName: string | null
+  organizationName?: string | null
   role: string | null
   variant?: 'publisher' | 'admin' | 'super_admin' | 'owner'
   pendingReviewCount?: number
@@ -41,6 +42,7 @@ const ANNOUNCEMENT_SEARCH_HREFS: Record<
 export function DashboardShell({
   children,
   displayName,
+  organizationName,
   role,
   variant = 'publisher',
   pendingReviewCount,
@@ -55,7 +57,7 @@ export function DashboardShell({
   }, [pathname])
 
   return (
-    <div className="dashboard-canvas min-h-[100dvh] bg-[var(--color-canvas)]">
+    <div className="dashboard-canvas publisher-desk-canvas min-h-[100dvh] bg-[var(--color-canvas)]">
       <DashboardSidebar
         displayName={displayName}
         role={role}
@@ -63,27 +65,30 @@ export function DashboardShell({
         onMobileClose={() => setMobileOpen(false)}
         variant={variant}
         pendingReviewCount={pendingReviewCount}
+        organizationName={organizationName}
       />
 
       {/* Mobile overlay backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-30 bg-[rgba(36,24,21,0.42)] backdrop-blur-[2px] md:hidden"
+          className="fixed inset-0 z-30 bg-[var(--color-shell-backdrop)] backdrop-blur-[2px] md:hidden"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
         />
       )}
 
-      <DashboardTopNav
-        userName={displayName}
-        onMenuClick={() => setMobileOpen(true)}
-        notificationCount={unreadNotificationCount}
-        notificationsHref={NOTIFICATION_HREFS[variant]}
-        settingsHref={SETTINGS_HREFS[variant]}
-        announcementSearchHref={ANNOUNCEMENT_SEARCH_HREFS[variant]}
-      />
+      <div className="xl:hidden">
+        <DashboardTopNav
+          userName={displayName}
+          onMenuClick={() => setMobileOpen(true)}
+          notificationCount={unreadNotificationCount}
+          notificationsHref={NOTIFICATION_HREFS[variant]}
+          settingsHref={SETTINGS_HREFS[variant]}
+          announcementSearchHref={ANNOUNCEMENT_SEARCH_HREFS[variant]}
+        />
+      </div>
 
-      <main className="min-h-[100dvh] pt-16 pl-0 transition-[padding-left] duration-300 ease-[var(--ease-ui)] md:pl-[5rem] xl:pl-[19rem]">
+      <main className="min-h-[100dvh] pt-16 pl-0 transition-[padding-left,padding-top] duration-300 ease-[var(--ease-ui)] md:pl-[5rem] xl:pt-0 xl:pl-[18rem]">
         {children}
       </main>
     </div>

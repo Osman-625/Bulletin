@@ -69,19 +69,19 @@ describe('canAccessSuperAdminArea', () => {
 })
 
 describe('canAccessAdminArea', () => {
-  it('owner, super_admin, admin can access', () => {
+  it('only owner and admin can access', () => {
     expect(canAccessAdminArea('owner')).toBe(true)
-    expect(canAccessAdminArea('super_admin')).toBe(true)
+    expect(canAccessAdminArea('super_admin')).toBe(false)
     expect(canAccessAdminArea('admin')).toBe(true)
     expect(canAccessAdminArea('publisher')).toBe(false)
   })
 })
 
 describe('canAccessPublisherArea', () => {
-  it('all roles can access publisher tools', () => {
+  it('only owner and publisher can access publisher tools', () => {
     expect(canAccessPublisherArea('publisher')).toBe(true)
-    expect(canAccessPublisherArea('admin')).toBe(true)
-    expect(canAccessPublisherArea('super_admin')).toBe(true)
+    expect(canAccessPublisherArea('admin')).toBe(false)
+    expect(canAccessPublisherArea('super_admin')).toBe(false)
     expect(canAccessPublisherArea('owner')).toBe(true)
   })
 })
@@ -97,11 +97,11 @@ describe('getAssignableRoles', () => {
     expect(roles).not.toContain('owner')
   })
 
-  it('super_admin can assign super_admin, admin, publisher', () => {
+  it('super_admin can assign admin and publisher but not peer super_admin', () => {
     const roles = getAssignableRoles('super_admin')
-    expect(roles).toContain('super_admin')
     expect(roles).toContain('admin')
     expect(roles).toContain('publisher')
+    expect(roles).not.toContain('super_admin')
     expect(roles).not.toContain('owner')
   })
 
@@ -204,6 +204,11 @@ describe('canManageUser', () => {
     const sa = user('u1', 'super_admin')
     expect(canManageUser(sa, user('u2', 'admin'))).toBe(true)
     expect(canManageUser(sa, user('u3', 'publisher'))).toBe(true)
+  })
+
+  it('super_admin cannot manage peer super_admin accounts', () => {
+    const sa = user('u1', 'super_admin')
+    expect(canManageUser(sa, user('u2', 'super_admin'))).toBe(false)
   })
 
   it('admin can manage publisher in same org', () => {

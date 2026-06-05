@@ -34,5 +34,5 @@ export function derivePublicTopics(
     })
   })
 
-  return [...topics.values()].sort((a, b) => a.name.localeCompare(b.name))
+  return Array.from(topics.values()).toSorted((a, b) => a.name.localeCompare(b.name))
 }

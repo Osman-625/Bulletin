@@ -104,7 +104,7 @@ export async function requestPasswordReset(formData: FormData) {
     })
   } else {
     await createNotificationsForUsers(
-      (resetManagers ?? []).map((manager) => manager.id).filter((id) => id !== profile.id),
+      (resetManagers ?? []).flatMap((manager) => (manager.id === profile.id ? [] : [manager.id])),
       {
         actor_id: profile.id,
         type: 'password_reset_requested',

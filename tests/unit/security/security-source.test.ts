@@ -124,6 +124,16 @@ describe('security source guards', () => {
     expect(config).toContain('Cross-Origin-Opener-Policy')
   })
 
+  it('fails closed when production image host configuration is missing or invalid', () => {
+    const config = source('next.config.ts')
+
+    expect(config).toContain("process.env.NODE_ENV === 'production'")
+    expect(config).toContain('Boolean(process.env.VERCEL_ENV)')
+    expect(config).toContain('NEXT_PUBLIC_SUPABASE_URL is required')
+    expect(config).toContain('NEXT_PUBLIC_SUPABASE_URL must be a valid URL')
+    expect(config).toContain("pathname: '/storage/v1/object/public/banner-images/**'")
+  })
+
   it('keeps Next 16 request proxy active with force-password-change enforcement', () => {
     const proxy = source('src/proxy.ts')
 
@@ -183,6 +193,70 @@ describe('security source guards', () => {
     expect(migration).toContain('grant execute on function public.hit_rate_limit')
     expect(databaseTypes).toContain('rate_limit_buckets: {')
     expect(databaseTypes).toContain('hit_rate_limit: {')
+  })
+
+  it('uses the shared temporary-password policy in privileged user management flows', () => {
+    const ownerUsers = source('src/app/(owner)/owner/users/page.tsx')
+    const superAdminUsers = source('src/app/(super-admin)/super-admin/users/page.tsx')
+    const superAdminActions = source('src/app/(super-admin)/super-admin/users/actions.ts')
+    const resetRequestButton = source(
+      'src/app/(super-admin)/super-admin/users/PasswordResetRequestButton.tsx'
+    )
+    const resetButton = source('src/app/(super-admin)/super-admin/users/_ResetButton.tsx')
+
+    for (const file of [ownerUsers, superAdminUsers, superAdminActions]) {
+      expect(file).toContain("from '@/lib/auth/password-policy'")
+      expect(file).toContain('validateTemporaryPassword')
+    }
+
+    for (const file of [ownerUsers, superAdminUsers, resetRequestButton, resetButton]) {
+      expect(file).toContain("from '@/lib/auth/password-policy'")
+      expect(file).toContain('TEMPORARY_PASSWORD_MIN_LENGTH')
+    }
+
+    for (const file of [ownerUsers, superAdminUsers, superAdminActions]) {
+      expect(file).not.toContain('temp.length < 8')
+      expect(file).not.toContain('tempPassword.length < 8')
+      expect(file).not.toContain('minLength={8}')
+    }
+  })
+
+  it('ships an auth and RLS hardening migration for metadata roles and scoped updates', () => {
+    const migrationPath = 'supabase/migrations/20260603000021_auth_rls_hardening.sql'
+
+    expect(existsSync(migrationPath)).toBe(true)
+
+    const migration = source(migrationPath)
+    const authTriggerStart = migration.indexOf('create or replace function public.handle_new_user')
+    const orgGuardStart = migration.indexOf(
+      'create or replace function public.prevent_publisher_org_approval_field_updates'
+    )
+    const announcementPolicyStart = migration.indexOf(
+      'create policy "announcements: publisher update own"'
+    )
+    const announcementPolicy = migration.slice(announcementPolicyStart)
+
+    expect(migration).toContain('create or replace function public.user_role_from_auth_metadata')
+    expect(migration).toContain("select 'publisher'::public.user_role")
+    expect(migration).toContain("'publisher'::public.user_role as role")
+    expect(migration).not.toContain("metadata->>'role'")
+
+    expect(authTriggerStart).toBeGreaterThan(-1)
+    expect(orgGuardStart).toBeGreaterThan(authTriggerStart)
+    expect(migration).toContain('new.owner_id is distinct from old.owner_id')
+    expect(migration).toContain('new.status is distinct from old.status')
+    expect(migration).toContain('new.approved_by is distinct from old.approved_by')
+    expect(migration).toContain('new.approved_at is distinct from old.approved_at')
+    expect(migration).toContain("public.current_user_role() = 'publisher'")
+    expect(migration).toContain("using errcode = '42501'")
+    expect(migration).toContain('drop policy if exists "orgs: owner update"')
+
+    expect(announcementPolicyStart).toBeGreaterThan(orgGuardStart)
+    expect(announcementPolicy).toContain('using (')
+    expect(announcementPolicy).toContain('with check (')
+    expect(announcementPolicy.match(/organization_members/g)?.length).toBeGreaterThanOrEqual(2)
+    expect(announcementPolicy).toContain('where organization_id = announcements.organization_id')
+    expect(announcementPolicy).toContain('and user_id = auth.uid()')
   })
 
   it('keeps unsafe eval out of production CSP while allowing React development diagnostics', () => {
@@ -281,6 +355,51 @@ describe('security source guards', () => {
     expect(adminPage).toContain("select('email, token')")
     expect(publisherPage).toContain(".eq('invited_by', access.userId)")
     expect(adminPage).toContain(".eq('invited_by', access.userId)")
+  })
+
+  it('allows only owners to create super-admin invitations', () => {
+    const action = source('src/app/(super-admin)/super-admin/admins/invite/actions.ts')
+    const roleParseIndex = action.indexOf('const { email, role } = parsed.data')
+    const ownerGateIndex = action.indexOf("role === 'super_admin' && access.role !== 'owner'")
+    const insertIndex = action.indexOf(".from('invitations')")
+
+    expect(roleParseIndex).toBeGreaterThan(-1)
+    expect(ownerGateIndex).toBeGreaterThan(-1)
+    expect(insertIndex).toBeGreaterThan(-1)
+    expect(roleParseIndex).toBeLessThan(ownerGateIndex)
+    expect(ownerGateIndex).toBeLessThan(insertIndex)
+  })
+
+  it('documents intentionally public server actions before suppressing auth diagnostics', () => {
+    const viewAction = source('src/app/(public)/announcements/[id]/actions.ts')
+    const forgotPasswordAction = source('src/app/(auth)/forgot-password/actions.ts')
+    const registrationAction = source('src/app/register/actions.ts')
+    const doctorConfig = JSON.parse(source('doctor.config.json')) as {
+      ignore?: {
+        overrides?: Array<{
+          files?: string[]
+          rules?: string[]
+        }>
+      }
+    }
+    const authSuppression = { rules: ['react-doctor/server-auth-actions'] }
+
+    expect(doctorConfig.ignore?.overrides).toEqual(
+      expect.arrayContaining([
+        { files: ['src/app/**/announcements/**/actions.ts'], ...authSuppression },
+        { files: ['src/app/**/forgot-password/actions.ts'], ...authSuppression },
+        { files: ['src/app/register/actions.ts'], ...authSuppression },
+      ])
+    )
+    expect(viewAction).toContain("rpc('increment_announcement_view'")
+
+    expect(forgotPasswordAction).toContain("checkActionRateLimit('forgot-password'")
+    expect(forgotPasswordAction).toContain('redirectAsSent()')
+
+    expect(registrationAction).toContain("checkActionRateLimit('register', token)")
+    expect(registrationAction).toContain(".eq('token', token)")
+    expect(registrationAction).toContain(".is('accepted_at', null)")
+    expect(registrationAction).toContain(".gt('expires_at', new Date().toISOString())")
   })
 
   it('uses parameterized SQL for owner audit search instead of raw PostgREST OR filters', () => {

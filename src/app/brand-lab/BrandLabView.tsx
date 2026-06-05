@@ -16,18 +16,24 @@ type BrandLabViewProps = {
 
 type BrandLabStyle = CSSProperties & Record<`--${string}`, string>
 
+const DASHBOARD_CONCEPT_ROWS = ['Submitted for review', 'Scheduled this week', 'Needs poster check']
+
 export function BrandLabView({ directions, activeSlug, researchAnchors }: BrandLabViewProps) {
-  const activeDirection = directions.find((direction) => direction.slug === activeSlug) ?? directions[0]
+  const activeDirection =
+    directions.find((direction) => direction.slug === activeSlug) ?? directions[0]
 
   return (
     <main className={styles.labShell}>
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.kicker}>Bulletin Brand Lab / INTI-inspired identity system</p>
-          <h1>Three visual futures for a campus bulletin that feels official, alive, and its own.</h1>
+          <h1>
+            Three visual futures for a campus bulletin that feels official, alive, and its own.
+          </h1>
           <p>
-            Built from INTI&apos;s academic information architecture, red authority, campus credibility, and
-            announcement-heavy content patterns, then reworked into three original design systems for Bulletin.
+            Built from INTI&apos;s academic information architecture, red authority, campus
+            credibility, and announcement-heavy content patterns, then reworked into three original
+            design systems for Bulletin.
           </p>
         </div>
 
@@ -115,7 +121,10 @@ export function BrandLabView({ directions, activeSlug, researchAnchors }: BrandL
         </div>
 
         <div className={styles.previewGrid}>
-          <section className={styles.desktopSpec} aria-label={`${activeDirection.name} desktop mockup`}>
+          <section
+            className={styles.desktopSpec}
+            aria-label={`${activeDirection.name} desktop mockup`}
+          >
             <PreviewFrame direction={activeDirection} variant="desktop" />
           </section>
           <aside className={styles.mobileSpec} aria-label={`${activeDirection.name} mobile mockup`}>
@@ -123,7 +132,10 @@ export function BrandLabView({ directions, activeSlug, researchAnchors }: BrandL
           </aside>
         </div>
 
-        <section className={styles.dashboardSpec} aria-label={`${activeDirection.name} dashboard concept`}>
+        <section
+          className={styles.dashboardSpec}
+          aria-label={`${activeDirection.name} dashboard concept`}
+        >
           <DashboardConcept direction={activeDirection} />
         </section>
 
@@ -184,7 +196,12 @@ function PreviewFrame({
       <div className={styles.previewSurface} data-direction={direction.slug}>
         <header className={styles.previewMasthead}>
           <div className={styles.previewBrand}>
-            <Image src={direction.assets.markSrc} alt="" width={compact ? 30 : 38} height={compact ? 30 : 38} />
+            <Image
+              src={direction.assets.markSrc}
+              alt=""
+              width={compact ? 30 : 38}
+              height={compact ? 30 : 38}
+            />
             <div>
               <strong>Bulletin</strong>
               <span>{direction.sample.issue}</span>
@@ -244,8 +261,6 @@ function PreviewFrame({
 }
 
 function DashboardConcept({ direction }: { direction: BrandDirection }) {
-  const rows = ['Submitted for review', 'Scheduled this week', 'Needs poster check']
-
   return (
     <div className={styles.dashboardSurface}>
       <div className={styles.dashboardIntro}>
@@ -258,11 +273,13 @@ function DashboardConcept({ direction }: { direction: BrandDirection }) {
         <p>Review queue and publishing health are visible before charts or decoration.</p>
       </div>
       <div className={styles.dashboardQueue}>
-        {rows.map((row, index) => (
+        {DASHBOARD_CONCEPT_ROWS.map((row, index) => (
           <div key={row}>
             <span>{String(index + 1).padStart(2, '0')}</span>
             <strong>{row}</strong>
-            <small>{index === 0 ? direction.sample.leadTitle : direction.sample.secondaryTitle}</small>
+            <small>
+              {index === 0 ? direction.sample.leadTitle : direction.sample.secondaryTitle}
+            </small>
           </div>
         ))}
       </div>
@@ -292,8 +309,8 @@ function PaletteSpec({ direction }: { direction: BrandDirection }) {
         ))}
       </div>
       <p>
-        Red remains the institutional signal. Warm neutrals carry daily reading, navy adds academic depth,
-        and gold is reserved for deadlines, issue metadata, and high-value states.
+        Red remains the institutional signal. Warm neutrals carry daily reading, navy adds academic
+        depth, and gold is reserved for deadlines, issue metadata, and high-value states.
       </p>
     </article>
   )

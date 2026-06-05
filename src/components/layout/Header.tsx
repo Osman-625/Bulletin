@@ -6,7 +6,7 @@ import { getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
 import { formatCampusLongDate } from '@/lib/announcements/public-board'
 
 function formatRole(role: string) {
-  return role.replace('_', ' ')
+  return role.replaceAll('_', ' ')
 }
 
 export default async function Header() {
@@ -15,22 +15,18 @@ export default async function Header() {
   const today = formatCampusLongDate()
 
   return (
-    <header
-      className="sticky top-0 z-50 shadow-[0_12px_34px_rgba(95,61,22,0.12),0_1px_0_rgba(30,26,23,0.08)] dark:shadow-[0_12px_34px_rgba(0,0,0,0.42),0_1px_0_rgba(255,255,255,0.04)]"
-      style={{ borderBottom: '1px solid var(--color-border-subtle)' }}
-    >
+    <header className="sticky top-0 z-50 border-b border-[var(--color-border-subtle)] shadow-[var(--shadow-header)]">
       <HeaderLoadingSignal />
+      <div aria-hidden="true" className="flex h-[3px]">
+        <span className="flex-1 bg-[var(--color-accent-inti)]" />
+        <span className="flex-1 bg-[var(--color-gold)]" />
+        <span className="flex-1 bg-[var(--color-accent-inti)]" />
+      </div>
 
-      <div
-        style={{
-          background: 'var(--color-header-bg)',
-          backdropFilter: 'blur(18px)',
-          WebkitBackdropFilter: 'blur(18px)',
-        }}
-      >
+      <div className="bg-[var(--color-header-bg)] backdrop-blur-[18px]">
         <nav
           aria-label="Public navigation"
-          className="mx-auto flex min-h-16 w-full max-w-[1280px] items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-6 lg:px-8"
+          className="mx-auto flex min-h-16 w-full max-w-[1440px] items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-6 lg:px-10"
         >
           <Link
             href="/"
@@ -45,7 +41,7 @@ export default async function Header() {
           </Link>
 
           <div className="hidden min-w-0 flex-1 justify-center md:flex">
-            <p className="max-w-full truncate rounded-full border border-[var(--color-border-subtle)] bg-[var(--color-surface)]/70 px-3 py-1.5 font-mono text-[0.66rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
+            <p className="max-w-full truncate rounded-[7px] border border-[var(--color-border-subtle)] bg-[var(--color-surface)]/70 px-3.5 py-1.5 font-mono text-[0.66rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
               {today}
             </p>
           </div>
@@ -54,7 +50,11 @@ export default async function Header() {
             <ThemeToggle />
             <Link
               href={workspaceHref}
-              className="inline-flex min-h-10 cursor-pointer items-center rounded-full border border-transparent px-3 font-sans text-sm font-semibold text-[var(--color-text-primary)] transition-[transform,background,border-color,color] duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 hover:border-[var(--color-border)] hover:bg-[var(--color-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] active:scale-[0.97] sm:min-h-11 sm:px-4"
+              className={
+                access
+                  ? 'inline-flex min-h-11 cursor-pointer items-center rounded-[10px] border border-transparent px-3 font-sans text-sm font-semibold text-[var(--color-text-primary)] transition-[transform,background,border-color,color] duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 hover:border-[var(--color-border)] hover:bg-[var(--color-surface)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] active:scale-[0.97] sm:px-4'
+                  : 'inline-flex min-h-11 cursor-pointer items-center rounded-[10px] bg-[var(--color-accent-inti)] px-4 font-sans text-sm font-semibold text-[var(--color-on-accent)] transition-[transform,background,box-shadow] duration-300 ease-[var(--ease-ui)] hover:-translate-y-0.5 hover:bg-[var(--color-accent-hover)] hover:shadow-[var(--shadow-button-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] active:scale-[0.97] sm:px-5'
+              }
             >
               {access ? 'Workspace' : 'Sign in'}
             </Link>

@@ -112,8 +112,13 @@ describe('tooling source guards', () => {
 
     expect(config).toContain("testMatch: 'deploy-smoke.spec.ts'")
     expect(config).toContain('PLAYWRIGHT_BASE_URL')
+    expect(config).toContain('ALLOW_LOCAL_SMOKE')
+    expect(config).toContain('PLAYWRIGHT_BASE_URL is required')
+    expect(config).not.toContain("?? 'http://localhost:3000'")
     expect(config).not.toContain('webServer')
     expect(spec).toContain("test.describe('deployment smoke'")
+    expect(spec).toContain('PLAYWRIGHT_BASE_URL is required')
+    expect(spec).not.toContain("?? 'http://localhost:3000'")
     expect(spec).toContain("page.goto('/', { waitUntil: 'domcontentloaded' })")
     expect(spec).toContain("page.goto('/login', { waitUntil: 'domcontentloaded' })")
     expect(spec).toContain('request.post(`${BASE}/api/setup`)')

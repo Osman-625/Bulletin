@@ -41,11 +41,11 @@ export function readPublisherInvitationFormData(
 
   const orgIds = Array.from(
     new Set(
-      formData
-        .getAll('org_ids')
-        .filter((orgId): orgId is string => typeof orgId === 'string')
-        .map((orgId) => orgId.trim())
-        .filter(Boolean)
+      formData.getAll('org_ids').flatMap((orgId) => {
+        if (typeof orgId !== 'string') return []
+        const trimmedOrgId = orgId.trim()
+        return trimmedOrgId ? [trimmedOrgId] : []
+      })
     )
   )
 

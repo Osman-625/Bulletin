@@ -11,16 +11,21 @@ import { createClient } from '@/lib/supabase/server'
 const ACCOUNT_PROFILE_ERROR = 'Could not update profile. Try again.'
 const ACCOUNT_PASSWORD_ERROR = 'Could not update password. Try again.'
 
-const SETTINGS_PATHS = new Set([
-  '/dashboard/settings',
-  '/admin/settings',
-  '/super-admin/settings',
-  '/owner/settings',
-])
+function isSettingsPath(value: string) {
+  switch (value) {
+    case '/dashboard/settings':
+    case '/admin/settings':
+    case '/super-admin/settings':
+    case '/owner/settings':
+      return true
+    default:
+      return false
+  }
+}
 
 function getReturnTo(formData: FormData) {
   const value = ((formData.get('return_to') as string | null) ?? '').trim()
-  return SETTINGS_PATHS.has(value) ? value : '/dashboard/settings'
+  return isSettingsPath(value) ? value : '/dashboard/settings'
 }
 
 function redirectWithStatus(

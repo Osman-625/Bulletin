@@ -16,6 +16,8 @@ describe('optimized public UI redesign source guards', () => {
     const globals = source('src/app/globals.css')
 
     expect(bodyRule(globals)).not.toContain('24px 24px')
+    expect(globals).toContain('.public-board-canvas')
+    expect(globals).toContain('background: var(--color-canvas)')
     expect(globals).toContain('.future-warm-plane')
     expect(globals).toContain('.dark .future-warm-plane')
     expect(globals).toContain('@media (max-width: 767px)')

@@ -1,11 +1,22 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import { captureProductEvent } from '@/lib/product-analytics'
 import type { DbCategory } from '@/lib/types'
 
-export default function CategoryFilter({ categories }: { categories: DbCategory[] }) {
+type CategoryFilterProps = { categories: DbCategory[] }
+
+export default function CategoryFilter({ categories }: CategoryFilterProps) {
+  return (
+    <Suspense fallback={<CategoryFilterFallback categories={categories} />}>
+      <CategoryFilterControls categories={categories} />
+    </Suspense>
+  )
+}
+
+function CategoryFilterControls({ categories }: CategoryFilterProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const active = searchParams.get('category') ?? ''
@@ -25,9 +36,8 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
   }
 
   return (
-    <div
+    <nav
       className="flex snap-x snap-proximity gap-2 overflow-x-auto pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden"
-      role="group"
       aria-label="Filter by category"
     >
       {/* All */}
@@ -88,7 +98,7 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
             aria-pressed={isActive}
           >
             <span
-              className="h-2 w-2 flex-shrink-0 rounded-full"
+              className="size-2 flex-shrink-0 rounded-full"
               style={{ background: color }}
               aria-hidden="true"
             />
@@ -97,6 +107,54 @@ export default function CategoryFilter({ categories }: { categories: DbCategory[
           </button>
         )
       })}
-    </div>
+    </nav>
+  )
+}
+
+function CategoryFilterFallback({ categories }: CategoryFilterProps) {
+  return (
+    <nav
+      className="flex snap-x snap-proximity gap-2 overflow-x-auto pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden"
+      aria-label="Filter by category"
+    >
+      <button
+        type="button"
+        data-category=""
+        disabled
+        className="tab-lift inline-flex min-h-11 shrink-0 snap-start items-center rounded-[10px] border border-[var(--color-text-primary)] bg-[var(--color-text-primary)] px-3.5 text-sm font-semibold text-[var(--color-canvas)] disabled:cursor-default"
+        aria-pressed="true"
+      >
+        All
+      </button>
+
+      {categories.length === 0 ? (
+        <span className="inline-flex min-h-11 shrink-0 snap-start items-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3.5 text-sm font-semibold text-[var(--color-text-muted)]">
+          No topics available yet
+        </span>
+      ) : (
+        categories.map((cat) => {
+          const color = cat.color ?? DEFAULT_CATEGORY_DISPLAY_COLOR
+
+          return (
+            <button
+              type="button"
+              data-category={cat.slug}
+              key={cat.id}
+              disabled
+              className="tab-lift inline-flex min-h-11 shrink-0 snap-start items-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3.5 text-sm font-semibold text-[var(--color-text-muted)] disabled:cursor-default"
+              aria-pressed="false"
+            >
+              <span
+                className="size-2 flex-shrink-0 rounded-full"
+                style={{ background: color }}
+                aria-hidden="true"
+              />
+              <span className="sr-only">Category: </span>
+              {cat.name}
+            </button>
+          )
+        })
+      )}
+    </nav>
   )
 }

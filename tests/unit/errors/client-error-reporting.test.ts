@@ -14,7 +14,9 @@ describe('client error reporting', () => {
 
   it('builds a structured browser-safe error payload', () => {
     const log = buildClientErrorLog('announcement_form.banner_upload', new Error('Upload failed'), {
+      email: 'person@example.edu',
       fileType: 'image/png',
+      token: 'raw-token',
     })
 
     expect(log).toMatchObject({
@@ -22,7 +24,9 @@ describe('client error reporting', () => {
       message: 'Upload failed',
       name: 'Error',
       metadata: {
+        email: '[redacted]',
         fileType: 'image/png',
+        token: '[redacted]',
       },
     })
     expect(log.occurred_at).toEqual(expect.any(String))
@@ -31,13 +35,20 @@ describe('client error reporting', () => {
   it('logs with a stable client-error marker', () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    reportClientError('announcement_form.save', 'Could not save')
+    reportClientError('announcement_form.save', 'Could not save', {
+      authorization: 'Bearer raw-token',
+      fileType: 'image/png',
+    })
 
     expect(spy).toHaveBeenCalledWith(
       '[client-error]',
       expect.objectContaining({
         context: 'announcement_form.save',
         message: 'Could not save',
+        metadata: {
+          authorization: '[redacted]',
+          fileType: 'image/png',
+        },
       })
     )
 

@@ -1,57 +1,113 @@
 export default function DashboardLoading() {
   return (
-    <div className="dashboard-page publisher-dashboard-shell mx-auto w-full max-w-[92rem] px-4 py-5 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-      <div className="publisher-command-layout">
-        <section className="dashboard-command-card publisher-overview-hero rounded-[1.75rem] p-5 sm:p-7 lg:p-8">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <div>
-              <div className="dashboard-skeleton h-3 w-36 rounded-full" />
-              <div className="dashboard-skeleton mt-8 h-12 w-11/12 rounded-2xl sm:w-3/4" />
-              <div className="dashboard-skeleton mt-4 h-4 w-full max-w-[36rem] rounded-full" />
-              <div className="dashboard-skeleton mt-3 h-4 w-4/5 max-w-[30rem] rounded-full" />
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
-              <div className="dashboard-skeleton h-12 w-full rounded-[1rem] sm:w-44" />
-              <div className="dashboard-skeleton h-12 w-full rounded-[1rem] sm:w-36" />
-            </div>
+    <div className="dashboard-page mx-auto w-full max-w-[88rem] px-4 pt-8 pb-4 sm:px-6 lg:px-8 xl:px-12">
+      {/* ── Masthead ── */}
+      <header aria-label="Loading publisher desk">
+        <div className="pub-mast-top">
+          <div className="dashboard-skeleton h-3 w-56 rounded-full" />
+          <div className="pub-mast-tools">
+            <div className="dashboard-skeleton h-[42px] w-72 rounded-[var(--radius-control)]" />
+            <div className="dashboard-skeleton h-[42px] w-36 rounded-[var(--radius-control)]" />
+            <div className="dashboard-skeleton h-[42px] w-44 rounded-[var(--radius-control)]" />
           </div>
-          <div className="publisher-overview-note mt-6 flex flex-col gap-2 border-t border-[var(--color-border-subtle)] pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="dashboard-skeleton h-4 w-40 rounded-full" />
-            <div className="dashboard-skeleton h-4 w-32 rounded-full" />
-          </div>
-        </section>
+        </div>
 
-        <section className="publisher-quiet-metrics" aria-label="Loading publisher metrics">
+        <div className="dashboard-skeleton mt-7 h-11 w-11/12 rounded-2xl sm:w-3/4" />
+
+        <hr className="dashboard-rule-double pub-rule-spaced" />
+
+        {/* Ledger strip */}
+        <div className="pub-ledger">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="publisher-metric-item">
+            <div key={index} className="pub-ledger-cell">
+              <div className="dashboard-skeleton h-2.5 w-24 rounded-full" />
+              <div className="dashboard-skeleton mt-1 h-8 w-16 rounded-lg" />
               <div className="dashboard-skeleton h-3 w-28 rounded-full" />
-              <div className="dashboard-skeleton mt-4 h-9 w-20 rounded-xl" />
-              <div className="dashboard-skeleton mt-5 h-4 w-full rounded-full" />
             </div>
           ))}
+        </div>
+      </header>
+
+      {/* ── Lead grid ── */}
+      <div className="pub-lead-grid">
+        {/* Needs attention */}
+        <section>
+          <div className="pub-sec-head">
+            <div className="dashboard-skeleton h-2.5 w-44 rounded-full" />
+            <div className="dashboard-skeleton h-2.5 w-16 rounded-full" />
+          </div>
+          <article className="pub-lead-card">
+            <div className="pub-lead-hero">
+              <div>
+                <div className="dashboard-skeleton h-5 w-40 rounded-[var(--radius-tag)]" />
+                <div className="dashboard-skeleton mt-4 h-6 w-10/12 rounded-lg" />
+                <div className="dashboard-skeleton mt-3 h-3.5 w-full rounded-full" />
+                <div className="dashboard-skeleton mt-2 h-3.5 w-4/5 rounded-full" />
+                <div className="mt-5 flex gap-2.5">
+                  <div className="dashboard-skeleton h-[38px] w-40 rounded-[var(--radius-control)]" />
+                  <div className="dashboard-skeleton h-[38px] w-32 rounded-[var(--radius-control)]" />
+                </div>
+              </div>
+              <div className="pub-poster-mat empty" aria-hidden="true" />
+            </div>
+            {Array.from({ length: 2 }).map((_, index) => (
+              <div key={index} className="pub-attn">
+                <span className="dashboard-skeleton size-[30px] rounded-lg" />
+                <div className="min-w-0 flex-1">
+                  <div className="dashboard-skeleton h-3.5 w-2/3 rounded-full" />
+                  <div className="dashboard-skeleton mt-2 h-2.5 w-2/5 rounded-full" />
+                </div>
+                <div className="dashboard-skeleton h-2.5 w-12 rounded-full" />
+              </div>
+            ))}
+          </article>
         </section>
 
-        <section className="publisher-workspace-board">
-          <div className="dashboard-command-card rounded-[1.75rem] p-5 sm:p-6">
-            <div className="dashboard-skeleton h-3 w-28 rounded-full" />
-            <div className="dashboard-skeleton mt-4 h-7 w-52 rounded-xl" />
-            <div className="mt-6 grid gap-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="dashboard-skeleton h-28 rounded-[1.25rem]" />
+        {/* On the wire */}
+        <section>
+          <div className="pub-sec-head">
+            <div className="dashboard-skeleton h-2.5 w-28 rounded-full" />
+          </div>
+          <div className="pub-wire">
+            <div className="pub-wire-head">
+              <div className="dashboard-skeleton h-4 w-40 rounded-lg" />
+              <div className="dashboard-skeleton h-2.5 w-12 rounded-full" />
+            </div>
+            <div className="pub-timeline">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="pub-tl-item">
+                  <span className="pub-tl-node" aria-hidden="true" />
+                  <div className="dashboard-skeleton h-2.5 w-20 rounded-full" />
+                  <div className="dashboard-skeleton mt-2 h-3.5 w-4/5 rounded-full" />
+                  <div className="dashboard-skeleton mt-2 h-2.5 w-2/3 rounded-full" />
+                </div>
               ))}
             </div>
           </div>
-          <aside className="dashboard-command-card publisher-next-actions rounded-[1.75rem] p-5 sm:p-6">
-            <div className="dashboard-skeleton h-3 w-36 rounded-full" />
-            <div className="dashboard-skeleton mt-4 h-8 w-56 rounded-xl" />
-            <div className="mt-6 grid gap-4">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="dashboard-skeleton h-14 rounded-[1rem]" />
-              ))}
-            </div>
-          </aside>
         </section>
       </div>
+
+      {/* ── Contents index ── */}
+      <section className="pub-index">
+        <div className="pub-index-head">
+          <div className="dashboard-skeleton h-5 w-48 rounded-lg" />
+          <div className="dashboard-skeleton h-9 w-72 rounded-[var(--radius-control)]" />
+        </div>
+        <div>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="pub-entry" aria-hidden="true">
+              <div className="dashboard-skeleton h-3.5 w-6 rounded-full" />
+              <div className="pub-entry-main">
+                <div className="dashboard-skeleton h-4 w-3/5 rounded-full" />
+                <div className="dashboard-skeleton mt-2 h-2.5 w-2/5 rounded-full" />
+              </div>
+              <div className="dashboard-skeleton h-5 w-20 rounded-[var(--radius-tag)]" />
+              <div className="dashboard-skeleton h-4 w-12 rounded-full" />
+              <span />
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }

@@ -1,5 +1,7 @@
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { CountUp } from '@/components/dashboard/CountUp'
+import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { formatCampusCompactDate } from '@/lib/announcements/public-board'
 import { getPlatformStats } from '@/lib/data'
 import { createClient } from '@/lib/supabase/server'
 
@@ -29,13 +31,12 @@ export default async function SuperAdminAnalyticsPage() {
     .slice(0, 10)
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 px-6 py-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
-          Platform Analytics
-        </h1>
-        <p className="mt-1 text-[var(--color-text-secondary)]">Platform-wide statistics.</p>
-      </div>
+    <DashboardDeskPage className="flex flex-col gap-6">
+      <DashboardDeskHeader
+        kicker="Super analytics"
+        title="Platform analytics"
+        description="Platform-wide publishing statistics, organization activity, and new user movement."
+      />
 
       {/* Platform stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
@@ -79,14 +80,14 @@ export default async function SuperAdminAnalyticsPage() {
           </div>
         ) : (
           <GlassCard hover={false} className="p-6">
-            <div role="status" className="text-sm">
+            <output className="block text-sm">
               <p className="font-semibold text-[var(--color-text-primary)]">
                 No organization activity yet
               </p>
               <p className="mt-1 text-[var(--color-text-secondary)]">
                 Organization rankings will appear after published announcements exist.
               </p>
-            </div>
+            </output>
           </GlassCard>
         )}
       </div>
@@ -103,7 +104,7 @@ export default async function SuperAdminAnalyticsPage() {
                 hover={false}
                 className="flex items-center gap-4 px-5 py-3"
               >
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-elevated)]">
+                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-[var(--color-surface-elevated)]">
                   <span className="text-xs font-bold text-[var(--color-text-secondary)]">
                     {u.display_name.charAt(0).toUpperCase()}
                   </span>
@@ -113,25 +114,22 @@ export default async function SuperAdminAnalyticsPage() {
                   {u.role.replace('_', ' ')}
                 </span>
                 <p className="shrink-0 font-mono text-xs text-[var(--color-text-muted)]">
-                  {new Date(u.created_at).toLocaleDateString('en-MY', {
-                    day: 'numeric',
-                    month: 'short',
-                  })}
+                  {formatCampusCompactDate(u.created_at)}
                 </p>
               </GlassCard>
             ))}
           </div>
         ) : (
           <GlassCard hover={false} className="p-6">
-            <div role="status" className="text-sm">
+            <output className="block text-sm">
               <p className="font-semibold text-[var(--color-text-primary)]">No recent users yet</p>
               <p className="mt-1 text-[var(--color-text-secondary)]">
                 New account activity will appear here after users join.
               </p>
-            </div>
+            </output>
           </GlassCard>
         )}
       </div>
-    </div>
+    </DashboardDeskPage>
   )
 }

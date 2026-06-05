@@ -11,10 +11,9 @@ export function CampusMetric({
     <div
       className={
         wide
-          ? 'rounded-[1.15rem] bg-[var(--color-surface)]/72 p-4 sm:col-span-1'
-          : 'rounded-[1.15rem] bg-[var(--color-surface)]/72 p-4'
+          ? 'public-board-metric rounded-[1rem] border p-4 sm:col-span-1'
+          : 'public-board-metric rounded-[1rem] border p-4'
       }
-      style={{ border: '1px solid var(--color-border-subtle)' }}
     >
       <p
         className={

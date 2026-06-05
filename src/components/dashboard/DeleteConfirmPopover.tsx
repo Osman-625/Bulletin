@@ -11,7 +11,6 @@ interface DeleteConfirmPopoverProps {
   onOpen: () => void
   onClose: () => void
   onConfirm: () => void
-  onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void
 }
 
 export function DeleteConfirmPopover({
@@ -23,18 +22,14 @@ export function DeleteConfirmPopover({
   onOpen,
   onClose,
   onConfirm,
-  onKeyDown,
 }: DeleteConfirmPopoverProps) {
   return (
     <div className="relative">
       {showDeleteConfirm ? (
         <div
           ref={deleteConfirmRef}
-          role="alertdialog"
-          aria-modal="true"
           aria-labelledby="delete-announcement-title"
           aria-describedby="delete-announcement-description"
-          onKeyDown={onKeyDown}
           className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--color-destructive)]/30 bg-[var(--color-surface)] p-2 shadow-[var(--shadow-soft)]"
         >
           <span
@@ -70,7 +65,7 @@ export function DeleteConfirmPopover({
           onClick={onOpen}
           className="flex min-h-11 items-center gap-1.5 rounded-lg text-xs text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-destructive)]"
         >
-          <Trash2 size={14} />
+          <Trash2 size={14} aria-hidden="true" />
           Delete
         </button>
       )}

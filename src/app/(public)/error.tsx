@@ -18,7 +18,7 @@ export default function PublicError({
   }, [error])
 
   return (
-    <div className="future-warm-plane min-h-[100dvh] px-4 py-12 sm:px-6 lg:px-10">
+    <div className="public-board-canvas min-h-[100dvh] px-4 py-12 sm:px-6 lg:px-10">
       <div className="future-bento-cell mx-auto flex min-h-[28rem] max-w-[42rem] flex-col items-center justify-center rounded-[1.75rem] px-6 py-14 text-center">
         <BrandMark size="lg" showText={false} className="campus-logo-halo mb-6 rounded-[1.35rem]" />
         <h2 className="font-display text-4xl leading-tight font-bold text-[var(--color-text-primary)] sm:text-5xl">
@@ -28,8 +28,9 @@ export default function PublicError({
           The public board hit a temporary problem. Try again to reload the latest notices.
         </p>
         <button
+          type="button"
           onClick={reset}
-          className="action-lift mt-7 min-h-12 rounded-[1rem] bg-[var(--color-accent-inti)] px-6 text-base font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+          className="action-lift mt-7 min-h-12 rounded-[10px] bg-[var(--color-accent-inti)] px-6 text-base font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
         >
           Try again
         </button>

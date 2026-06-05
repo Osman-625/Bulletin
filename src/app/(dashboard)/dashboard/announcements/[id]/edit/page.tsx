@@ -17,10 +17,9 @@ import {
 import type { AnnouncementFormData } from '@/components/dashboard/AnnouncementForm'
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const supabase = await createClient()
+  const [{ id }, supabase] = await Promise.all([params, createClient()])
   const { data } = await supabase.from('announcements').select('title').eq('id', id).single()
-  return { title: data ? `Edit: ${data.title} — Bulletin` : 'Edit Announcement — Bulletin' }
+  return { title: data ? `Edit: ${data.title}, Bulletin` : 'Edit Announcement, Bulletin' }
 }
 
 export default async function EditAnnouncementPage({
@@ -28,11 +27,12 @@ export default async function EditAnnouncementPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const { id } = await params
-  const access = await getCurrentAccessContext()
+  const [{ id }, access, supabase] = await Promise.all([
+    params,
+    getCurrentAccessContext(),
+    createClient(),
+  ])
   if (!access) redirect('/login')
-
-  const supabase = await createClient()
 
   const [{ data: announcement }, { data: categories }] = await Promise.all([
     supabase
@@ -72,6 +72,7 @@ export default async function EditAnnouncementPage({
 
   return (
     <AnnouncementForm
+      key={initialData.id}
       initialData={initialData}
       categories={categories ?? []}
       onSave={updateAnnouncement.bind(null, id)}

@@ -58,6 +58,13 @@ planning/
 scripts/screenshots
 scripts/test_card_ux.py
 
+# Local design scratch & screenshot capture (root-level only — not src/)
+/.design/
+/_handoff_extract/
+/_*.png
+/_*.py
+/_*.cjs
+
 # OS
 .DS_Store
 Thumbs.db

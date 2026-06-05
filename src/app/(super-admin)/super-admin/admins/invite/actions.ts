@@ -27,6 +27,10 @@ export async function inviteAdmin(formData: FormData) {
   if (!parsed.ok) redirect(inviteErrorHref(parsed.error))
 
   const { email, role } = parsed.data
+  if (role === 'super_admin' && access.role !== 'owner') {
+    redirect(inviteErrorHref('Only owners can invite super admins.'))
+  }
+
   const supabase = await createClient()
   const expiresAt = new Date()
   expiresAt.setDate(expiresAt.getDate() + INVITATION_EXPIRY_DAYS)

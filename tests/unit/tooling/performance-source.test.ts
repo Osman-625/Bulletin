@@ -59,8 +59,13 @@ describe('performance source guards', () => {
   it('keeps the internal brand lab out of public discovery', () => {
     const robots = source('src/app/robots.ts')
     const brandLab = source('src/app/brand-lab/page.tsx')
+    const sitemap = source('src/app/sitemap.ts')
 
     expect(robots).toContain("'/brand-lab'")
+    expect(robots).toContain("'/login'")
+    expect(robots).toContain("'/register'")
+    expect(robots).toContain("'/change-password'")
+    expect(sitemap).not.toContain('`${siteUrl}/login`')
     expect(brandLab).toContain('robots:')
     expect(brandLab).toContain('index: false')
     expect(brandLab).toContain('follow: false')

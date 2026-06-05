@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight, Eye } from 'lucide-react'
 import { StatusBadge } from './StatusBadge'
+import { formatCampusCompactDate } from '@/lib/announcements/public-board'
 
 export type DashboardRecentAnnouncement = {
   id: string
@@ -64,10 +65,7 @@ export function DashboardRecentRow({
         <div className="flex items-center gap-4 text-left md:block md:text-right">
           <div>
             <p className="font-mono text-xs font-semibold text-[var(--color-text-secondary)]">
-              {new Date(announcement.updated_at).toLocaleDateString('en-MY', {
-                day: 'numeric',
-                month: 'short',
-              })}
+              {formatCampusCompactDate(announcement.updated_at)}
             </p>
             <p className="mt-1 text-[0.68rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
               Latest update

@@ -1,6 +1,12 @@
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
 import { GlassCard } from '@/components/dashboard/GlassCard'
+import {
+  DashboardDeskHeader,
+  DashboardDeskPage,
+  DashboardDeskPanel,
+} from '@/components/dashboard/DashboardDesk'
+import { formatCampusShortDate } from '@/lib/announcements/public-board'
 import { getAllAdmins } from '@/lib/data'
 
 export const metadata = { title: 'Admins — Bulletin Super Admin' }
@@ -14,71 +20,62 @@ export default async function AdminsPage() {
   const admins = await getAllAdmins()
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6 px-6 py-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
-            Admins
-          </h1>
-          <p className="mt-1 text-[var(--color-text-secondary)]">{admins.length} admin users</p>
-        </div>
-        <Link
-          href="/super-admin/admins/invite"
-          className="flex items-center gap-2 rounded-xl bg-[var(--color-accent)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)]"
-        >
-          <Plus size={15} /> Invite Admin
-        </Link>
-      </div>
+    <DashboardDeskPage className="flex flex-col gap-5">
+      <DashboardDeskHeader
+        kicker="Super directory"
+        title="Admins"
+        description={`${admins.length} admin user${admins.length === 1 ? '' : 's'} with review and management access.`}
+        action={{ href: '/super-admin/admins/invite', label: 'Invite admin', icon: ShieldCheck }}
+      />
 
-      <div className="space-y-2">
-        {admins.length === 0 && (
-          <GlassCard hover={false} className="p-8">
-            <div role="status" className="mx-auto max-w-md text-center">
-              <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                No admins yet
-              </p>
-              <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-                Invite the first admin to help review announcements and manage publishers.
-              </p>
-              <Link
-                href="/super-admin/admins/invite"
-                className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-[var(--color-accent)] px-4 text-xs font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)]"
-              >
-                Invite the first admin
-              </Link>
-            </div>
-          </GlassCard>
-        )}
-        {admins.map((a) => (
-          <GlassCard key={a.id} hover={false} className="flex items-center gap-4 px-5 py-4">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-surface)]">
-              <span className="text-sm font-bold text-[var(--color-accent)]">
-                {a.display_name.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-semibold text-[var(--color-text-primary)]">
-                  {a.display_name}
-                </p>
-                <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold uppercase ${roleBadge(a.role)}`}
-                >
-                  {a.role.replace('_', ' ')}
-                </span>
-              </div>
-              <p className="text-xs text-[var(--color-text-muted)]">{a.email}</p>
-            </div>
-            <p className="shrink-0 font-mono text-xs text-[var(--color-text-muted)]">
-              {new Date(a.created_at).toLocaleDateString('en-MY', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              })}
+      <DashboardDeskPanel
+        title="Admin directory"
+        count={`${admins.length} total`}
+        bodyClassName="desk-panel-body"
+      >
+        {admins.length === 0 ? (
+          <output className="mx-auto block max-w-md py-12 text-center">
+            <p className="text-sm font-semibold text-[var(--color-text-primary)]">No admins yet</p>
+            <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
+              Invite the first admin to help review announcements and manage publishers.
             </p>
-          </GlassCard>
-        ))}
-      </div>
-    </div>
+            <Link
+              href="/super-admin/admins/invite"
+              className="mt-4 inline-flex min-h-10 items-center rounded-[var(--radius-control)] bg-[var(--color-accent)] px-4 text-xs font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)]"
+            >
+              Invite the first admin
+            </Link>
+          </output>
+        ) : (
+          <div className="grid gap-2">
+            {admins.map((a) => (
+              <GlassCard key={a.id} hover={false} className="flex items-center gap-4 px-5 py-4">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent-surface)]">
+                  <span className="text-sm font-bold text-[var(--color-accent)]">
+                    {a.display_name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-[var(--color-text-primary)]">
+                      {a.display_name}
+                    </p>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold uppercase ${roleBadge(a.role)}`}
+                    >
+                      {a.role.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-muted)]">{a.email}</p>
+                </div>
+                <p className="shrink-0 font-mono text-xs text-[var(--color-text-muted)]">
+                  {formatCampusShortDate(a.created_at)}
+                </p>
+              </GlassCard>
+            ))}
+          </div>
+        )}
+      </DashboardDeskPanel>
+    </DashboardDeskPage>
   )
 }

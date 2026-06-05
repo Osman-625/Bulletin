@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { Archive, CheckCircle2, Clock3, FileText, Plus } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
@@ -7,7 +6,12 @@ import {
   type AnnouncementTab,
   type AnnouncementTabCounts,
 } from '@/components/dashboard/AnnouncementsClient'
-import { CountUp } from '@/components/dashboard/CountUp'
+import {
+  DashboardDeskHeader,
+  DashboardDeskMetrics,
+  DashboardDeskPage,
+  DashboardDeskPanel,
+} from '@/components/dashboard/DashboardDesk'
 import { getCurrentAccessContext } from '@/lib/auth/authz'
 import { shouldScopeAnnouncementsToMembership } from '@/lib/announcements/access'
 import { reportServerError } from '@/lib/error-reporting'
@@ -69,8 +73,10 @@ export default async function AnnouncementsPage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
-  const { search, tab, page } = await searchParams
-  const access = await getCurrentAccessContext()
+  const [{ search, tab, page }, access] = await Promise.all([
+    searchParams,
+    getCurrentAccessContext(),
+  ])
   if (!access) redirect('/login')
 
   const supabase = await createClient()
@@ -223,60 +229,40 @@ export default async function AnnouncementsPage({
   ]
 
   return (
-    <div className="dashboard-page mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-      <section className="grid gap-3 xl:grid-cols-12">
-        <div className="dashboard-command-card rounded-[1.5rem] p-6 sm:p-8 xl:col-span-8">
-          <p className="future-kicker">Announcements</p>
-          <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="font-display text-4xl leading-none font-extrabold text-[var(--color-text-primary)] sm:text-5xl">
-                Manage campus posts
-              </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--color-text-secondary)] sm:text-base">
-                {scopeToMembership
-                  ? "Search, filter, and update your organization's announcements."
-                  : 'Search, filter, and update announcements across approved organizations.'}
-              </p>
-            </div>
-            <Link
-              href="/dashboard/announcements/new"
-              className="action-lift inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-2 rounded-[0.95rem] bg-[var(--color-accent)] px-5 text-sm font-semibold text-white shadow-[var(--shadow-button)] sm:w-auto"
-            >
-              <Plus size={16} aria-hidden="true" />
-              New announcement
-            </Link>
-          </div>
-        </div>
+    <DashboardDeskPage className="flex flex-col gap-4">
+      <DashboardDeskHeader
+        kicker="Announcement register"
+        title="Manage campus posts"
+        description={
+          scopeToMembership
+            ? `${totalAnnouncements} total notices in your organization workspace. Search, filter, and update them here.`
+            : `${totalAnnouncements} total notices across approved organizations. Search, filter, and update them here.`
+        }
+        action={{
+          href: '/dashboard/announcements/new',
+          label: 'New announcement',
+          icon: Plus,
+        }}
+      />
 
-        <div className="dashboard-command-card rounded-[1.5rem] p-5 xl:col-span-4">
-          <p className="future-kicker">Total</p>
-          <CountUp
-            value={totalAnnouncements}
-            className="mt-5 block font-mono text-4xl font-bold text-[var(--color-text-primary)]"
-          />
-          <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
-            Total announcements in your workspace.
-          </p>
-        </div>
+      <DashboardDeskMetrics
+        metrics={stats.map(({ label, value, icon }) => ({
+          label,
+          value,
+          caption:
+            label === 'Live'
+              ? 'on board'
+              : label === 'Drafts'
+                ? 'in progress'
+                : label === 'Scheduled'
+                  ? 'queued'
+                  : 'stored',
+          icon,
+          tone: label === 'Live' ? 'accent' : label === 'Scheduled' ? 'gold' : 'muted',
+        }))}
+      />
 
-        {stats.map(({ label, value, icon: Icon }) => (
-          <div
-            key={label}
-            className="dashboard-command-card rounded-[1.2rem] p-4 sm:p-5 xl:col-span-3"
-          >
-            <Icon size={18} className="text-[var(--color-accent)]" aria-hidden="true" />
-            <CountUp
-              value={value}
-              className="mt-4 block font-mono text-3xl font-bold text-[var(--color-text-primary)]"
-            />
-            <p className="mt-1 text-[0.68rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
-              {label}
-            </p>
-          </div>
-        ))}
-      </section>
-
-      <section className="dashboard-command-card mt-3 rounded-[1.5rem] p-4 sm:p-5">
+      <DashboardDeskPanel title="Announcement register" count={`${totalResults} results`}>
         <AnnouncementsClient
           announcements={announcements}
           activeTab={activeTab}
@@ -288,7 +274,7 @@ export default async function AnnouncementsPage({
           tabCounts={tabCounts}
           nowMs={nowMs}
         />
-      </section>
-    </div>
+      </DashboardDeskPanel>
+    </DashboardDeskPage>
   )
 }

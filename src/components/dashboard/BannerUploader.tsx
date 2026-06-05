@@ -37,7 +37,10 @@ export function BannerUploader({
 }: BannerUploaderProps) {
   return (
     <div>
-      <label className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
+      <label
+        htmlFor="banner-image-upload"
+        className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
+      >
         Banner Image
       </label>
 
@@ -56,7 +59,7 @@ export function BannerUploader({
             onClick={onRemove}
             className="absolute top-3 right-3 flex min-h-11 items-center gap-1.5 rounded-lg bg-black/50 px-3 text-xs font-medium text-white backdrop-blur-sm transition-colors hover:bg-black/70"
           >
-            <X size={12} />
+            <X size={12} aria-hidden="true" />
             Remove
           </button>
         </div>
@@ -80,6 +83,7 @@ export function BannerUploader({
         >
           <Upload
             size={24}
+            aria-hidden="true"
             className={cn(
               'text-[var(--color-text-muted)]',
               isDragOver && 'text-[var(--color-accent)]'
@@ -90,7 +94,7 @@ export function BannerUploader({
               {isUploading ? 'Uploading…' : 'Drop an image here or click to upload'}
             </p>
             <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-              JPG, PNG, or WebP — max {maxSizeMb}MB
+              JPG, PNG, or WebP, max {maxSizeMb}MB
             </p>
             {bannerSizeError && (
               <p className="mt-1 text-xs font-semibold text-[var(--color-destructive)]">

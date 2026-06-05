@@ -16,7 +16,7 @@ function errorForCapture(error: unknown, fallbackMessage: string) {
   return error instanceof Error ? error : new Error(fallbackMessage)
 }
 
-function sentryMetadata(metadata: ClientErrorMetadata) {
+function redactMetadata(metadata: ClientErrorMetadata) {
   return Object.fromEntries(
     Object.entries(metadata).map(([key, value]) => [
       key,
@@ -37,7 +37,7 @@ export function buildClientErrorLog(
         ? error.message
         : errorField(error, 'message') || (typeof error === 'string' ? error : 'Unknown error'),
     name: error instanceof Error ? error.name : errorField(error, 'name'),
-    metadata,
+    metadata: redactMetadata(metadata),
     occurred_at: new Date().toISOString(),
   }
 }
@@ -53,7 +53,7 @@ export function reportClientError(
     Sentry.captureException(errorForCapture(error, log.message), {
       tags: { context },
       extra: {
-        metadata: sentryMetadata(metadata),
+        metadata: log.metadata,
         occurred_at: log.occurred_at,
       },
     })

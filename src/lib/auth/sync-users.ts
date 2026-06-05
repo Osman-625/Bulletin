@@ -3,9 +3,7 @@ import { reportServerError } from '@/lib/error-reporting'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { UserRole } from '@/lib/types'
 
-const PROFILE_ROLES = ['owner', 'super_admin', 'admin', 'publisher'] as const
-
-type ProfileRole = (typeof PROFILE_ROLES)[number]
+const DEFAULT_PROFILE_ROLE = 'publisher' satisfies UserRole
 
 type UserProfileInsert = {
   id: string
@@ -18,12 +16,6 @@ type UserProfileInsert = {
 function metadataValue(user: User, key: string): string | null {
   const value = user.user_metadata?.[key]
   return typeof value === 'string' && value.trim() ? value.trim() : null
-}
-
-function roleFromMetadata(user: User): UserRole {
-  const role = metadataValue(user, 'role')
-  if (role && PROFILE_ROLES.includes(role as ProfileRole)) return role as UserRole
-  return 'publisher' as UserRole
 }
 
 export function authUserToProfileInsert(user: User): UserProfileInsert {
@@ -40,7 +32,7 @@ export function authUserToProfileInsert(user: User): UserProfileInsert {
     id: user.id,
     email,
     display_name: displayName,
-    role: roleFromMetadata(user),
+    role: DEFAULT_PROFILE_ROLE,
     force_password_change: false,
   }
 }

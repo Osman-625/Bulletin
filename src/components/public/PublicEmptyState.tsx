@@ -28,7 +28,7 @@ export function PublicEmptyState({
       {(search || category) && (
         <Link
           href="/"
-          className="action-lift mt-6 inline-flex min-h-12 items-center rounded-[1rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-5 text-base font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+          className="action-lift mt-6 inline-flex min-h-12 items-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface)] px-5 text-base font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
         >
           Browse all
         </Link>

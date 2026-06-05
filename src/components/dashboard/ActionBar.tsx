@@ -57,37 +57,6 @@ export function ActionBar({
     }, 0)
   }
 
-  function handleUnpublishConfirmKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      closeUnpublishConfirm()
-      return
-    }
-
-    if (event.key === 'Tab') {
-      const dialog = unpublishConfirmRef.current
-      if (!dialog) return
-
-      const focusable = Array.from(
-        dialog.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        )
-      ).filter((element) => element.getAttribute('aria-hidden') !== 'true')
-
-      const first = focusable[0]
-      const last = focusable.at(-1)
-      if (!first || !last) return
-
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-  }
-
   function handleConfirmUnpublish() {
     if (!onUnpublish) return
     setShowUnpublishConfirm(false)
@@ -118,11 +87,8 @@ export function ActionBar({
               (showUnpublishConfirm ? (
                 <div
                   ref={unpublishConfirmRef}
-                  role="alertdialog"
-                  aria-modal="true"
                   aria-labelledby="unpublish-confirm-title"
                   aria-describedby="unpublish-confirm-description"
-                  onKeyDown={handleUnpublishConfirmKeyDown}
                   className="flex w-full flex-col gap-2 rounded-xl border border-[var(--color-destructive)]/30 bg-[var(--color-surface)] p-3 sm:w-auto sm:flex-row sm:items-center"
                 >
                   <div className="min-w-0">
@@ -197,7 +163,7 @@ export function ActionBar({
                 'flex items-center gap-2'
               )}
             >
-              {isSaving && <Loader2 size={14} className="animate-spin" />}
+              {isSaving && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
               Save Changes
             </button>
           </>
@@ -216,7 +182,7 @@ export function ActionBar({
                 'flex items-center gap-2'
               )}
             >
-              {isSaving && <Loader2 size={14} className="animate-spin" />}
+              {isSaving && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
               {saveLabel}
             </button>
             <button
@@ -232,7 +198,7 @@ export function ActionBar({
                 'flex items-center gap-2'
               )}
             >
-              {isPublishing && <Loader2 size={14} className="animate-spin" />}
+              {isPublishing && <Loader2 size={14} className="animate-spin" aria-hidden="true" />}
               {publishLabel}
             </button>
           </>

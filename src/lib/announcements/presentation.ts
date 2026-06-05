@@ -100,7 +100,10 @@ export function getAnnouncementTitleFontClass(font: AnnouncementDisplayFont) {
   return font === 'clean' ? 'font-sans' : 'font-display'
 }
 
-export function isAnnouncementPinned(announcement: { pinned_until?: string | null }, now = Date.now()) {
+export function isAnnouncementPinned(
+  announcement: { pinned_until?: string | null },
+  now = Date.now()
+) {
   if (!announcement.pinned_until) return false
   const pinnedUntil = new Date(announcement.pinned_until).getTime()
   return !Number.isNaN(pinnedUntil) && pinnedUntil > now
@@ -111,7 +114,7 @@ export function sortAnnouncementsForFeed<
 >(announcements: T[]): T[] {
   const now = Date.now()
 
-  return [...announcements].sort((a, b) => {
+  return announcements.toSorted((a, b) => {
     const pinnedDiff = Number(isAnnouncementPinned(b, now)) - Number(isAnnouncementPinned(a, now))
     if (pinnedDiff !== 0) return pinnedDiff
 

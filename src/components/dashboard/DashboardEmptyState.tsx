@@ -3,11 +3,8 @@ import { FileText, Plus } from 'lucide-react'
 
 export function DashboardEmptyState({ hasAnnouncementScope }: { hasAnnouncementScope: boolean }) {
   return (
-    <div
-      className="rounded-[1.4rem] border border-dashed border-[var(--color-border)] px-5 py-12 text-center"
-      role="status"
-    >
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[1rem] bg-[var(--color-accent-surface)] text-[var(--color-accent)]">
+    <output className="block rounded-[1.4rem] border border-dashed border-[var(--color-border)] px-5 py-12 text-center">
+      <div className="mx-auto flex size-12 items-center justify-center rounded-[1rem] bg-[var(--color-accent-surface)] text-[var(--color-accent)]">
         <FileText size={20} aria-hidden="true" />
       </div>
       <h3 className="mt-4 text-base font-semibold text-[var(--color-text-primary)]">
@@ -27,6 +24,6 @@ export function DashboardEmptyState({ hasAnnouncementScope }: { hasAnnouncementS
           Create announcement
         </Link>
       )}
-    </div>
+    </output>
   )
 }

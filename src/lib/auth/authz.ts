@@ -68,16 +68,20 @@ export function canAccessSuperAdminArea(role: AppRole): boolean {
 }
 
 export function canAccessAdminArea(role: AppRole): boolean {
-  return role === 'owner' || role === 'super_admin' || role === 'admin'
+  return role === 'owner' || role === 'admin'
 }
 
 export function canAccessPublisherArea(role: AppRole): boolean {
-  return ROLE_LEVEL[role] <= ROLE_LEVEL.publisher
+  return role === 'owner' || role === 'publisher'
 }
 
 export function getAssignableRoles(role: AppRole): AppRole[] {
-  if (role === 'owner' || role === 'super_admin') {
+  if (role === 'owner') {
     return ['super_admin', 'admin', 'publisher']
+  }
+
+  if (role === 'super_admin') {
+    return ['admin', 'publisher']
   }
 
   if (role === 'admin') {
@@ -110,7 +114,7 @@ export function canViewUser(actor: ScopedUser, target: ScopedUser): boolean {
 export function canManageUser(actor: ScopedUser, target: ScopedUser): boolean {
   if (target.id === actor.id || target.role === 'owner') return false
   if (actor.role === 'owner') return true
-  if (actor.role === 'super_admin') return true
+  if (actor.role === 'super_admin') return target.role !== 'super_admin'
   if (actor.role === 'admin') {
     return hasOrgOverlap(actor.orgIds, target.orgIds) && target.role === 'publisher'
   }

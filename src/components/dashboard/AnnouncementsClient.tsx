@@ -18,6 +18,23 @@ const TABS: { id: AnnouncementTab; label: string; icon: ComponentType<{ size?: n
   { id: 'archived', label: 'Archive', icon: Archive },
 ]
 
+const EMPTY_STATE_MESSAGES: Record<AnnouncementTab, { title: string; body: string }> = {
+  all: {
+    title: 'No announcements yet',
+    body: 'Create the first announcement for this workspace.',
+  },
+  published: { title: 'Nothing live yet', body: 'Published announcements will collect here.' },
+  drafts: { title: 'No drafts', body: 'Saved drafts will appear here before review.' },
+  pending: {
+    title: 'Nothing in review',
+    body: 'Announcements waiting for admin review or returned with feedback will appear here.',
+  },
+  archived: {
+    title: 'Nothing archived',
+    body: 'Expired and archived announcements will appear here.',
+  },
+}
+
 interface AnnouncementsClientProps {
   announcements: AnnouncementRowData[]
   activeTab: AnnouncementTab
@@ -31,27 +48,11 @@ interface AnnouncementsClientProps {
 }
 
 function EmptyState({ tab, query }: { tab: AnnouncementTab; query: string }) {
-  const messages: Record<AnnouncementTab, { title: string; body: string }> = {
-    all: {
-      title: 'No announcements yet',
-      body: 'Create the first announcement for this workspace.',
-    },
-    published: { title: 'Nothing live yet', body: 'Published announcements will collect here.' },
-    drafts: { title: 'No drafts', body: 'Saved drafts will appear here before review.' },
-    pending: {
-      title: 'Nothing in review',
-      body: 'Announcements waiting for admin review or returned with feedback will appear here.',
-    },
-    archived: {
-      title: 'Nothing archived',
-      body: 'Expired and archived announcements will appear here.',
-    },
-  }
-  const { title, body } = messages[tab]
+  const { title, body } = EMPTY_STATE_MESSAGES[tab]
 
   return (
     <div className="rounded-[1.2rem] border border-dashed border-[var(--color-border)] px-5 py-16 text-center">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[1rem] bg-[var(--color-accent-surface)] text-[var(--color-accent)]">
+      <div className="mx-auto flex size-12 items-center justify-center rounded-[1rem] bg-[var(--color-accent-surface)] text-[var(--color-accent)]">
         <FileText size={20} aria-hidden="true" />
       </div>
       <h3 className="mt-4 text-base font-semibold text-[var(--color-text-primary)]">
@@ -105,7 +106,7 @@ export function AnnouncementsClient({
   const paginationPages = visiblePaginationPages(page, totalPages)
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 p-4">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {TABS.map((tab) => {
@@ -233,7 +234,7 @@ export function AnnouncementsClient({
                   })}
                   aria-current={active ? 'page' : undefined}
                   className={cn(
-                    'flex h-10 w-10 items-center justify-center rounded-[0.85rem] border font-mono text-sm font-semibold transition-[transform,background,border-color,color] duration-200 active:scale-[0.98]',
+                    'flex size-10 items-center justify-center rounded-[0.85rem] border font-mono text-sm font-semibold transition-[transform,background,border-color,color] duration-200 active:scale-[0.98]',
                     active
                       ? 'border-[var(--color-accent)] bg-[var(--color-accent)] text-white'
                       : 'border-[var(--color-border)] bg-[color-mix(in_oklab,var(--color-surface)_72%,transparent)] text-[var(--color-text-muted)] hover:-translate-y-px hover:border-[var(--color-accent)] hover:text-[var(--color-text-primary)]'

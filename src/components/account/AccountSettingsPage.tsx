@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { ArrowUpRight, KeyRound, Palette, UserRound } from 'lucide-react'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { GlassCard } from '@/components/dashboard/GlassCard'
+import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
 import { updateAccountPassword, updateDisplayName } from '@/lib/account/actions'
 import { getDefaultAppPath, type AccessContext } from '@/lib/auth/authz'
 
@@ -39,9 +40,7 @@ function canUseWorkspace(
   workspaceRole: (typeof WORKSPACES)[number]['role']
 ) {
   if (userRole === 'owner') return true
-  if (userRole === 'super_admin') return workspaceRole !== 'owner'
-  if (userRole === 'admin') return workspaceRole === 'admin' || workspaceRole === 'publisher'
-  return workspaceRole === 'publisher'
+  return userRole === workspaceRole
 }
 
 function StatusMessage({ search }: { search: SettingsSearch }) {
@@ -51,16 +50,15 @@ function StatusMessage({ search }: { search: SettingsSearch }) {
   const isError = Boolean(search.error)
 
   return (
-    <div
-      className={`rounded-xl px-4 py-3 text-sm ${
+    <output
+      className={`block rounded-xl px-4 py-3 text-sm ${
         isError
           ? 'bg-[var(--color-status-rejected-bg)] text-[var(--color-status-rejected-text)]'
           : 'bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)]'
       }`}
-      role="status"
     >
       {message}
-    </div>
+    </output>
   )
 }
 
@@ -80,31 +78,25 @@ export function AccountSettingsPage({
   )
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">
-            Settings
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-[var(--color-text-secondary)]">
-            Manage your Bulletin identity, password, theme, and workspace shortcuts.
-          </p>
-        </div>
-        <Link
-          href={roleHome}
-          className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[var(--color-accent-inti)] px-4 text-sm font-semibold text-white transition-transform active:scale-[0.98]"
-        >
-          {WORKSPACE_LABELS[access.role]} home
-          <ArrowUpRight size={15} aria-hidden="true" />
-        </Link>
-      </div>
+    <DashboardDeskPage className="flex flex-col gap-5">
+      <DashboardDeskHeader
+        kicker={`${WORKSPACE_LABELS[variant]} settings`}
+        title="Settings"
+        description="Manage your Bulletin identity, password, theme, and workspace shortcuts."
+        action={{
+          href: roleHome,
+          label: `${WORKSPACE_LABELS[access.role]} home`,
+          icon: ArrowUpRight,
+          variant: 'secondary',
+        }}
+      />
 
       <StatusMessage search={search} />
 
       <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
         <GlassCard hover={false} className="p-5">
           <div className="mb-5 flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-accent-surface)] text-[var(--color-accent-inti)]">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-accent-surface)] text-[var(--color-accent-inti)]">
               <UserRound size={18} aria-hidden="true" />
             </div>
             <div>
@@ -128,6 +120,7 @@ export function AccountSettingsPage({
                 id={`${variant}-display-name`}
                 name="display_name"
                 type="text"
+                aria-label="Display name"
                 required
                 minLength={2}
                 defaultValue={access.displayName ?? ''}
@@ -145,7 +138,7 @@ export function AccountSettingsPage({
 
         <GlassCard hover={false} className="p-5">
           <div className="mb-5 flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)]">
               <Palette size={18} aria-hidden="true" />
             </div>
             <div>
@@ -172,7 +165,7 @@ export function AccountSettingsPage({
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
         <GlassCard hover={false} className="p-5">
           <div className="mb-5 flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)]">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)]">
               <KeyRound size={18} aria-hidden="true" />
             </div>
             <div>
@@ -197,6 +190,7 @@ export function AccountSettingsPage({
                 id={`${variant}-current-password`}
                 name="current_password"
                 type="password"
+                aria-label="Current password"
                 required
                 autoComplete="current-password"
                 className="input-inti w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] focus:outline-none"
@@ -214,6 +208,7 @@ export function AccountSettingsPage({
                   id={`${variant}-new-password`}
                   name="password"
                   type="password"
+                  aria-label="New password"
                   required
                   minLength={8}
                   autoComplete="new-password"
@@ -231,6 +226,7 @@ export function AccountSettingsPage({
                   id={`${variant}-confirm-password`}
                   name="confirm"
                   type="password"
+                  aria-label="Confirm password"
                   required
                   minLength={8}
                   autoComplete="new-password"
@@ -266,6 +262,6 @@ export function AccountSettingsPage({
           </div>
         </GlassCard>
       </div>
-    </div>
+    </DashboardDeskPage>
   )
 }

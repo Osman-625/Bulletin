@@ -1,14 +1,24 @@
 import { notFound } from 'next/navigation'
-import { ExternalLink } from 'lucide-react'
+import Image from 'next/image'
+import { ArrowLeft, ExternalLink } from 'lucide-react'
+import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { StatusBadge } from '@/components/dashboard/StatusBadge'
-import { BackNavButton } from '@/components/navigation/BackNavButton'
 import { getAnnouncementForReview } from '@/lib/data'
+import { formatCampusDateTime, formatCampusLongDate } from '@/lib/announcements/public-board'
 import { toSafeHttpUrl } from '@/lib/announcements/urls'
 import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import { reviewAnnouncement } from './actions'
 
 export const metadata = { title: 'Review Announcement' }
+
+function formatReviewDate(iso: string) {
+  return formatCampusLongDate(iso)
+}
+
+function formatReviewDateTime(iso: string) {
+  return formatCampusDateTime(iso)
+}
 
 export default async function ReviewDetailPage({
   params,
@@ -17,9 +27,12 @@ export default async function ReviewDetailPage({
   params: Promise<{ id: string }>
   searchParams: Promise<{ error?: string }>
 }) {
-  const { id } = await params
-  const { error } = await searchParams
-  const announcement = await getAnnouncementForReview(id)
+  const announcementPromise = params.then(({ id }) => getAnnouncementForReview(id))
+  const [{ id }, { error }, announcement] = await Promise.all([
+    params,
+    searchParams,
+    announcementPromise,
+  ])
 
   if (!announcement || announcement.status !== 'submitted') notFound()
 
@@ -27,23 +40,31 @@ export default async function ReviewDetailPage({
   const registrationHref = toSafeHttpUrl(announcement.registration_link)
 
   return (
-    <div className="dashboard-page mx-auto max-w-6xl space-y-5 px-4 py-6 sm:px-6 sm:py-8">
-      <BackNavButton
-        fallbackHref="/admin/review"
-        className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[0.9rem] px-3 text-sm font-semibold text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-text-primary)]"
-      >
-        Back to queue
-      </BackNavButton>
+    <DashboardDeskPage className="flex flex-col gap-4">
+      <DashboardDeskHeader
+        kicker="Admin review"
+        title="Review submission"
+        description="Read the announcement exactly as submitted, then publish it or return clear changes to the publisher."
+        action={{
+          href: '/admin/review',
+          label: 'Back to queue',
+          icon: ArrowLeft,
+          variant: 'secondary',
+        }}
+      />
 
-      <div className="grid gap-3 lg:grid-cols-12">
-        <GlassCard hover={false} className="dashboard-command-card overflow-hidden lg:col-span-7">
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(21rem,0.75fr)]">
+        <GlassCard hover={false} className="overflow-hidden">
           {announcement.banner_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={announcement.banner_url}
-              alt={announcement.title}
-              className="h-64 w-full bg-[var(--color-surface-elevated)] object-contain"
-            />
+            <div className="relative h-64 w-full bg-[var(--color-surface-elevated)]">
+              <Image
+                src={announcement.banner_url}
+                alt={announcement.title}
+                fill
+                sizes="(min-width: 1280px) 56rem, 100vw"
+                className="object-contain"
+              />
+            </div>
           )}
           <div className="space-y-5 p-5 sm:p-6">
             <div className="space-y-3">
@@ -90,11 +111,7 @@ export default async function ReviewDetailPage({
                   Submitted
                 </p>
                 <p className="font-medium text-[var(--color-text-primary)]">
-                  {new Date(announcement.updated_at).toLocaleDateString('en-MY', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  })}
+                  {formatReviewDate(announcement.updated_at)}
                 </p>
               </div>
               {announcement.scheduled_publish_at && (
@@ -103,13 +120,7 @@ export default async function ReviewDetailPage({
                     Scheduled
                   </p>
                   <p className="font-medium text-[var(--color-text-primary)]">
-                    {new Date(announcement.scheduled_publish_at).toLocaleString('en-MY', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })}
+                    {formatReviewDateTime(announcement.scheduled_publish_at)}
                   </p>
                 </div>
               )}
@@ -119,13 +130,7 @@ export default async function ReviewDetailPage({
                     Pinned Until
                   </p>
                   <p className="font-medium text-[var(--color-text-primary)]">
-                    {new Date(announcement.pinned_until).toLocaleString('en-MY', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })}
+                    {formatReviewDateTime(announcement.pinned_until)}
                   </p>
                 </div>
               )}
@@ -135,11 +140,7 @@ export default async function ReviewDetailPage({
                     Expires
                   </p>
                   <p className="font-medium text-[var(--color-text-primary)]">
-                    {new Date(announcement.expires_at).toLocaleDateString('en-MY', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })}
+                    {formatReviewDate(announcement.expires_at)}
                   </p>
                 </div>
               )}
@@ -164,10 +165,7 @@ export default async function ReviewDetailPage({
           </div>
         </GlassCard>
 
-        <GlassCard
-          hover={false}
-          className="dashboard-command-card h-fit space-y-5 p-5 sm:p-6 lg:col-span-5"
-        >
+        <GlassCard hover={false} className="h-fit space-y-5 p-5 sm:p-6 xl:sticky xl:top-5">
           <div>
             <p className="future-kicker">Publishing decision</p>
             <h2 className="mt-3 text-2xl font-bold text-[var(--color-text-primary)]">
@@ -234,6 +232,6 @@ export default async function ReviewDetailPage({
           </form>
         </GlassCard>
       </div>
-    </div>
+    </DashboardDeskPage>
   )
 }

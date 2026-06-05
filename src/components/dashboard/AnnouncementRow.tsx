@@ -12,6 +12,7 @@ import {
   normalizeAnnouncementUrgency,
   type AnnouncementUrgency,
 } from '@/lib/announcements/presentation'
+import { dateValue, formatCampusShortDate } from '@/lib/announcements/public-board'
 
 export type AnnouncementRowData = {
   id: string
@@ -40,17 +41,10 @@ export function AnnouncementRow({ announcement, nowMs, style }: AnnouncementRowP
   const isDraft = announcement.status === 'draft'
   const urgency = normalizeAnnouncementUrgency(announcement.urgency)
   const urgencyMeta = URGENCY_META[urgency]
-  const scheduledDate = announcement.scheduled_publish_at
-    ? new Date(announcement.scheduled_publish_at)
-    : null
-  const pinnedUntil = announcement.pinned_until ? new Date(announcement.pinned_until) : null
-  const isScheduled =
-    announcement.status === 'published' &&
-    scheduledDate !== null &&
-    !Number.isNaN(scheduledDate.getTime()) &&
-    scheduledDate.getTime() > nowMs
-  const isPinned =
-    pinnedUntil !== null && !Number.isNaN(pinnedUntil.getTime()) && pinnedUntil.getTime() > nowMs
+  const scheduledMs = dateValue(announcement.scheduled_publish_at)
+  const pinnedUntilMs = dateValue(announcement.pinned_until)
+  const isScheduled = announcement.status === 'published' && scheduledMs > 0 && scheduledMs > nowMs
+  const isPinned = pinnedUntilMs > 0 && pinnedUntilMs > nowMs
 
   const editHref = `/dashboard/announcements/${announcement.id}/edit`
 
@@ -58,11 +52,7 @@ export function AnnouncementRow({ announcement, nowMs, style }: AnnouncementRowP
     isScheduled && announcement.scheduled_publish_at
       ? announcement.scheduled_publish_at
       : (announcement.published_at ?? announcement.updated_at)
-  const dateLabel = new Date(dateSource).toLocaleDateString('en-MY', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+  const dateLabel = formatCampusShortDate(dateSource)
 
   return (
     <div style={style} className="relative">
@@ -70,26 +60,26 @@ export function AnnouncementRow({ announcement, nowMs, style }: AnnouncementRowP
         hover
         className={cn('group relative overflow-hidden', isDraft && 'border-dashed opacity-75')}
       >
-        {/* Stretched link — enables right-click / middle-click / keyboard nav on the whole card */}
+        {/* Stretched link: enables right-click / middle-click / keyboard nav on the whole card */}
         <Link
           href={editHref}
           className="absolute inset-0 rounded-[inherit] focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:outline-none focus-visible:ring-inset"
           aria-label={`Edit: ${announcement.title}`}
         />
 
-        <div className="grid gap-4 p-4 sm:grid-cols-[5rem_minmax(0,1fr)_auto_auto] sm:items-center sm:gap-5">
+        <div className="grid gap-4 p-3 sm:grid-cols-[3.5rem_minmax(0,1fr)_auto_auto] sm:items-center sm:gap-4">
           {/* Thumbnail */}
-          <div className="flex h-28 w-full shrink-0 items-center justify-center overflow-hidden rounded-[0.9rem] border border-[var(--color-glass-border)] bg-[var(--color-surface-elevated)] sm:h-20 sm:w-20">
+          <div className="flex h-24 w-full shrink-0 items-center justify-center overflow-hidden rounded-[0.75rem] border border-[var(--color-glass-border)] bg-[var(--color-surface-elevated)] sm:size-14">
             {announcement.banner_url ? (
               <Image
                 src={announcement.banner_url}
                 alt={announcement.title}
                 width={160}
                 height={120}
-                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,var(--color-surface-elevated),var(--color-surface-high))]">
+              <div className="flex size-full items-center justify-center bg-[linear-gradient(135deg,var(--color-surface-elevated),var(--color-surface-high))]">
                 <FileImage size={20} className="text-[var(--color-text-muted)]" />
               </div>
             )}
@@ -97,7 +87,7 @@ export function AnnouncementRow({ announcement, nowMs, style }: AnnouncementRowP
 
           {/* Content */}
           <div className="min-w-0 flex-1">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
+            <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
               <StatusBadge
                 status={
                   announcement.status as
@@ -130,14 +120,14 @@ export function AnnouncementRow({ announcement, nowMs, style }: AnnouncementRowP
                 </span>
               )}
             </div>
-            <p className="truncate text-lg leading-tight font-semibold text-[var(--color-text-primary)]">
+            <p className="truncate text-[0.98rem] leading-tight font-semibold text-[var(--color-text-primary)]">
               {announcement.title}
             </p>
-            <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
+            <div className="mt-1 flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)]">
               {announcement.categories ? (
                 <>
                   <span
-                    className="inline-block h-2 w-2 shrink-0 rounded-full"
+                    className="inline-block size-2 shrink-0 rounded-full"
                     style={{
                       backgroundColor: announcement.categories.color ?? 'var(--color-accent)',
                     }}
@@ -167,7 +157,7 @@ export function AnnouncementRow({ announcement, nowMs, style }: AnnouncementRowP
               )}
             </div>
             {announcement.status === 'rejected' && announcement.rejection_comment && (
-              <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--color-status-rejected-text)]">
+              <p className="mt-1.5 line-clamp-2 text-xs leading-5 text-[var(--color-status-rejected-text)]">
                 Feedback: {announcement.rejection_comment}
               </p>
             )}
@@ -191,7 +181,7 @@ export function AnnouncementRow({ announcement, nowMs, style }: AnnouncementRowP
             </p>
           </div>
 
-          {/* Visual actions — z-10 sits above the stretched link; aria-hidden since the link carries the label */}
+          {/* Visual actions: z-10 sits above the stretched link; aria-hidden since the link carries the label */}
           <div
             className="relative z-10 flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto"
             aria-hidden="true"

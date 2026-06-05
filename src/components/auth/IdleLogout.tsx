@@ -7,6 +7,15 @@ const IDLE_TIMEOUT_MS = 5 * 60 * 1000
 const IDLE_WARNING_MS = 30 * 1000
 const ACTIVITY_EVENTS = ['pointerdown', 'keydown', 'scroll', 'touchstart'] as const
 
+function stayLoggedIn() {
+  window.dispatchEvent(new Event('pointerdown'))
+}
+
+function handleIdleDialogCancel(event: React.SyntheticEvent<HTMLDialogElement>) {
+  event.preventDefault()
+  stayLoggedIn()
+}
+
 export function IdleLogout() {
   const warningTimerRef = useRef<number | null>(null)
   const logoutTimerRef = useRef<number | null>(null)
@@ -14,7 +23,7 @@ export function IdleLogout() {
   const hasSessionRef = useRef(false)
   const signingOutRef = useRef(false)
   const showWarningRef = useRef(false)
-  const dialogRef = useRef<HTMLDivElement | null>(null)
+  const dialogRef = useRef<HTMLDialogElement | null>(null)
   const stayButtonRef = useRef<HTMLButtonElement | null>(null)
   const previousFocusedElementRef = useRef<HTMLElement | null>(null)
   const [showWarning, setShowWarning] = useState(false)
@@ -30,13 +39,26 @@ export function IdleLogout() {
     previousFocusedElementRef.current =
       document.activeElement instanceof HTMLElement ? document.activeElement : null
 
+    const dialog = dialogRef.current
+    if (dialog && !dialog.open) {
+      dialog.showModal()
+    }
+
     const focusTimer = window.setTimeout(() => {
       stayButtonRef.current?.focus()
     }, 0)
 
     return () => {
       window.clearTimeout(focusTimer)
-      previousFocusedElementRef.current?.focus()
+      if (dialog?.open) {
+        dialog.close()
+      }
+      if (
+        previousFocusedElementRef.current &&
+        document.contains(previousFocusedElementRef.current)
+      ) {
+        previousFocusedElementRef.current.focus()
+      }
       previousFocusedElementRef.current = null
     }
   }, [showWarning])
@@ -127,79 +149,41 @@ export function IdleLogout() {
     }
   }, [])
 
-  function stayLoggedIn() {
-    const event = new Event('pointerdown')
-    window.dispatchEvent(event)
-  }
-
-  function handleDialogKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      stayLoggedIn()
-      return
-    }
-
-    if (event.key === 'Tab') {
-      const focusableElements = Array.from(
-        dialogRef.current?.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
-        ) ?? []
-      ).filter(
-        (element) => !element.hasAttribute('disabled') && !element.getAttribute('aria-hidden')
-      )
-
-      if (focusableElements.length === 0) return
-
-      const firstElement = focusableElements[0]
-      const lastElement = focusableElements[focusableElements.length - 1]
-
-      if (event.shiftKey && document.activeElement === firstElement) {
-        event.preventDefault()
-        lastElement.focus()
-      } else if (!event.shiftKey && document.activeElement === lastElement) {
-        event.preventDefault()
-        firstElement.focus()
-      }
-    }
-  }
-
   if (!showWarning) return null
 
   return (
-    <div
-      className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(36,24,21,0.42)] px-4 backdrop-blur-sm"
-      role="presentation"
+    <dialog
+      ref={dialogRef}
+      aria-modal="true"
+      aria-labelledby="idle-timeout-title"
+      aria-describedby="idle-timeout-description"
+      onCancel={handleIdleDialogCancel}
+      className="fixed inset-0 z-[80] m-0 h-full max-h-none w-full max-w-none bg-transparent p-0 text-[var(--color-text-primary)] backdrop:bg-[color-mix(in_oklab,var(--color-text-primary)_42%,transparent)] backdrop:backdrop-blur-sm"
     >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="idle-timeout-title"
-        aria-describedby="idle-timeout-description"
-        onKeyDown={handleDialogKeyDown}
-        className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-soft)]"
-      >
-        <h2
-          id="idle-timeout-title"
-          className="text-lg font-semibold text-[var(--color-text-primary)]"
-        >
-          Still there?
-        </h2>
-        <p
-          id="idle-timeout-description"
-          className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]"
-        >
-          You&apos;ll be logged out in {secondsRemaining} seconds.
-        </p>
-        <button
-          ref={stayButtonRef}
-          type="button"
-          onClick={stayLoggedIn}
-          className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2"
-        >
-          Stay logged in
-        </button>
+      <div className="flex min-h-full items-center justify-center px-4">
+        <div className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-soft)]">
+          <h2
+            id="idle-timeout-title"
+            className="text-lg font-semibold text-[var(--color-text-primary)]"
+          >
+            Still there?
+          </h2>
+          <p
+            id="idle-timeout-description"
+            className="mt-2 text-sm leading-6 text-[var(--color-text-secondary)]"
+          >
+            You&apos;ll be logged out in {secondsRemaining} seconds.
+          </p>
+          <button
+            ref={stayButtonRef}
+            type="button"
+            onClick={stayLoggedIn}
+            className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2"
+          >
+            Stay logged in
+          </button>
+        </div>
       </div>
-    </div>
+    </dialog>
   )
 }

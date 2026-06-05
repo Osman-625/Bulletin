@@ -109,6 +109,253 @@ function futureDateTimeError(value: string, label: string): string {
   return isFutureDateTime(value) ? '' : `${label} must be in the future or left blank.`
 }
 
+const READINESS_ITEMS = [
+  'Title and body explain what students need to know.',
+  'Date, venue, contact, and registration details are current.',
+  'Banner image and urgency level still make sense on mobile.',
+] as const
+
+type DeleteAnnouncementHandler = (closeAfterError: () => void) => void
+
+function DeleteAnnouncementControl({
+  isPending,
+  onDelete,
+}: {
+  isPending: boolean
+  onDelete: DeleteAnnouncementHandler
+}) {
+  const deleteDialogRef = useRef<HTMLDialogElement | null>(null)
+  const deleteCancelRef = useRef<HTMLButtonElement | null>(null)
+  const deleteTriggerRef = useRef<HTMLButtonElement | null>(null)
+
+  function openDeleteDialog() {
+    const dialog = deleteDialogRef.current
+    if (!dialog || dialog.open) return
+
+    dialog.showModal()
+    window.setTimeout(() => {
+      deleteCancelRef.current?.focus()
+    }, 0)
+  }
+
+  function closeDeleteDialog() {
+    const dialog = deleteDialogRef.current
+    if (dialog?.open) {
+      dialog.close()
+    }
+
+    window.setTimeout(() => {
+      deleteTriggerRef.current?.focus()
+    }, 0)
+  }
+
+  function handleDeleteDialogCancel(event: React.SyntheticEvent<HTMLDialogElement>) {
+    event.preventDefault()
+    closeDeleteDialog()
+  }
+
+  return (
+    <div className="relative">
+      <button
+        ref={deleteTriggerRef}
+        type="button"
+        onClick={openDeleteDialog}
+        className="flex min-h-11 items-center gap-1.5 rounded-lg text-xs text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-destructive)]"
+      >
+        <Trash2 size={14} aria-hidden="true" />
+        Delete
+      </button>
+      <dialog
+        ref={deleteDialogRef}
+        aria-labelledby="delete-announcement-title"
+        aria-describedby="delete-announcement-description"
+        onCancel={handleDeleteDialogCancel}
+        className="m-0 rounded-xl border border-[var(--color-destructive)]/30 bg-[var(--color-surface)] p-2 text-[var(--color-text-primary)] shadow-[var(--shadow-soft)] backdrop:bg-[color-mix(in_oklab,var(--color-text-primary)_30%,transparent)]"
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            id="delete-announcement-title"
+            className="text-xs font-semibold text-[var(--color-destructive)]"
+          >
+            Delete this?
+          </span>
+          <span id="delete-announcement-description" className="sr-only">
+            This permanently deletes the announcement and cannot be undone.
+          </span>
+          <button
+            type="button"
+            onClick={() => onDelete(closeDeleteDialog)}
+            disabled={isPending}
+            className="min-h-11 rounded-lg bg-[var(--color-destructive)] px-3 text-xs font-medium text-[var(--color-surface)] transition-opacity hover:opacity-90 disabled:opacity-50"
+          >
+            {isPending ? 'Deleting...' : 'Confirm'}
+          </button>
+          <button
+            ref={deleteCancelRef}
+            type="button"
+            onClick={closeDeleteDialog}
+            className="min-h-11 rounded-lg border border-[var(--color-glass-border)] px-3 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-elevated)]"
+          >
+            Cancel
+          </button>
+        </div>
+      </dialog>
+    </div>
+  )
+}
+
+function AnnouncementFormTopBar({
+  backHref,
+  isPending,
+  onDelete,
+}: {
+  backHref: string
+  isPending: boolean
+  onDelete?: DeleteAnnouncementHandler
+}) {
+  return (
+    <div className="mx-auto flex w-full max-w-[82rem] items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+      <BackNavButton
+        fallbackHref={backHref}
+        className="min-w-0 rounded-lg border-transparent bg-transparent px-0 text-sm text-[var(--color-text-secondary)] shadow-none hover:border-transparent hover:bg-transparent hover:text-[var(--color-text-primary)] hover:shadow-none"
+      >
+        Back to announcements
+      </BackNavButton>
+
+      {onDelete && <DeleteAnnouncementControl isPending={isPending} onDelete={onDelete} />}
+    </div>
+  )
+}
+
+function PublishingReadinessChecklist() {
+  return (
+    <section className="announcement-section-card p-5 sm:p-6">
+      <p className="future-kicker">Publishing readiness</p>
+      <h2 className="font-display mt-3 text-2xl leading-tight font-extrabold text-[var(--color-text-primary)]">
+        Check before sending
+      </h2>
+      <div className="announcement-readiness-list mt-5">
+        {READINESS_ITEMS.map((item, index) => (
+          <div key={item} className="announcement-readiness-item">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-[0.75rem] bg-[var(--color-accent-surface)] font-mono text-xs font-bold text-[var(--color-accent)]">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{item}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function AnnouncementLivePreview({
+  bannerUrl,
+  urgency,
+  isScheduled,
+  isPinned,
+  displayFont,
+  displaySize,
+  selectedCategory,
+  title,
+  body,
+  registrationLink,
+  urlError,
+}: {
+  bannerUrl: string
+  urgency: AnnouncementUrgency
+  isScheduled: boolean
+  isPinned: boolean
+  displayFont: AnnouncementDisplayFont
+  displaySize: AnnouncementDisplaySize
+  selectedCategory: CategoryOption | undefined
+  title: string
+  body: string
+  registrationLink: string
+  urlError: string
+}) {
+  const selectedUrgency = URGENCY_META[urgency]
+  const titleFontClass = getAnnouncementTitleFontClass(displayFont)
+
+  return (
+    <section className="announcement-preview-panel">
+      <p className="mb-3 text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
+        Preview
+      </p>
+      <GlassCard hover={false} className="overflow-hidden">
+        {bannerUrl && (
+          <NextImage
+            src={bannerUrl}
+            alt="Preview banner"
+            width={600}
+            height={144}
+            className="h-36 w-full object-contain"
+            unoptimized
+          />
+        )}
+        <div className="space-y-2 p-5">
+          <div className="flex flex-wrap items-center gap-2">
+            {urgency !== 'normal' && (
+              <span
+                className="rounded-md px-2.5 py-1 text-[15px] font-semibold"
+                style={{
+                  color: selectedUrgency.tone,
+                  background: selectedUrgency.background,
+                }}
+              >
+                {selectedUrgency.label}
+              </span>
+            )}
+            {isScheduled && (
+              <span className="rounded-md bg-[var(--color-accent-surface)] px-2.5 py-1 text-[15px] font-semibold text-[var(--color-accent-inti)]">
+                Scheduled
+              </span>
+            )}
+            {isPinned && (
+              <span className="rounded-md bg-[var(--color-status-published-bg)] px-2.5 py-1 text-[15px] font-semibold text-[var(--color-status-published-text)]">
+                Pinned
+              </span>
+            )}
+            <span className="rounded-md bg-[var(--color-surface-elevated)] px-2.5 py-1 text-[15px] font-medium text-[var(--color-text-muted)]">
+              {DISPLAY_FONT_LABELS[displayFont]} · {DISPLAY_SIZE_LABELS[displaySize]}
+            </span>
+          </div>
+          {selectedCategory && (
+            <div className="flex items-center gap-2">
+              <span
+                className="size-2 rounded-full"
+                style={{ backgroundColor: selectedCategory.color ?? 'var(--color-accent)' }}
+              />
+              <span className="text-[13.5px] font-medium tracking-[0.2em] text-[var(--color-text-muted)] uppercase">
+                {selectedCategory.name}
+              </span>
+            </div>
+          )}
+          <h3
+            className={cn(
+              titleFontClass,
+              'leading-tight font-semibold text-[var(--color-text-primary)]'
+            )}
+            style={{ fontSize: CARD_TITLE_SIZES[displaySize] }}
+          >
+            {title || 'Untitled Announcement'}
+          </h3>
+          <p
+            className="line-clamp-3 leading-relaxed text-[var(--color-text-secondary)]"
+            style={{ fontSize: DETAIL_BODY_SIZES[displaySize] }}
+          >
+            {body || 'Announcement body will appear here...'}
+          </p>
+          {registrationLink && !urlError && (
+            <span className="inline-block text-[15px] font-medium tracking-wider text-[var(--color-accent)] uppercase">
+              Register Here →
+            </span>
+          )}
+        </div>
+      </GlassCard>
+    </section>
+  )
+}
+
 // ─── Component ───────────────────────────────────────────────
 
 export function AnnouncementForm({
@@ -126,22 +373,26 @@ export function AnnouncementForm({
   const [isPending, startTransition] = useTransition()
 
   // Form state
-  const [title, setTitle] = useState(initialData.title)
-  const [body, setBody] = useState(initialData.body)
+  const [title, setTitle] = useState(() => initialData.title)
+  const [body, setBody] = useState(() => initialData.body)
   const [categoryId, setCategoryId] = useState(initialData.category_id ?? '')
   const [bannerUrl, setBannerUrl] = useState(initialData.banner_url ?? '')
   const [registrationLink, setRegistrationLink] = useState(initialData.registration_link ?? '')
-  const [expiresAt, setExpiresAt] = useState(toDateInputValue(initialData.expires_at))
-  const [scheduledPublishAt, setScheduledPublishAt] = useState(
+  const [expiresAt, setExpiresAt] = useState(() => toDateInputValue(initialData.expires_at))
+  const [scheduledPublishAt, setScheduledPublishAt] = useState(() =>
     toDateTimeLocalInputValue(initialData.scheduled_publish_at)
   )
-  const [pinnedUntil, setPinnedUntil] = useState(
+  const [pinnedUntil, setPinnedUntil] = useState(() =>
     toDateTimeLocalInputValue(initialData.pinned_until)
   )
-  const [status, setStatus] = useState<PostStatus>(initialData.status)
-  const [urgency, setUrgency] = useState<AnnouncementUrgency>(initialData.urgency)
-  const [displayFont, setDisplayFont] = useState<AnnouncementDisplayFont>(initialData.display_font)
-  const [displaySize, setDisplaySize] = useState<AnnouncementDisplaySize>(initialData.display_size)
+  const [status, setStatus] = useState<PostStatus>(() => initialData.status)
+  const [urgency, setUrgency] = useState<AnnouncementUrgency>(() => initialData.urgency)
+  const [displayFont, setDisplayFont] = useState<AnnouncementDisplayFont>(
+    () => initialData.display_font
+  )
+  const [displaySize, setDisplaySize] = useState<AnnouncementDisplaySize>(
+    () => initialData.display_size
+  )
 
   // UI state
   const [saveState, setSaveState] = useState<AutosaveStatus>('idle')
@@ -152,18 +403,18 @@ export function AnnouncementForm({
   const [isUploading, setIsUploading] = useState(false)
   const [bannerSizeError, setBannerSizeError] = useState(false)
   const [bannerUploadError, setBannerUploadError] = useState('')
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [formError, setFormError] = useState('')
 
   const bodyRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const lastSaveRef = useRef<number>(Date.now())
+  const lastSaveRef = useRef(0)
   const dirtyRef = useRef(false)
-  const deleteConfirmRef = useRef<HTMLDivElement | null>(null)
-  const deleteCancelRef = useRef<HTMLButtonElement | null>(null)
-  const deleteTriggerRef = useRef<HTMLButtonElement | null>(null)
   // Stable ref so the autosave interval always calls the latest handleSave
   const handleSaveRef = useRef<() => Promise<void>>(async () => {})
+
+  if (lastSaveRef.current === 0) {
+    lastSaveRef.current = Date.now()
+  }
 
   // Track dirty state
   useEffect(() => {
@@ -181,11 +432,6 @@ export function AnnouncementForm({
     displayFont,
     displaySize,
   ])
-
-  useEffect(() => {
-    if (formError) setFormError('')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, body, scheduledPublishAt, pinnedUntil, registrationLink])
 
   // Auto-grow textarea
   useEffect(() => {
@@ -212,16 +458,6 @@ export function AnnouncementForm({
 
     return () => clearInterval(interval)
   }, [isNew])
-
-  useEffect(() => {
-    if (!showDeleteConfirm) return
-
-    const focusTimer = window.setTimeout(() => {
-      deleteCancelRef.current?.focus()
-    }, 0)
-
-    return () => window.clearTimeout(focusTimer)
-  }, [showDeleteConfirm])
 
   // Build FormData from state
   const buildFormData = useCallback(() => {
@@ -285,6 +521,10 @@ export function AnnouncementForm({
   )
 
   // ─── Handlers ────────────────────────────────────────────────
+
+  function clearFormErrorOnEdit() {
+    setFormError((current) => (current ? '' : current))
+  }
 
   async function handleSave() {
     setFormError('')
@@ -382,46 +622,7 @@ export function AnnouncementForm({
     }
   }
 
-  function closeDeleteConfirm() {
-    setShowDeleteConfirm(false)
-
-    window.setTimeout(() => {
-      deleteTriggerRef.current?.focus()
-    }, 0)
-  }
-
-  function handleDeleteConfirmKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      closeDeleteConfirm()
-      return
-    }
-
-    if (event.key === 'Tab') {
-      const dialog = deleteConfirmRef.current
-      if (!dialog) return
-
-      const focusable = Array.from(
-        dialog.querySelectorAll<HTMLElement>(
-          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        )
-      ).filter((element) => element.getAttribute('aria-hidden') !== 'true')
-
-      const first = focusable[0]
-      const last = focusable.at(-1)
-      if (!first || !last) return
-
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault()
-        last.focus()
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault()
-        first.focus()
-      }
-    }
-  }
-
-  async function handleDelete() {
+  async function handleDelete(closeAfterError: () => void) {
     if (!onDelete) return
     startTransition(async () => {
       try {
@@ -432,7 +633,7 @@ export function AnnouncementForm({
         reportClientError('announcement_form.delete', error)
         setFormError(error instanceof Error ? error.message : 'Could not delete announcement.')
         setSaveState('error')
-        closeDeleteConfirm()
+        closeAfterError()
       }
     })
   }
@@ -523,8 +724,6 @@ export function AnnouncementForm({
   }
 
   const selectedCategory = categories.find((c) => c.id === categoryId)
-  const selectedUrgency = URGENCY_META[urgency]
-  const titleFontClass = getAnnouncementTitleFontClass(displayFont)
   const isScheduled = isFutureDateTime(scheduledPublishAt)
   const isPinned = isFutureDateTime(pinnedUntil)
   const scheduledPublishError = futureDateTimeError(scheduledPublishAt, 'Publish time')
@@ -539,11 +738,6 @@ export function AnnouncementForm({
     | 'published'
     | 'rejected'
     | 'archived'
-  const readinessItems = [
-    'Title and body explain what students need to know.',
-    'Date, venue, contact, and registration details are current.',
-    'Banner image and urgency level still make sense on mobile.',
-  ]
   const actionBar = (
     <ActionBar
       status={displayStatus}
@@ -563,66 +757,13 @@ export function AnnouncementForm({
   return (
     <div className="announcement-form-shell">
       {/* Top bar with back button + delete */}
-      <div className="mx-auto flex w-full max-w-[82rem] items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-        <BackNavButton
-          fallbackHref={backHref}
-          className="min-w-0 rounded-lg border-transparent bg-transparent px-0 text-sm text-[var(--color-text-secondary)] shadow-none hover:border-transparent hover:bg-transparent hover:text-[var(--color-text-primary)] hover:shadow-none"
-        >
-          Back to announcements
-        </BackNavButton>
-
-        {onDelete && !isNew && (
-          <div className="relative">
-            {showDeleteConfirm ? (
-              <div
-                ref={deleteConfirmRef}
-                role="alertdialog"
-                aria-modal="true"
-                aria-labelledby="delete-announcement-title"
-                aria-describedby="delete-announcement-description"
-                onKeyDown={handleDeleteConfirmKeyDown}
-                className="flex flex-wrap items-center gap-2 rounded-xl border border-[var(--color-destructive)]/30 bg-[var(--color-surface)] p-2 shadow-[var(--shadow-soft)]"
-              >
-                <span
-                  id="delete-announcement-title"
-                  className="text-xs font-semibold text-[var(--color-destructive)]"
-                >
-                  Delete this?
-                </span>
-                <span id="delete-announcement-description" className="sr-only">
-                  This permanently deletes the announcement and cannot be undone.
-                </span>
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={isPending}
-                  className="min-h-11 rounded-lg bg-[var(--color-destructive)] px-3 text-xs font-medium text-[var(--color-surface)] transition-opacity hover:opacity-90 disabled:opacity-50"
-                >
-                  {isPending ? 'Deleting…' : 'Confirm'}
-                </button>
-                <button
-                  ref={deleteCancelRef}
-                  type="button"
-                  onClick={closeDeleteConfirm}
-                  className="min-h-11 rounded-lg border border-[var(--color-glass-border)] px-3 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-elevated)]"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                ref={deleteTriggerRef}
-                type="button"
-                onClick={() => setShowDeleteConfirm(true)}
-                className="flex min-h-11 items-center gap-1.5 rounded-lg text-xs text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-destructive)]"
-              >
-                <Trash2 size={14} />
-                Delete
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+      {!isNew && (
+        <AnnouncementFormTopBar
+          backHref={backHref}
+          isPending={isPending}
+          onDelete={onDelete ? handleDelete : undefined}
+        />
+      )}
 
       {/* Form content */}
       <div className="announcement-editor-layout mx-auto w-full max-w-[82rem] flex-1 px-4 pb-28 sm:px-6 lg:px-8">
@@ -675,7 +816,10 @@ export function AnnouncementForm({
                 id="announcement-title"
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value.slice(0, ANNOUNCEMENT_TITLE_MAX))}
+                onChange={(e) => {
+                  setTitle(e.target.value.slice(0, ANNOUNCEMENT_TITLE_MAX))
+                  clearFormErrorOnEdit()
+                }}
                 placeholder="Announcement title"
                 className={cn(
                   'w-full py-3 text-xl font-semibold',
@@ -700,7 +844,10 @@ export function AnnouncementForm({
                 id="announcement-body"
                 ref={bodyRef}
                 value={body}
-                onChange={(e) => setBody(e.target.value.slice(0, ANNOUNCEMENT_BODY_MAX))}
+                onChange={(e) => {
+                  setBody(e.target.value.slice(0, ANNOUNCEMENT_BODY_MAX))
+                  clearFormErrorOnEdit()
+                }}
                 placeholder="Write the announcement body…"
                 rows={6}
                 maxLength={ANNOUNCEMENT_BODY_MAX}
@@ -755,7 +902,7 @@ export function AnnouncementForm({
               <div className="relative">
                 {selectedCategory && (
                   <span
-                    className="pointer-events-none absolute top-1/2 left-4 z-10 h-2.5 w-2.5 -translate-y-1/2 rounded-full"
+                    className="pointer-events-none absolute top-1/2 left-4 z-10 size-2.5 -translate-y-1/2 rounded-full"
                     style={{ backgroundColor: selectedCategory.color ?? 'var(--color-accent)' }}
                     aria-hidden="true"
                   />
@@ -783,17 +930,15 @@ export function AnnouncementForm({
             </div>
 
             {/* Urgency */}
-            <div>
-              <div className="mb-2 flex items-center gap-2">
+            <fieldset className="min-w-0 border-0 p-0">
+              <legend className="mb-2 flex items-center gap-2 p-0 text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
                 <AlertTriangle
                   size={14}
                   className="text-[var(--color-text-muted)]"
                   aria-hidden="true"
                 />
-                <label className="text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
-                  Urgency
-                </label>
-              </div>
+                Urgency
+              </legend>
               <div className="grid grid-cols-3 gap-2">
                 {ANNOUNCEMENT_URGENCIES.map((option) => {
                   const meta = URGENCY_META[option]
@@ -817,17 +962,15 @@ export function AnnouncementForm({
                   )
                 })}
               </div>
-            </div>
+            </fieldset>
 
             {/* Typography */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <div className="mb-2 flex items-center gap-2">
+            <div className="grid gap-4">
+              <fieldset className="min-w-0 border-0 p-0">
+                <legend className="mb-2 flex items-center gap-2 p-0 text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
                   <Type size={14} className="text-[var(--color-text-muted)]" aria-hidden="true" />
-                  <label className="text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
-                    Font
-                  </label>
-                </div>
+                  Font
+                </legend>
                 <div className="grid grid-cols-2 gap-2">
                   {ANNOUNCEMENT_DISPLAY_FONTS.map((option) => {
                     const active = displayFont === option
@@ -852,12 +995,12 @@ export function AnnouncementForm({
                     )
                   })}
                 </div>
-              </div>
+              </fieldset>
 
-              <div>
-                <label className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
+              <fieldset className="min-w-0 border-0 p-0">
+                <legend className="mb-2 block p-0 text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
                   Text Size
-                </label>
+                </legend>
                 <div className="grid grid-cols-3 gap-2">
                   {ANNOUNCEMENT_DISPLAY_SIZES.map((option) => {
                     const active = displaySize === option
@@ -868,7 +1011,7 @@ export function AnnouncementForm({
                         aria-pressed={active}
                         onClick={() => setDisplaySize(option)}
                         className={cn(
-                          'min-h-11 rounded-xl border px-2 text-sm font-semibold transition-all duration-200',
+                          'min-h-11 rounded-xl border px-3 text-sm font-semibold whitespace-nowrap transition-all duration-200',
                           'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
                           active
                             ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)] text-[var(--color-text-primary)]'
@@ -880,12 +1023,15 @@ export function AnnouncementForm({
                     )
                   })}
                 </div>
-              </div>
+              </fieldset>
             </div>
 
             {/* Banner Image Upload */}
             <div>
-              <label className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
+              <label
+                htmlFor="banner-image-upload"
+                className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
+              >
                 Banner Image
               </label>
 
@@ -938,7 +1084,7 @@ export function AnnouncementForm({
                       {isUploading ? 'Uploading…' : 'Drop an image here or click to upload'}
                     </p>
                     <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                      JPG, PNG, or WebP — max {BANNER_MAX_FILE_SIZE_MB}MB
+                      JPG, PNG, or WebP, max {BANNER_MAX_FILE_SIZE_MB}MB
                     </p>
                     {bannerSizeError && (
                       <p className="mt-1 text-xs font-semibold text-[var(--color-destructive)]">
@@ -985,6 +1131,7 @@ export function AnnouncementForm({
                   onChange={(e) => {
                     setRegistrationLink(e.target.value)
                     setUrlError('')
+                    clearFormErrorOnEdit()
                   }}
                   onBlur={handleUrlBlur}
                   placeholder="https://forms.google.com/..."
@@ -1038,7 +1185,10 @@ export function AnnouncementForm({
                     id="scheduled-publish-at"
                     type="datetime-local"
                     value={scheduledPublishAt}
-                    onChange={(e) => setScheduledPublishAt(e.target.value)}
+                    onChange={(e) => {
+                      setScheduledPublishAt(e.target.value)
+                      clearFormErrorOnEdit()
+                    }}
                     aria-invalid={Boolean(scheduledPublishError)}
                     aria-describedby={
                       scheduledPublishError
@@ -1089,7 +1239,10 @@ export function AnnouncementForm({
                     id="pinned-until"
                     type="datetime-local"
                     value={pinnedUntil}
-                    onChange={(e) => setPinnedUntil(e.target.value)}
+                    onChange={(e) => {
+                      setPinnedUntil(e.target.value)
+                      clearFormErrorOnEdit()
+                    }}
                     aria-invalid={Boolean(pinnedUntilError)}
                     aria-describedby={
                       pinnedUntilError
@@ -1152,100 +1305,21 @@ export function AnnouncementForm({
             </div>
           </section>
 
-          <section className="announcement-section-card p-5 sm:p-6">
-            <p className="future-kicker">Publishing readiness</p>
-            <h2 className="font-display mt-3 text-2xl leading-tight font-extrabold text-[var(--color-text-primary)]">
-              Check before sending
-            </h2>
-            <div className="announcement-readiness-list mt-5">
-              {readinessItems.map((item, index) => (
-                <div key={item} className="announcement-readiness-item">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[0.75rem] bg-[var(--color-accent-surface)] font-mono text-xs font-bold text-[var(--color-accent)]">
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
-                  <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{item}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+          <PublishingReadinessChecklist />
 
-          {/* Live Preview */}
-          <section className="announcement-preview-panel">
-            <p className="mb-3 text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
-              Preview
-            </p>
-            <GlassCard hover={false} className="overflow-hidden">
-              {bannerUrl && (
-                <NextImage
-                  src={bannerUrl}
-                  alt="Preview banner"
-                  width={600}
-                  height={144}
-                  className="h-36 w-full object-contain"
-                  unoptimized
-                />
-              )}
-              <div className="space-y-2 p-5">
-                <div className="flex flex-wrap items-center gap-2">
-                  {urgency !== 'normal' && (
-                    <span
-                      className="rounded-md px-2.5 py-1 text-[15px] font-semibold"
-                      style={{
-                        color: selectedUrgency.tone,
-                        background: selectedUrgency.background,
-                      }}
-                    >
-                      {selectedUrgency.label}
-                    </span>
-                  )}
-                  {isScheduled && (
-                    <span className="rounded-md bg-[var(--color-accent-surface)] px-2.5 py-1 text-[15px] font-semibold text-[var(--color-accent-inti)]">
-                      Scheduled
-                    </span>
-                  )}
-                  {isPinned && (
-                    <span className="rounded-md bg-[var(--color-status-published-bg)] px-2.5 py-1 text-[15px] font-semibold text-[var(--color-status-published-text)]">
-                      Pinned
-                    </span>
-                  )}
-                  <span className="rounded-md bg-[var(--color-surface-elevated)] px-2.5 py-1 text-[15px] font-medium text-[var(--color-text-muted)]">
-                    {DISPLAY_FONT_LABELS[displayFont]} · {DISPLAY_SIZE_LABELS[displaySize]}
-                  </span>
-                </div>
-                {selectedCategory && (
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="h-2 w-2 rounded-full"
-                      style={{ backgroundColor: selectedCategory.color ?? 'var(--color-accent)' }}
-                    />
-                    <span className="text-[13.5px] font-medium tracking-[0.2em] text-[var(--color-text-muted)] uppercase">
-                      {selectedCategory.name}
-                    </span>
-                  </div>
-                )}
-                <h3
-                  className={cn(
-                    titleFontClass,
-                    'leading-tight font-semibold text-[var(--color-text-primary)]'
-                  )}
-                  style={{ fontSize: CARD_TITLE_SIZES[displaySize] }}
-                >
-                  {title || 'Untitled Announcement'}
-                </h3>
-                <p
-                  className="line-clamp-3 leading-relaxed text-[var(--color-text-secondary)]"
-                  style={{ fontSize: DETAIL_BODY_SIZES[displaySize] }}
-                >
-                  {body || 'Announcement body will appear here…'}
-                </p>
-                {registrationLink && !urlError && (
-                  <span className="inline-block text-[15px] font-medium tracking-wider text-[var(--color-accent)] uppercase">
-                    Register Here →
-                  </span>
-                )}
-              </div>
-            </GlassCard>
-          </section>
+          <AnnouncementLivePreview
+            bannerUrl={bannerUrl}
+            urgency={urgency}
+            isScheduled={isScheduled}
+            isPinned={isPinned}
+            displayFont={displayFont}
+            displaySize={displaySize}
+            selectedCategory={selectedCategory}
+            title={title}
+            body={body}
+            registrationLink={registrationLink}
+            urlError={urlError}
+          />
         </aside>
       </div>
 
