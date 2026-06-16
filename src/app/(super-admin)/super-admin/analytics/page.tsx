@@ -1,6 +1,6 @@
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { CountUp } from '@/components/dashboard/CountUp'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { formatCampusCompactDate } from '@/lib/announcements/public-board'
 import { getPlatformStats } from '@/lib/data'
 import { createClient } from '@/lib/supabase/server'
@@ -31,8 +31,8 @@ export default async function SuperAdminAnalyticsPage() {
     .slice(0, 10)
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-6">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-6">
+      <DashboardBoardHeader
         kicker="Super analytics"
         title="Platform analytics"
         description="Platform-wide publishing statistics, organization activity, and new user movement."
@@ -130,6 +130,6 @@ export default async function SuperAdminAnalyticsPage() {
           </GlassCard>
         )}
       </div>
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

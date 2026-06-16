@@ -15,7 +15,7 @@ export default async function LoginPage({
   const { error, registered } = await searchParams
 
   return (
-    <main className="relative w-[min(1200px,calc(100vw-2rem))]">
+    <main id="main-content" className="relative w-[min(1200px,calc(100vw-2rem))]">
       <div
         data-testid="login-card"
         className="animate-fade-up relative grid min-h-[min(640px,calc(100dvh-1.5rem))] w-full overflow-hidden rounded-[1.75rem] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_24px_90px_rgba(30,26,23,0.14)] md:min-h-[720px] lg:h-[800px] lg:grid-cols-[1.08fr_0.92fr]"
@@ -130,7 +130,7 @@ export default async function LoginPage({
 
               <button
                 type="submit"
-                className="mt-1 h-14 w-full cursor-pointer rounded-xl bg-[var(--color-accent-inti)] text-base font-semibold text-white shadow-[0_12px_30px_color-mix(in_oklab,var(--color-accent-inti)_28%,transparent)] transition-[transform,background,box-shadow] duration-200 hover:-translate-y-0.5 hover:bg-[var(--color-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]/50 active:translate-y-0 active:scale-[0.99]"
+                className="mt-1 h-14 w-full cursor-pointer rounded-xl bg-[var(--color-accent-inti)] text-base font-semibold text-[var(--color-on-accent)] shadow-[0_12px_30px_color-mix(in_oklab,var(--color-accent-inti)_28%,transparent)] transition-[transform,background,box-shadow] duration-200 hover:-translate-y-0.5 hover:bg-[var(--color-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]/50 active:translate-y-0 active:scale-[0.99]"
               >
                 Sign in
               </button>

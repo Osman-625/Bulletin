@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { logAuditEvent } from '@/lib/audit'
 import { getDefaultAppPath } from '@/lib/auth/authz'
+import { validatePassword } from '@/lib/auth/password-policy'
 import { reportServerError } from '@/lib/error-reporting'
 import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
 import { createClient } from '@/lib/supabase/server'
@@ -145,8 +146,8 @@ export async function updateAccountPassword(formData: FormData) {
   if (!user.email)
     redirectWithStatus(returnTo, 'error', 'This account is missing an email address.')
   if (!currentPassword) redirectWithStatus(returnTo, 'error', 'Current password is required.')
-  if (newPassword.length < 8)
-    redirectWithStatus(returnTo, 'error', 'New password must be at least 8 characters.')
+  const passwordValidation = validatePassword(newPassword)
+  if (!passwordValidation.valid) redirectWithStatus(returnTo, 'error', passwordValidation.message)
   if (newPassword !== confirmPassword)
     redirectWithStatus(returnTo, 'error', 'New passwords do not match.')
   if (currentPassword === newPassword)

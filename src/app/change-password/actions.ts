@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { logAuditEvent } from '@/lib/audit'
+import { validatePassword } from '@/lib/auth/password-policy'
 import { reportServerError } from '@/lib/error-reporting'
 import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
 import { createClient } from '@/lib/supabase/server'
@@ -32,8 +33,9 @@ export async function changePassword(formData: FormData) {
   const password = formData.get('password') as string
   const confirm = formData.get('confirm') as string
 
-  if (!password || password.length < 8) {
-    redirect('/change-password?error=Password+must+be+at+least+8+characters')
+  const passwordValidation = validatePassword(password)
+  if (!passwordValidation.valid) {
+    redirect(changePasswordErrorHref(passwordValidation.message))
   }
   if (password !== confirm) {
     redirect('/change-password?error=Passwords+do+not+match')
@@ -45,15 +47,28 @@ export async function changePassword(formData: FormData) {
     redirect(changePasswordErrorHref(PASSWORD_CHANGE_ERROR))
   }
 
-  const { error: profileUpdateError } = await supabase
+  // The auth password is already changed at this point. Failing to clear the
+  // flag would bounce the user back here via the proxy redirect, so retry once
+  // and, if it still fails, tell them the password itself did change.
+  let { error: profileUpdateError } = await supabase
     .from('users')
     .update({ force_password_change: false })
     .eq('id', user.id)
   if (profileUpdateError) {
+    ;({ error: profileUpdateError } = await supabase
+      .from('users')
+      .update({ force_password_change: false })
+      .eq('id', user.id))
+  }
+  if (profileUpdateError) {
     reportServerError('auth.change_password.update_profile', profileUpdateError, {
       actorId: user.id,
     })
-    redirect(changePasswordErrorHref(PASSWORD_CHANGE_ERROR))
+    redirect(
+      changePasswordErrorHref(
+        'Your password was updated, but setup did not finish. Submit your new password again.'
+      )
+    )
   }
   await logAuditEvent({
     actorId: user.id,

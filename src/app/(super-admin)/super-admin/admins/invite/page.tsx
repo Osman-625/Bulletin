@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ArrowLeft, Check, ShieldCheck } from 'lucide-react'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { getCurrentAccessContext } from '@/lib/auth/authz'
 import { createClient } from '@/lib/supabase/server'
@@ -38,8 +38,8 @@ export default async function InviteAdminPage({
     : null
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker="Super directory"
         title="Invite admin"
         description="Generate an invite for admin or super-admin access."
@@ -131,6 +131,6 @@ export default async function InviteAdminPage({
           </p>
         </GlassCard>
       </div>
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

@@ -1,19 +1,36 @@
 'use server'
 
+import { headers } from 'next/headers'
 import { reportServerError } from '@/lib/error-reporting'
-import { createClient } from '@/lib/supabase/server'
+import { checkPersistentRateLimit } from '@/lib/security/persistent-rate-limit'
+import { rateLimitKey } from '@/lib/security/rate-limit'
+import { createServiceClient } from '@/lib/supabase/server'
+
+const VIEW_RATE_LIMIT = 30
+const VIEW_RATE_LIMIT_WINDOW_MS = 60_000
 
 export async function recordAnnouncementView(announcementId: string) {
-  if (!announcementId) return
+  const normalizedAnnouncementId = announcementId.trim()
+  if (!normalizedAnnouncementId) return
 
-  const supabase = await createClient()
+  // Key on IP only: keying per announcement would let one IP multiply the
+  // limit by rotating announcement IDs to inflate view counts.
+  const headerStore = await headers()
+  const rateLimit = await checkPersistentRateLimit(rateLimitKey('announcement-view', headerStore), {
+    limit: VIEW_RATE_LIMIT,
+    windowMs: VIEW_RATE_LIMIT_WINDOW_MS,
+  })
+
+  if (rateLimit.limited) return
+
+  const supabase = await createServiceClient()
   const { error } = await supabase.rpc('increment_announcement_view', {
-    p_announcement_id: announcementId,
+    p_announcement_id: normalizedAnnouncementId,
   })
 
   if (error) {
     reportServerError('public.announcement_view.increment_failed', error, {
-      announcementId,
+      announcementId: normalizedAnnouncementId,
     })
   }
 }

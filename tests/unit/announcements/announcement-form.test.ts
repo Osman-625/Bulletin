@@ -7,6 +7,7 @@ import {
   readAnnouncementTextFields,
   readOptionalBannerUrl,
   readOptionalHttpUrl,
+  readAnnouncementScheduleFields,
 } from '@/lib/announcements/form'
 import { toSafeHttpUrl } from '@/lib/announcements/urls'
 
@@ -67,6 +68,30 @@ describe('announcement form validation helpers', () => {
     expect(readOptionalBannerUrl(formData('banner_url', url), 'banner_url')).toBe(url)
   })
 
+  it('accepts owned Supabase banner URLs when actor and organization checks are supplied', () => {
+    const url =
+      'https://example-project.supabase.co/storage/v1/object/public/banner-images/user-1/org-1/announcement.png'
+
+    expect(
+      readOptionalBannerUrl(formData('banner_url', url), 'banner_url', {
+        userId: 'user-1',
+        organizationId: 'org-1',
+      })
+    ).toBe(url)
+  })
+
+  it('rejects Supabase banner URLs for a different actor or organization when scoped', () => {
+    const url =
+      'https://example-project.supabase.co/storage/v1/object/public/banner-images/user-2/org-1/announcement.png'
+
+    expect(() =>
+      readOptionalBannerUrl(formData('banner_url', url), 'banner_url', {
+        userId: 'user-1',
+        organizationId: 'org-1',
+      })
+    ).toThrow('Banner image must be uploaded by your account for this organization.')
+  })
+
   it('rejects banners from the deprecated or wrong bucket', () => {
     const url =
       'https://example-project.supabase.co/storage/v1/object/public/announcement-banners/announcement.png'
@@ -101,6 +126,24 @@ describe('announcement form validation helpers', () => {
     expect(() => assertAnnouncementReadyForReview('Ready title', '   ')).toThrow(
       'Add announcement body before submitting for review.'
     )
+  })
+
+  it('validates schedule, pin, and expiry windows together', () => {
+    const form = new FormData()
+    form.set('scheduled_publish_at', '2026-06-20T02:00:00.000Z')
+    form.set('expires_at', '2026-06-19T02:00:00.000Z')
+
+    expect(() =>
+      readAnnouncementScheduleFields(form, { now: Date.parse('2026-06-15T00:00:00.000Z') })
+    ).toThrow('Expiration date must be after the scheduled publish time.')
+
+    const pinForm = new FormData()
+    pinForm.set('pinned_until', '2026-06-21T02:00:00.000Z')
+    pinForm.set('expires_at', '2026-06-20T02:00:00.000Z')
+
+    expect(() =>
+      readAnnouncementScheduleFields(pinForm, { now: Date.parse('2026-06-15T00:00:00.000Z') })
+    ).toThrow('Pinned until must not be after the expiration date.')
   })
 
   it('rejects announcement text that exceeds server-side limits', () => {

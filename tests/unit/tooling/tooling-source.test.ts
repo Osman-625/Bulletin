@@ -125,6 +125,13 @@ describe('tooling source guards', () => {
     expect(spec).toContain('page.setViewportSize({ width: 390, height: 844 })')
   })
 
+  it('keeps deployment smoke assertions out of the dev-server E2E config', () => {
+    const config = source('config/playwright.config.ts')
+
+    expect(config).toContain("testIgnore: 'deploy-smoke.spec.ts'")
+    expect(config).not.toContain("testMatch: 'deploy-smoke.spec.ts'")
+  })
+
   it('keeps shadcn out of production dependencies', () => {
     const pkg = JSON.parse(source('package.json')) as {
       dependencies?: Record<string, string>

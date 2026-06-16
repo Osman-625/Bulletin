@@ -12,3 +12,5 @@ Use this when something is broken or a test fails.
 8. Add regression coverage when practical.
 
 Do not rewrite broad areas while debugging unless the root cause requires it.
+
+For UI, layout, or visual bugs, follow `.codex/rules/ux-research-quality.md`: verify from evidence, fix the real cause (not symptoms), preserve the 3-column board and data behavior, and report each bug with file/cause/visible failure/exact fix/test step.

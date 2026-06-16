@@ -68,7 +68,7 @@ export function DashboardContentsIndex({
     <section className="pub-index">
       <div className="pub-index-head">
         <h2 className="pub-index-title">
-          Your desk{' '}
+          Your board{' '}
           <span className="count">
             {items.length} notice{items.length === 1 ? '' : 's'}
           </span>

@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { loginAs } from './helpers/auth'
 import { hasEnv, requireEnv } from './helpers/env'
 import { resetPublisherAccount } from './helpers/admin'
+import { gotoApp } from './helpers/navigation'
 
 function userCard(page: Page, email: string) {
   return page.getByTestId('user-card').filter({ hasText: email })
@@ -13,7 +14,7 @@ test.describe('Admin user management', () => {
   test.beforeEach(async ({ page }) => {
     await resetPublisherAccount()
     await loginAs(page, 'admin')
-    await page.goto('/admin/users')
+    await gotoApp(page, '/admin/users')
   })
 
   test('admin sees /admin/users page', async ({ page }) => {
@@ -33,12 +34,12 @@ test.describe('Admin user management', () => {
   })
 
   test('reset password with short password shows error message', async ({ page }) => {
-    await page.goto('/admin/users?role=publisher')
+    await gotoApp(page, '/admin/users?role=publisher')
     const publisherCard = userCard(page, requireEnv('TEST_PUBLISHER_EMAIL'))
     await expect(publisherCard).toBeVisible()
     await publisherCard.getByRole('link', { name: /^edit$/i }).click()
 
-    const pwInput = page.getByPlaceholder(/new temp password/i)
+    const pwInput = page.getByLabel(/new temporary password/i)
     await pwInput.fill('short')
     await page.getByRole('button', { name: /set password/i }).click()
     const isTooShort = await pwInput.evaluate((input: HTMLInputElement) => input.validity.tooShort)
@@ -53,7 +54,7 @@ test.describe('Admin user management', () => {
 test.describe('Super-admin user management', () => {
   test.beforeEach(async ({ page }) => {
     await loginAs(page, 'super_admin')
-    await page.goto('/super-admin/users')
+    await gotoApp(page, '/super-admin/users')
   })
 
   test('super-admin sees user list', async ({ page }) => {
@@ -75,7 +76,7 @@ test.describe('Super-admin user management', () => {
     await publisherCard.getByRole('link', { name: /^edit$/i }).click()
 
     try {
-      const pwInput = page.getByPlaceholder(/new temp password/i)
+      const pwInput = page.getByLabel(/new temporary password/i)
       await pwInput.fill('SecureTemp1!')
       await page.getByRole('button', { name: /set password/i }).click()
       await expect(page).toHaveURL(/msg=Password\+updated/, { timeout: 20_000 })
@@ -96,7 +97,7 @@ test.describe('Owner user management', () => {
       'Owner E2E credentials are not configured in this environment'
     )
     await loginAs(page, 'owner')
-    await page.goto('/owner/users')
+    await gotoApp(page, '/owner/users')
   })
 
   test('owner sees user list', async ({ page }) => {
@@ -116,11 +117,11 @@ test.describe('Owner user management', () => {
     await publisherCard.getByRole('link', { name: /^edit$/i }).click()
 
     try {
-      const pwInput = page.getByPlaceholder(/new temp password/i)
-      await pwInput.fill('OwnerTemp1!')
+      const pwInput = page.getByLabel(/new temporary password/i)
+      await pwInput.fill('OwnerTemp12!')
       await page.getByRole('button', { name: /set password/i }).click()
       await expect(page).toHaveURL(/msg=Password\+updated/, { timeout: 20_000 })
-      await expect(page).not.toHaveURL(/OwnerTemp|temp_password|password=/)
+      await expect(page).not.toHaveURL(/OwnerTemp12|temp_password|password=/)
     } finally {
       await resetPublisherAccount()
     }

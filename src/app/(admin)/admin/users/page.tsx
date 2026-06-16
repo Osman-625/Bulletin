@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { Users } from 'lucide-react'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { formatCampusShortDate } from '@/lib/announcements/public-board'
 import { logAuditEvent } from '@/lib/audit'
 import {
@@ -14,6 +14,10 @@ import {
   type AppRole,
   type ScopedUser,
 } from '@/lib/auth/authz'
+import {
+  TEMPORARY_PASSWORD_MIN_LENGTH,
+  validateTemporaryPassword,
+} from '@/lib/auth/password-policy'
 import { getVisibleUsersForAdminPage } from '@/lib/data'
 import { reportServerError } from '@/lib/error-reporting'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -74,7 +78,7 @@ function UserPagination({
         <Link
           href={adminUsersHref({ role, page: previousPage })}
           aria-disabled={page <= 1}
-          className={`inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
+          className={`inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
             page <= 1
               ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
               : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
@@ -85,10 +89,10 @@ function UserPagination({
         <Link
           href={adminUsersHref({ role, page: nextPage })}
           aria-disabled={page >= totalPages}
-          className={`inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
+          className={`inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
             page >= totalPages
               ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
-              : 'bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]'
+              : 'bg-[var(--color-accent)] text-[var(--color-on-accent)] hover:bg-[var(--color-accent-hover)]'
           }`}
         >
           Next
@@ -185,7 +189,9 @@ async function resetPassword(userId: string, formData: FormData) {
 
   const supabase = await createServiceClient()
   const temp = formData.get('temp_password') as string
-  if (!temp || temp.length < 8) redirect('/admin/users?msg=Password+must+be+at+least+8+characters.')
+  const passwordValidation = validateTemporaryPassword(temp)
+  if (!passwordValidation.valid)
+    redirect(`/admin/users?msg=${encodeURIComponent(passwordValidation.message)}`)
   const { error: authUpdateError } = await supabase.auth.admin.updateUserById(userId, {
     password: temp,
   })
@@ -293,8 +299,8 @@ export default async function AdminUsersPage({
   const separator = base.includes('?') ? '&' : '?'
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker="Admin directory"
         title="Users"
         description={`${visibleUsersPage.total} users${
@@ -326,9 +332,9 @@ export default async function AdminUsersPage({
           <Link
             key={key}
             href={adminUsersHref({ role: key || undefined })}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={`inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-medium transition-colors ${
               filterRole === key || (!filterRole && !key)
-                ? 'bg-[var(--color-accent)] text-white'
+                ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]'
                 : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
             }`}
           >
@@ -352,7 +358,7 @@ export default async function AdminUsersPage({
               {filterRole && (
                 <Link
                   href="/admin/users"
-                  className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-[var(--color-surface-elevated)] px-4 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+                  className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[var(--color-surface-elevated)] px-4 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
                 >
                   Clear the role filter
                 </Link>
@@ -432,13 +438,13 @@ export default async function AdminUsersPage({
                   <div className="flex shrink-0 gap-2">
                     <Link
                       href={`${base}${separator}edit=${user.id}`}
-                      className="rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+                      className="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-surface-elevated)] px-3 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
                     >
                       Edit
                     </Link>
                     <Link
                       href={`${base}${separator}confirm=${user.id}`}
-                      className="rounded-lg bg-[var(--color-status-rejected-bg)] px-3 py-1.5 text-xs font-medium text-[var(--color-status-rejected-text)] transition-opacity hover:opacity-80"
+                      className="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-status-rejected-bg)] px-3 text-xs font-medium text-[var(--color-status-rejected-text)] transition-opacity hover:opacity-80"
                     >
                       Delete
                     </Link>
@@ -448,7 +454,7 @@ export default async function AdminUsersPage({
                 {(isEditing || isConfirming) && (
                   <Link
                     href={base}
-                    className="shrink-0 rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+                    className="inline-flex min-h-11 shrink-0 items-center rounded-lg bg-[var(--color-surface-elevated)] px-3 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
                   >
                     Cancel
                   </Link>
@@ -463,7 +469,7 @@ export default async function AdminUsersPage({
                   <form action={setRole.bind(null, user.id, 'publisher')}>
                     <button
                       type="submit"
-                      className="rounded-xl bg-[var(--color-accent)] px-4 py-2 text-xs font-semibold text-white"
+                      className="min-h-11 rounded-xl bg-[var(--color-accent)] px-4 text-xs font-semibold text-[var(--color-on-accent)]"
                     >
                       Keep as Publisher <span className="font-mono opacity-60">L3</span>
                     </button>
@@ -477,13 +483,13 @@ export default async function AdminUsersPage({
                       type="password"
                       aria-label={`New temporary password for ${user.display_name}`}
                       required
-                      minLength={8}
-                      placeholder="New temp password"
-                      className="w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
+                      minLength={TEMPORARY_PASSWORD_MIN_LENGTH}
+                      placeholder={`At least ${TEMPORARY_PASSWORD_MIN_LENGTH} characters`}
+                      className="min-h-11 w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
                     />
                     <button
                       type="submit"
-                      className="shrink-0 rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-2 text-xs font-semibold text-[var(--color-status-submitted-text)] transition-opacity hover:opacity-80"
+                      className="min-h-11 shrink-0 rounded-xl bg-[var(--color-status-submitted-bg)] px-4 text-xs font-semibold text-[var(--color-status-submitted-text)] transition-opacity hover:opacity-80"
                     >
                       Set Password
                     </button>
@@ -503,7 +509,7 @@ export default async function AdminUsersPage({
                   <form action={deleteUser.bind(null, user.id)}>
                     <button
                       type="submit"
-                      className="rounded-xl bg-[var(--color-status-rejected-text)] px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-80"
+                      className="min-h-11 rounded-xl bg-[var(--color-status-rejected-text)] px-4 text-xs font-bold text-[var(--color-on-accent)] transition-opacity hover:opacity-80"
                     >
                       Yes, delete permanently
                     </button>
@@ -519,6 +525,6 @@ export default async function AdminUsersPage({
         totalPages={visibleUsersPage.totalPages}
         role={filterRole}
       />
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

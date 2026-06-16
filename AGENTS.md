@@ -129,3 +129,4 @@ All announcement dates must use `Asia/Kuala_Lumpur`. Centralized in `src/lib/ann
 - Do not hard-code hex colors — use `globals.css` tokens
 - Do not add `any` types — derive from `database.types.ts`
 - Do not skip rate limiting on public-facing mutation endpoints
+- Do not audit or fix UI without following `.claude/rules/ux-research-quality.md` (Seven Deadly Sins of UX Research) — verify before changing, fix root causes not symptoms, preserve the 3-column board and data behavior, report every bug with file/cause/visible failure/exact fix/test step

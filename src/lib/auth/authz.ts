@@ -13,11 +13,17 @@
  */
 
 import { cache } from 'react'
+import { redirect } from 'next/navigation'
 import { createClient } from '../supabase/server'
-import type { UserRole } from '../types'
+import type { AppRole } from './roles'
 
-/** Union of all database roles plus the special `owner` app role. */
-export type AppRole = UserRole | 'owner'
+export {
+  canAccessAdminArea,
+  canAccessOwnerArea,
+  canAccessPublisherArea,
+  canAccessSuperAdminArea,
+} from './roles'
+export type { AppRole } from './roles'
 
 /**
  * Full access context for the currently authenticated user.
@@ -57,22 +63,6 @@ export function getDefaultAppPath(role: AppRole): string {
   if (role === 'super_admin') return '/super-admin'
   if (role === 'admin') return '/admin'
   return '/dashboard'
-}
-
-export function canAccessOwnerArea(role: AppRole): boolean {
-  return role === 'owner'
-}
-
-export function canAccessSuperAdminArea(role: AppRole): boolean {
-  return role === 'owner' || role === 'super_admin'
-}
-
-export function canAccessAdminArea(role: AppRole): boolean {
-  return role === 'owner' || role === 'admin'
-}
-
-export function canAccessPublisherArea(role: AppRole): boolean {
-  return role === 'owner' || role === 'publisher'
 }
 
 export function getAssignableRoles(role: AppRole): AppRole[] {
@@ -151,3 +141,22 @@ export const getCurrentAccessContext = cache(
     }
   }
 )
+
+/**
+ * Defense-in-depth guard for protected server components.
+ *
+ * Calls getCurrentAccessContext() (same cached call per request), then:
+ *   - Redirects unauthenticated callers to /login
+ *   - Redirects users with force_password_change=true to /change-password
+ *   - Returns the access context when the session is usable
+ *
+ * Use this at the top of every protected server component in addition to
+ * the middleware check in proxy.ts so that a stale session or bypassed
+ * middleware cannot reach protected data.
+ */
+export async function requireUsableAccessContext(): Promise<AccessContext> {
+  const access = await getCurrentAccessContext()
+  if (!access) redirect('/login')
+  if (access.forcePasswordChange) redirect('/change-password')
+  return access
+}

@@ -5,14 +5,14 @@ import { dateValue, formatCampusDayDate } from '@/lib/announcements/public-board
 import { getCurrentAccessContext } from '@/lib/auth/authz'
 import { createClient } from '@/lib/supabase/server'
 import {
-  DashboardDeskBoard,
-  DashboardDeskEmpty,
-  DashboardDeskHeader,
-  DashboardDeskMetrics,
-  DashboardDeskPage,
-  DashboardDeskPanel,
-  DashboardDeskRow,
-} from '@/components/dashboard/DashboardDesk'
+  DashboardBoardBoard,
+  DashboardBoardEmpty,
+  DashboardBoardHeader,
+  DashboardBoardMetrics,
+  DashboardBoardPage,
+  DashboardBoardPanel,
+  DashboardBoardRow,
+} from '@/components/dashboard/DashboardBoard'
 import type { DbAnnouncement } from '@/lib/types'
 
 export const metadata = { title: 'Schedule' }
@@ -69,6 +69,9 @@ export default async function PublisherSchedulePage() {
       ? access.orgIds
       : [EMPTY_ORG_ID]
     : null
+  const now = new Date()
+  const nowIso = now.toISOString()
+  const nowMs = now.getTime()
 
   let query = supabase
     .from('announcements')
@@ -81,27 +84,55 @@ export default async function PublisherSchedulePage() {
 
   if (scopedOrgIds) query = query.in('organization_id', scopedOrgIds)
 
-  const { data } = await query
+  function scheduleCountQuery() {
+    let countRequest = supabase
+      .from('announcements')
+      .select('id', { count: 'exact', head: true })
+      .in('status', ['published', 'submitted', 'draft'])
+    if (scopedOrgIds) countRequest = countRequest.in('organization_id', scopedOrgIds)
+    return countRequest
+  }
+
+  const [
+    scheduleRowsResult,
+    liveCountResult,
+    upcomingSubmittedCountResult,
+    scheduledFutureCountResult,
+    expiringCountResult,
+    totalCountResult,
+  ] = await Promise.all([
+    query,
+    scheduleCountQuery()
+      .eq('status', 'published')
+      .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
+      .or(`expires_at.is.null,expires_at.gt.${nowIso}`),
+    scheduleCountQuery().eq('status', 'submitted'),
+    scheduleCountQuery().neq('status', 'submitted').gt('scheduled_publish_at', nowIso),
+    scheduleCountQuery().gt('expires_at', nowIso),
+    scheduleCountQuery(),
+  ])
+
+  const { data } = scheduleRowsResult
   const rows = ((data ?? []) as unknown as ScheduleRow[]).sort(
     (a, b) => dateValue(scheduleTime(a)) - dateValue(scheduleTime(b))
   )
-  const now = new Date()
-  const nowMs = now.getTime()
   const liveRows = rows.filter(
     (row) => row.status === 'published' && !isFuture(row.scheduled_publish_at, nowMs)
   )
-  const upcomingRows = rows.filter(
-    (row) => row.status === 'submitted' || isFuture(row.scheduled_publish_at, nowMs)
-  )
   const expiringRows = rows.filter((row) => isFuture(row.expires_at, nowMs)).slice(0, 5)
+  const liveCount = liveCountResult.count ?? liveRows.length
+  const upcomingCount =
+    (upcomingSubmittedCountResult.count ?? 0) + (scheduledFutureCountResult.count ?? 0)
+  const expiringCount = expiringCountResult.count ?? expiringRows.length
+  const totalCount = totalCountResult.count ?? rows.length
   const todayLabel = formatCampusDayDate(now)
 
   return (
-    <DashboardDeskPage className="publisher-dashboard-shell">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="publisher-dashboard-shell">
+      <DashboardBoardHeader
         kicker={`Publisher schedule · ${todayLabel}`}
         title="Schedule"
-        description="Live windows, scheduled reviews, and expiry dates in one compact desk."
+        description="Live windows, scheduled reviews, and expiry dates in one compact board."
         action={{
           href: '/dashboard/announcements/new',
           label: 'Schedule notice',
@@ -109,11 +140,11 @@ export default async function PublisherSchedulePage() {
         }}
       />
 
-      <DashboardDeskMetrics
+      <DashboardBoardMetrics
         metrics={[
           {
             label: 'Live now',
-            value: liveRows.length,
+            value: liveCount,
             caption: 'visible on the board',
             icon: Radio,
             href: '/dashboard/announcements?status=published',
@@ -121,21 +152,21 @@ export default async function PublisherSchedulePage() {
           },
           {
             label: 'Upcoming',
-            value: upcomingRows.length,
+            value: upcomingCount,
             caption: 'scheduled or in review',
             icon: CalendarClock,
             href: '/dashboard/announcements?status=submitted',
           },
           {
             label: 'Expiring',
-            value: expiringRows.length,
+            value: expiringCount,
             caption: 'with a future close date',
             icon: Clock,
             tone: 'gold',
           },
           {
             label: 'Total',
-            value: rows.length,
+            value: totalCount,
             caption: 'publishing windows',
             icon: FileText,
             href: '/dashboard/announcements',
@@ -143,14 +174,14 @@ export default async function PublisherSchedulePage() {
         ]}
       />
 
-      <DashboardDeskBoard>
-        <DashboardDeskPanel
+      <DashboardBoardBoard>
+        <DashboardBoardPanel
           title="Next publishing moments"
           count={`${Math.min(rows.length, 8)}`}
           action={{ href: '/dashboard/announcements', label: 'All notices' }}
         >
           {rows.length === 0 ? (
-            <DashboardDeskEmpty>No scheduled notices yet.</DashboardDeskEmpty>
+            <DashboardBoardEmpty>No scheduled notices yet.</DashboardBoardEmpty>
           ) : (
             rows.slice(0, 8).map((row, index) => {
               const date = scheduleTime(row)
@@ -158,7 +189,7 @@ export default async function PublisherSchedulePage() {
                 row.status === 'published' && !isFuture(row.scheduled_publish_at, nowMs)
 
               return (
-                <DashboardDeskRow
+                <DashboardBoardRow
                   key={row.id}
                   href={`/dashboard/announcements/${row.id}/edit`}
                   title={row.title}
@@ -178,14 +209,14 @@ export default async function PublisherSchedulePage() {
               )
             })
           )}
-        </DashboardDeskPanel>
+        </DashboardBoardPanel>
 
-        <DashboardDeskPanel title="Expiring soon" count={`${expiringRows.length}`}>
+        <DashboardBoardPanel title="Expiring soon" count={`${expiringRows.length}`}>
           {expiringRows.length === 0 ? (
-            <DashboardDeskEmpty>No expiry dates need attention.</DashboardDeskEmpty>
+            <DashboardBoardEmpty>No expiry dates need attention.</DashboardBoardEmpty>
           ) : (
             expiringRows.map((row, index) => (
-              <DashboardDeskRow
+              <DashboardBoardRow
                 key={row.id}
                 href={`/dashboard/announcements/${row.id}/edit`}
                 title={row.title}
@@ -204,15 +235,15 @@ export default async function PublisherSchedulePage() {
               />
             ))
           )}
-        </DashboardDeskPanel>
-      </DashboardDeskBoard>
+        </DashboardBoardPanel>
+      </DashboardBoardBoard>
 
-      <DashboardDeskPanel title="Schedule index" count={`${rows.length}`}>
+      <DashboardBoardPanel title="Schedule index" count={`${rows.length}`}>
         {rows.length === 0 ? (
-          <DashboardDeskEmpty>No publishing windows to show yet.</DashboardDeskEmpty>
+          <DashboardBoardEmpty>No publishing windows to show yet.</DashboardBoardEmpty>
         ) : (
           rows.map((row, index) => (
-            <DashboardDeskRow
+            <DashboardBoardRow
               key={row.id}
               href={`/dashboard/announcements/${row.id}/edit`}
               title={row.title}
@@ -231,7 +262,7 @@ export default async function PublisherSchedulePage() {
             />
           ))
         )}
-      </DashboardDeskPanel>
-    </DashboardDeskPage>
+      </DashboardBoardPanel>
+    </DashboardBoardPage>
   )
 }

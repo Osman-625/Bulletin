@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { logAuditEvent } from '@/lib/audit'
 import { canAccessOwnerArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
 import {
@@ -209,8 +209,8 @@ export default async function OwnerCategoriesPage({
   }
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker="Owner taxonomy"
         title="Categories"
         description={`${categories?.length ?? 0} categor${(categories?.length ?? 0) === 1 ? 'y' : 'ies'} available across the platform. Owner force delete is enabled.`}
@@ -279,20 +279,30 @@ export default async function OwnerCategoriesPage({
                 <GlassCard
                   key={cat.id}
                   hover={false}
-                  className={isEditing ? 'ring-1 ring-[var(--color-accent)]' : ''}
+                  className={`overflow-hidden${isEditing ? 'ring-1 ring-[var(--color-accent)]' : ''}`}
                 >
                   {!isEditing ? (
-                    <div className="flex items-center gap-4 px-5 py-3">
+                    <div className="relative flex items-center gap-4 px-5 py-3.5">
                       <span
-                        className="size-4 shrink-0 rounded-full"
+                        className="absolute inset-y-0 left-0 w-1"
+                        style={{ background: cat.color ?? DEFAULT_CATEGORY_COLOR }}
+                        aria-hidden="true"
+                      />
+                      <span
+                        className="size-5 shrink-0 rounded-full shadow-sm ring-2 ring-[var(--color-border)]"
                         style={{ background: cat.color ?? DEFAULT_CATEGORY_COLOR }}
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-[var(--color-text-primary)]">
+                        <p className="text-sm font-semibold text-[var(--color-text-primary)]">
                           {cat.name}
                         </p>
                         <p className="font-mono text-xs text-[var(--color-text-muted)]">
-                          {cat.slug} {linkCount > 0 ? `· ${linkCount} linked` : ''}
+                          {cat.slug}
+                          {linkCount > 0 && (
+                            <span className="ml-2 text-[var(--color-text-secondary)]">
+                              {linkCount} linked
+                            </span>
+                          )}
                         </p>
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
@@ -411,6 +421,6 @@ export default async function OwnerCategoriesPage({
           )}
         </div>
       </div>
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

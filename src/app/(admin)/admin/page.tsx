@@ -1,15 +1,16 @@
 import { BarChart3, Building2, ClipboardList, FileText, Tag, Users } from 'lucide-react'
 import {
-  DashboardDeskBoard,
-  DashboardDeskEmpty,
-  DashboardDeskHeader,
-  DashboardDeskMetrics,
-  DashboardDeskPage,
-  DashboardDeskPanel,
-  DashboardDeskRow,
-} from '@/components/dashboard/DashboardDesk'
+  DashboardBoardBoard,
+  DashboardBoardEmpty,
+  DashboardBoardHeader,
+  DashboardBoardMetrics,
+  DashboardBoardPage,
+  DashboardBoardPanel,
+  DashboardBoardRow,
+} from '@/components/dashboard/DashboardBoard'
 import { formatCampusCompactDate } from '@/lib/announcements/public-board'
 import { getAdminStats, getSubmittedAnnouncements } from '@/lib/data'
+import { requireUsableAccessContext } from '@/lib/auth/authz'
 
 export const metadata = { title: 'Admin Overview' }
 
@@ -20,6 +21,7 @@ function formatShortDate(iso: string) {
 }
 
 export default async function AdminPage() {
+  await requireUsableAccessContext()
   const [stats, queue] = await Promise.all([getAdminStats(), getSubmittedAnnouncements()])
   const recent = queue.slice(0, 5)
   const needsReview = stats.pendingReview > 0
@@ -91,10 +93,10 @@ export default async function AdminPage() {
   ]
 
   return (
-    <DashboardDeskPage className="admin-dashboard-shell">
-      <DashboardDeskHeader
-        kicker="Admin desk"
-        title="Admin desk"
+    <DashboardBoardPage className="admin-dashboard-shell">
+      <DashboardBoardHeader
+        kicker="Admin board"
+        title="Admin board"
         description="Review submissions, keep publishers organized, and clear moderation work."
         action={{
           href: '/admin/review',
@@ -103,7 +105,7 @@ export default async function AdminPage() {
         }}
       />
 
-      <DashboardDeskMetrics
+      <DashboardBoardMetrics
         metrics={metricCards.map(({ label, value, icon, href, urgent }) => ({
           label,
           value,
@@ -123,19 +125,19 @@ export default async function AdminPage() {
         }))}
       />
 
-      <DashboardDeskBoard>
-        <DashboardDeskPanel
+      <DashboardBoardBoard>
+        <DashboardBoardPanel
           title="Review queue"
           count={`${recent.length} shown`}
           action={{ href: '/admin/review', label: 'View all' }}
         >
           {recent.length === 0 ? (
-            <DashboardDeskEmpty>
+            <DashboardBoardEmpty>
               Review queue is clear. New submissions will appear here.
-            </DashboardDeskEmpty>
+            </DashboardBoardEmpty>
           ) : (
             recent.map((announcement: SubmittedAnnouncement, index) => (
-              <DashboardDeskRow
+              <DashboardBoardRow
                 key={announcement.id}
                 href={`/admin/review/${announcement.id}`}
                 title={announcement.title}
@@ -150,9 +152,9 @@ export default async function AdminPage() {
               />
             ))
           )}
-        </DashboardDeskPanel>
+        </DashboardBoardPanel>
 
-        <DashboardDeskPanel
+        <DashboardBoardPanel
           title="Needs attention"
           count={needsReview ? `${stats.pendingReview}` : '0'}
         >
@@ -160,7 +162,7 @@ export default async function AdminPage() {
             operationLinks
               .slice(0, 4)
               .map((link, index) => (
-                <DashboardDeskRow
+                <DashboardBoardRow
                   key={link.href}
                   href={link.href}
                   title={link.label}
@@ -169,10 +171,10 @@ export default async function AdminPage() {
                 />
               ))
           ) : (
-            <DashboardDeskEmpty>No moderation issues need action right now.</DashboardDeskEmpty>
+            <DashboardBoardEmpty>No moderation issues need action right now.</DashboardBoardEmpty>
           )}
-        </DashboardDeskPanel>
-      </DashboardDeskBoard>
-    </DashboardDeskPage>
+        </DashboardBoardPanel>
+      </DashboardBoardBoard>
+    </DashboardBoardPage>
   )
 }

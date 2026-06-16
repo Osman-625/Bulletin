@@ -2,10 +2,10 @@ import { expect, test } from '@playwright/test'
 import { loginAs, type TestRole } from './helpers/auth'
 
 const roleRoutes: Array<{ role: TestRole; path: string; title: RegExp }> = [
-  { role: 'publisher', path: '/dashboard', title: /publisher desk/i },
-  { role: 'admin', path: '/admin', title: /admin desk/i },
-  { role: 'super_admin', path: '/super-admin', title: /super desk/i },
-  { role: 'owner', path: '/owner', title: /owner desk/i },
+  { role: 'publisher', path: '/dashboard', title: /publisher board/i },
+  { role: 'admin', path: '/admin', title: /admin board/i },
+  { role: 'super_admin', path: '/super-admin', title: /super board/i },
+  { role: 'owner', path: '/owner', title: /owner board/i },
 ]
 
 const secondaryRoutes: Array<{ role: TestRole; path: string; title: RegExp }> = [
@@ -30,16 +30,16 @@ function hasCredentials(role: TestRole) {
 
 test.describe('Dashboard uniformity and role access', () => {
   for (const { role, path, title } of roleRoutes) {
-    test(`${role} sees the compact desk for their own dashboard`, async ({ page }) => {
+    test(`${role} sees the compact board for their own dashboard`, async ({ page }) => {
       test.skip(!hasCredentials(role), `No ${role} credentials configured`)
 
       await loginAs(page, role)
       await page.goto(path)
 
-      await expect(page.locator('.desk-header')).toBeVisible()
-      await expect(page.locator('.desk-title')).toHaveText(title)
-      await expect(page.locator('.desk-metric-card')).toHaveCount(4)
-      await expect(page.locator('.desk-panel').first()).toBeVisible()
+      await expect(page.locator('.board-header')).toBeVisible()
+      await expect(page.locator('.board-title')).toHaveText(title)
+      await expect(page.locator('.board-metric-card')).toHaveCount(4)
+      await expect(page.locator('.board-panel').first()).toBeVisible()
       await expect(page.locator('header.fixed')).toBeHidden()
 
       await page.screenshot({
@@ -50,14 +50,14 @@ test.describe('Dashboard uniformity and role access', () => {
   }
 
   for (const { role, path, title } of secondaryRoutes) {
-    test(`${role} sees the compact desk on ${path}`, async ({ page }) => {
+    test(`${role} sees the compact board on ${path}`, async ({ page }) => {
       test.skip(!hasCredentials(role), `No ${role} credentials configured`)
 
       await loginAs(page, role)
       await page.goto(path)
 
-      await expect(page.locator('.desk-header')).toBeVisible()
-      await expect(page.locator('.desk-title')).toHaveText(title)
+      await expect(page.locator('.board-header')).toBeVisible()
+      await expect(page.locator('.board-title')).toHaveText(title)
       await expect(page.locator('aside').first()).toHaveCSS('width', '288px')
       await expect(page.locator('header.fixed')).toBeHidden()
 
@@ -77,8 +77,8 @@ test.describe('Dashboard uniformity and role access', () => {
     for (const { path, title } of roleRoutes) {
       await page.goto(path)
       await expect(page).toHaveURL(new RegExp(`${path.replace('/', '\\/')}$`))
-      await expect(page.locator('.desk-title')).toHaveText(title)
-      await expect(page.locator('.desk-metric-card')).toHaveCount(4)
+      await expect(page.locator('.board-title')).toHaveText(title)
+      await expect(page.locator('.board-metric-card')).toHaveCount(4)
     }
   })
 

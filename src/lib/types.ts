@@ -32,6 +32,25 @@ export type AnnouncementWithRelations = DbAnnouncement & {
   organizations: Pick<DbOrganization, 'id' | 'name' | 'slug' | 'logo_url'> | null
 }
 
+export type PublicAnnouncement = Pick<
+  DbAnnouncement,
+  | 'id'
+  | 'title'
+  | 'body'
+  | 'banner_url'
+  | 'urgency'
+  | 'display_font'
+  | 'display_size'
+  | 'registration_link'
+  | 'scheduled_publish_at'
+  | 'pinned_until'
+  | 'published_at'
+  | 'expires_at'
+> & {
+  categories: Pick<DbCategory, 'id' | 'name' | 'slug' | 'color'> | null
+  organizations: Pick<DbOrganization, 'id' | 'name' | 'slug' | 'logo_url'> | null
+}
+
 export type AnnouncementForReview = DbAnnouncement & {
   categories: Pick<DbCategory, 'name' | 'slug' | 'color'> | null
   organizations: Pick<DbOrganization, 'name' | 'slug'> | null

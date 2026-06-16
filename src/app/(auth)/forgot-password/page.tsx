@@ -15,7 +15,7 @@ export default async function ForgotPasswordPage({
   const { sent } = await searchParams
 
   return (
-    <main className="relative w-full max-w-[22rem]">
+    <main id="main-content" className="relative w-full max-w-[22rem]">
       <div className="animate-fade-up relative overflow-hidden rounded-[1.5rem] border border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-8 pt-20 shadow-[var(--shadow-soft)]">
         <BackNavButton
           aria-label="Go back"
@@ -69,7 +69,7 @@ export default async function ForgotPasswordPage({
 
             <button
               type="submit"
-              className="h-11 w-full cursor-pointer rounded-lg bg-[var(--color-accent-inti)] text-sm font-semibold text-white shadow-[0_8px_24px_color-mix(in_oklab,var(--color-accent-inti)_30%,transparent)] transition-[transform,background,box-shadow] duration-200 hover:-translate-y-0.5 hover:bg-[var(--color-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]/50 active:translate-y-0 active:scale-[0.99]"
+              className="h-11 w-full cursor-pointer rounded-lg bg-[var(--color-accent-inti)] text-sm font-semibold text-[var(--color-on-accent)] shadow-[0_8px_24px_color-mix(in_oklab,var(--color-accent-inti)_30%,transparent)] transition-[transform,background,box-shadow] duration-200 hover:-translate-y-0.5 hover:bg-[var(--color-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]/50 active:translate-y-0 active:scale-[0.99]"
             >
               Request reset
             </button>

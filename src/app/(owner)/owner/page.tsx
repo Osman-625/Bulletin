@@ -1,51 +1,153 @@
-import { Activity, BarChart3, ClipboardList, Megaphone, Users } from 'lucide-react'
 import {
-  DashboardDeskBoard,
-  DashboardDeskHeader,
-  DashboardDeskMetrics,
-  DashboardDeskPage,
-  DashboardDeskPanel,
-  DashboardDeskRow,
-} from '@/components/dashboard/DashboardDesk'
+  Activity,
+  BarChart3,
+  ClipboardList,
+  Crown,
+  LayoutDashboard,
+  Megaphone,
+  Server,
+  Shield,
+  Users,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import Link from 'next/link'
+import {
+  DashboardBoardHeader,
+  DashboardBoardMetrics,
+  DashboardBoardPage,
+} from '@/components/dashboard/DashboardBoard'
 import { getOwnerResourceOverview } from '@/lib/owner/resources'
 import { createServiceClient } from '@/lib/supabase/server'
+import { requireUsableAccessContext } from '@/lib/auth/authz'
 
-export const metadata = { title: 'Owner Desk' }
+export const metadata = { title: 'Owner Board' }
 
-const OWNER_WORKSPACE_LINKS = [
+const OWNER_WORKSPACE_LINKS: Array<{
+  href: string
+  label: string
+  desc: string
+  icon: LucideIcon
+  wide?: boolean
+}> = [
   {
     href: '/owner/resources',
-    label: 'Owner resources',
+    label: 'Resources',
     desc: 'Storage, counters, and external service health',
+    icon: Server,
+    wide: true,
   },
   {
     href: '/owner/users',
-    label: 'Owner users',
+    label: 'Users',
     desc: 'Manage every platform role',
+    icon: Users,
   },
   {
     href: '/owner/audit',
-    label: 'Owner audit',
+    label: 'Audit',
     desc: 'System-wide action history',
+    icon: Shield,
   },
   {
     href: '/super-admin',
-    label: 'Super desk',
+    label: 'Super board',
     desc: 'Platform roles, categories, and user support',
+    icon: Crown,
   },
   {
     href: '/admin',
-    label: 'Admin desk',
+    label: 'Admin board',
     desc: 'Review queues, organizations, and publishers',
+    icon: ClipboardList,
   },
   {
     href: '/dashboard',
-    label: 'Publisher desk',
+    label: 'Publisher board',
     desc: 'Create and manage announcements',
+    icon: LayoutDashboard,
   },
 ]
 
+function WorkspaceCard({
+  href,
+  label,
+  desc,
+  icon: Icon,
+  wide,
+}: {
+  href: string
+  label: string
+  desc: string
+  icon: LucideIcon
+  wide?: boolean
+}) {
+  return (
+    <Link
+      href={href}
+      className={`group relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--color-accent-inti)]/40 hover:shadow-md${wide ? 'md:col-span-2' : ''}`}
+    >
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex size-10 items-center justify-center rounded-xl bg-[var(--color-surface-elevated)] text-[var(--color-accent-inti)] transition-colors group-hover:bg-[var(--color-accent-inti)]/10">
+          <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
+        </div>
+        <span className="text-xs text-[var(--color-text-muted)] opacity-0 transition-opacity group-hover:opacity-100">
+          Open →
+        </span>
+      </div>
+      <p className="text-sm font-semibold text-[var(--color-text-primary)]">{label}</p>
+      <p className="mt-1 text-xs leading-5 text-[var(--color-text-muted)]">{desc}</p>
+    </Link>
+  )
+}
+
+const STATUS_STYLES: Record<string, string> = {
+  published: 'bg-[var(--color-status-published-bg)] text-[var(--color-status-published-text)]',
+  submitted: 'bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)]',
+  draft: 'bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]',
+  review: 'bg-[var(--color-status-submitted-bg)] text-[var(--color-status-submitted-text)]',
+  clear: 'bg-[var(--color-status-published-bg)] text-[var(--color-status-published-text)]',
+  ready: 'bg-[var(--color-status-published-bg)] text-[var(--color-status-published-text)]',
+  'not configured': 'bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]',
+}
+
+function AttentionCard({
+  href,
+  title,
+  meta,
+  status,
+  tone,
+}: {
+  href: string
+  title: string
+  meta: string
+  status: string
+  tone: string
+}) {
+  const badgeClass =
+    STATUS_STYLES[status] ??
+    STATUS_STYLES[tone] ??
+    'bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)]'
+
+  return (
+    <Link
+      href={href}
+      className="group flex items-center gap-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-4 transition-all hover:-translate-y-0.5 hover:border-[var(--color-border)]/80 hover:shadow-sm"
+    >
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-[var(--color-text-primary)]">{title}</p>
+        <p className="mt-0.5 text-xs leading-5 text-[var(--color-text-muted)]">{meta}</p>
+      </div>
+      <span
+        className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold tracking-[0.08em] uppercase ${badgeClass}`}
+      >
+        {status}
+      </span>
+    </Link>
+  )
+}
+
 export default async function OwnerPage() {
+  await requireUsableAccessContext()
   const supabase = await createServiceClient()
 
   const [
@@ -94,15 +196,15 @@ export default async function OwnerPage() {
   ]
 
   return (
-    <DashboardDeskPage>
-      <DashboardDeskHeader
-        kicker="Owner desk"
-        title="Owner desk"
+    <DashboardBoardPage>
+      <DashboardBoardHeader
+        kicker="Owner board"
+        title="Owner board"
         description="System ownership, cross-role access, service health, and audit awareness."
         action={{ href: '/owner/resources', label: 'Open resources', icon: Activity }}
       />
 
-      <DashboardDeskMetrics
+      <DashboardBoardMetrics
         metrics={[
           {
             label: 'Users',
@@ -137,33 +239,27 @@ export default async function OwnerPage() {
         ]}
       />
 
-      <DashboardDeskBoard>
-        <DashboardDeskPanel title="Owner workspaces" count={`${OWNER_WORKSPACE_LINKS.length}`}>
-          {OWNER_WORKSPACE_LINKS.map((link, index) => (
-            <DashboardDeskRow
-              key={link.href}
-              href={link.href}
-              title={link.label}
-              index={index}
-              meta={[{ label: link.desc }]}
-            />
+      <section>
+        <h2 className="mb-3 text-xs font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
+          Workspaces
+        </h2>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {OWNER_WORKSPACE_LINKS.map((link) => (
+            <WorkspaceCard key={link.href} {...link} />
           ))}
-        </DashboardDeskPanel>
+        </div>
+      </section>
 
-        <DashboardDeskPanel title="Needs attention" count={`${attentionRows.length}`}>
-          {attentionRows.map((row, index) => (
-            <DashboardDeskRow
-              key={row.title}
-              href={row.href}
-              title={row.title}
-              index={index}
-              meta={[{ label: row.meta }]}
-              statusLabel={row.status}
-              statusTone={row.tone}
-            />
+      <section>
+        <h2 className="mb-3 text-xs font-semibold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
+          Needs attention
+        </h2>
+        <div className="grid gap-2 md:grid-cols-3">
+          {attentionRows.map((row) => (
+            <AttentionCard key={row.title} {...row} />
           ))}
-        </DashboardDeskPanel>
-      </DashboardDeskBoard>
-    </DashboardDeskPage>
+        </div>
+      </section>
+    </DashboardBoardPage>
   )
 }

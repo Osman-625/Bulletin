@@ -7,10 +7,8 @@ import { canManageAnnouncementForOrg } from '@/lib/announcements/access'
 import {
   assertAnnouncementReadyForReview,
   readAnnouncementTextFields,
-  readOptionalBannerUrl,
-  readOptionalHttpUrl,
-  readOptionalIsoDate,
 } from '@/lib/announcements/form'
+import { readAnnouncementMutationFields } from '@/lib/announcements/mutations'
 import {
   normalizeAnnouncementDisplayFont,
   normalizeAnnouncementDisplaySize,
@@ -19,6 +17,7 @@ import {
 import { canAccessAdminArea, getCurrentAccessContext } from '@/lib/auth/authz'
 import { reportServerError } from '@/lib/error-reporting'
 import { notifyAnnouncementSubmitted } from '@/lib/notifications'
+import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 
@@ -122,14 +121,18 @@ async function removePreviousBannerIfChanged(
 export async function updateAnnouncement(id: string, formData: FormData) {
   const supabase = await createClient()
   const announcement = await verifyAnnouncementAccess(supabase, id)
+  const rateLimit = await checkActionRateLimit(
+    'announcement-update',
+    `${announcement.actorId}:${id}`
+  )
+  if (rateLimit.limited) throw new Error('Too many attempts. Try again shortly.')
 
   const { title, body } = readAnnouncementTextFields(formData)
-  const categoryId = formData.get('category_id') as string | null
-  const bannerUrl = readOptionalBannerUrl(formData, 'banner_url')
-  const registrationLink = readOptionalHttpUrl(formData, 'registration_link', 'Registration link')
-  const expiresAt = readOptionalIsoDate(formData, 'expires_at')
-  const scheduledPublishAt = readOptionalIsoDate(formData, 'scheduled_publish_at')
-  const pinnedUntil = readOptionalIsoDate(formData, 'pinned_until')
+  const { categoryId, bannerUrl, registrationLink, expiresAt, scheduledPublishAt, pinnedUntil } =
+    await readAnnouncementMutationFields(supabase, formData, {
+      actorId: announcement.actorId,
+      organizationId: announcement.organizationId,
+    })
   const urgency = normalizeAnnouncementUrgency(formData.get('urgency'))
   const displayFont = normalizeAnnouncementDisplayFont(formData.get('display_font'))
   const displaySize = normalizeAnnouncementDisplaySize(formData.get('display_size'))
@@ -193,6 +196,11 @@ export async function updateAnnouncement(id: string, formData: FormData) {
 export async function publishAnnouncement(id: string) {
   const supabase = await createClient()
   const announcement = await verifyAnnouncementAccess(supabase, id)
+  const rateLimit = await checkActionRateLimit(
+    'announcement-publish',
+    `${announcement.actorId}:${id}`
+  )
+  if (rateLimit.limited) throw new Error('Too many attempts. Try again shortly.')
   if (!canAccessAdminArea(announcement.actorRole)) {
     throw new Error('Unauthorized')
   }
@@ -251,6 +259,11 @@ export async function publishAnnouncement(id: string) {
 export async function unpublishAnnouncement(id: string) {
   const supabase = await createClient()
   const announcement = await verifyAnnouncementAccess(supabase, id)
+  const rateLimit = await checkActionRateLimit(
+    'announcement-unpublish',
+    `${announcement.actorId}:${id}`
+  )
+  if (rateLimit.limited) throw new Error('Too many attempts. Try again shortly.')
 
   const { error } = await supabase
     .from('announcements')
@@ -296,6 +309,11 @@ export async function unpublishAnnouncement(id: string) {
 export async function submitForReview(id: string) {
   const supabase = await createClient()
   const announcement = await verifyAnnouncementAccess(supabase, id)
+  const rateLimit = await checkActionRateLimit(
+    'announcement-submit',
+    `${announcement.actorId}:${id}`
+  )
+  if (rateLimit.limited) throw new Error('Too many attempts. Try again shortly.')
   assertAnnouncementReadyForReview(announcement.title, announcement.body)
 
   const { error } = await supabase
@@ -351,6 +369,11 @@ export async function submitForReview(id: string) {
 export async function deleteAnnouncement(id: string) {
   const supabase = await createClient()
   const announcement = await verifyAnnouncementAccess(supabase, id)
+  const rateLimit = await checkActionRateLimit(
+    'announcement-delete',
+    `${announcement.actorId}:${id}`
+  )
+  if (rateLimit.limited) throw new Error('Too many attempts. Try again shortly.')
 
   const { error } = await supabase.from('announcements').delete().eq('id', id)
 

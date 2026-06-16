@@ -1,7 +1,8 @@
 'use client'
 
 import { Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import { useFeedNavigation } from '@/components/public/FeedNavigation'
 import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import { captureProductEvent } from '@/lib/product-analytics'
 import type { DbCategory } from '@/lib/types'
@@ -17,7 +18,7 @@ export default function CategoryFilter({ categories }: CategoryFilterProps) {
 }
 
 function CategoryFilterControls({ categories }: CategoryFilterProps) {
-  const router = useRouter()
+  const { navigate } = useFeedNavigation()
   const searchParams = useSearchParams()
   const active = searchParams.get('category') ?? ''
 
@@ -32,12 +33,12 @@ function CategoryFilterControls({ categories }: CategoryFilterProps) {
     else params.delete('category')
     params.delete('page')
     const query = params.toString()
-    router.push(query ? `/?${query}` : '/')
+    navigate(query ? `/?${query}` : '/')
   }
 
   return (
     <nav
-      className="flex snap-x snap-proximity gap-2 overflow-x-auto pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden"
+      className="flex w-full max-w-full flex-wrap gap-1.5 overflow-visible pb-0"
       aria-label="Filter by category"
     >
       {/* All */}
@@ -45,7 +46,7 @@ function CategoryFilterControls({ categories }: CategoryFilterProps) {
         type="button"
         data-category=""
         onClick={() => select('')}
-        className="tab-lift inline-flex min-h-11 shrink-0 cursor-pointer snap-start items-center rounded-[10px] border px-3.5 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]"
+        className="tab-lift inline-flex min-h-11 shrink-0 cursor-pointer snap-start items-center rounded-[10px] border px-3 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]"
         style={{
           ...(!active
             ? {
@@ -65,7 +66,7 @@ function CategoryFilterControls({ categories }: CategoryFilterProps) {
       </button>
 
       {categories.length === 0 && (
-        <span className="inline-flex min-h-11 shrink-0 snap-start items-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3.5 text-sm font-semibold text-[var(--color-text-muted)]">
+        <span className="inline-flex min-h-11 shrink-0 snap-start items-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 text-sm font-semibold text-[var(--color-text-muted)]">
           No topics available yet
         </span>
       )}
@@ -80,7 +81,7 @@ function CategoryFilterControls({ categories }: CategoryFilterProps) {
             data-category={cat.slug}
             key={cat.id}
             onClick={() => select(cat.slug)}
-            className="tab-lift inline-flex min-h-11 shrink-0 cursor-pointer snap-start items-center gap-2 rounded-[10px] border px-3.5 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]"
+            className="tab-lift inline-flex min-h-11 shrink-0 cursor-pointer snap-start items-center gap-2 rounded-[10px] border px-3 text-sm font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]"
             style={{
               ...(isActive
                 ? {
@@ -114,21 +115,21 @@ function CategoryFilterControls({ categories }: CategoryFilterProps) {
 function CategoryFilterFallback({ categories }: CategoryFilterProps) {
   return (
     <nav
-      className="flex snap-x snap-proximity gap-2 overflow-x-auto pb-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden"
+      className="flex w-full max-w-full flex-wrap gap-1.5 overflow-visible pb-0"
       aria-label="Filter by category"
     >
       <button
         type="button"
         data-category=""
         disabled
-        className="tab-lift inline-flex min-h-11 shrink-0 snap-start items-center rounded-[10px] border border-[var(--color-text-primary)] bg-[var(--color-text-primary)] px-3.5 text-sm font-semibold text-[var(--color-canvas)] disabled:cursor-default"
+        className="tab-lift inline-flex min-h-11 shrink-0 snap-start items-center rounded-[10px] border border-[var(--color-text-primary)] bg-[var(--color-text-primary)] px-3 text-sm font-semibold text-[var(--color-canvas)] disabled:cursor-default"
         aria-pressed="true"
       >
         All
       </button>
 
       {categories.length === 0 ? (
-        <span className="inline-flex min-h-11 shrink-0 snap-start items-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3.5 text-sm font-semibold text-[var(--color-text-muted)]">
+        <span className="inline-flex min-h-11 shrink-0 snap-start items-center rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 text-sm font-semibold text-[var(--color-text-muted)]">
           No topics available yet
         </span>
       ) : (
@@ -141,7 +142,7 @@ function CategoryFilterFallback({ categories }: CategoryFilterProps) {
               data-category={cat.slug}
               key={cat.id}
               disabled
-              className="tab-lift inline-flex min-h-11 shrink-0 snap-start items-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3.5 text-sm font-semibold text-[var(--color-text-muted)] disabled:cursor-default"
+              className="tab-lift inline-flex min-h-11 shrink-0 snap-start items-center gap-2 rounded-[10px] border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 text-sm font-semibold text-[var(--color-text-muted)] disabled:cursor-default"
               aria-pressed="false"
             >
               <span

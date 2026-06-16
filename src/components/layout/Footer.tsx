@@ -11,8 +11,8 @@ export default function Footer() {
   const year = new Date().getFullYear()
 
   return (
-    <footer className="mt-auto border-t border-[var(--color-border-subtle)] bg-[var(--color-surface)]">
-      <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-5 px-3 py-8 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-10">
+    <footer className="mt-auto border-t border-[var(--color-border-subtle)] bg-[var(--color-header-bg)]">
+      <div className="public-layout-inner public-chrome-inner flex flex-col gap-4 py-5 sm:py-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           <BrandMark size="sm" showText={false} />
           <div className="min-w-0">

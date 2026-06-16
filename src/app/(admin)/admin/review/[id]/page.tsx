@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 import { ArrowLeft, ExternalLink } from 'lucide-react'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { StatusBadge } from '@/components/dashboard/StatusBadge'
 import { getAnnouncementForReview } from '@/lib/data'
@@ -40,8 +40,8 @@ export default async function ReviewDetailPage({
   const registrationHref = toSafeHttpUrl(announcement.registration_link)
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-4">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-4">
+      <DashboardBoardHeader
         kicker="Admin review"
         title="Review submission"
         description="Read the announcement exactly as submitted, then publish it or return clear changes to the publisher."
@@ -232,6 +232,6 @@ export default async function ReviewDetailPage({
           </form>
         </GlassCard>
       </div>
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

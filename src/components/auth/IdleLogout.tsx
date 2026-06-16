@@ -178,7 +178,7 @@ export function IdleLogout() {
             ref={stayButtonRef}
             type="button"
             onClick={stayLoggedIn}
-            className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2"
+            className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-[var(--color-accent)] px-4 text-sm font-semibold text-[var(--color-on-accent)] transition-colors hover:bg-[var(--color-accent-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2"
           >
             Stay logged in
           </button>

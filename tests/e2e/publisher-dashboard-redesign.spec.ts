@@ -2,15 +2,15 @@ import { expect, test } from '@playwright/test'
 import { loginAs } from './helpers/auth'
 
 test.describe('Publisher dashboard redesign', () => {
-  test('renders the compact desktop desk shell', async ({ page }) => {
+  test('renders the compact desktop board shell', async ({ page }) => {
     await loginAs(page, 'publisher')
     await page.goto('/dashboard')
 
-    await expect(page.locator('.publisher-desk-canvas')).toBeVisible()
-    await expect(page.locator('.desk-header')).toBeVisible()
-    await expect(page.locator('.desk-title')).toHaveText(/publisher desk/i)
-    await expect(page.locator('.desk-metric-card')).toHaveCount(4)
-    await expect(page.locator('.desk-board')).toBeVisible()
+    await expect(page.locator('.publisher-board-canvas')).toBeVisible()
+    await expect(page.locator('.board-header')).toBeVisible()
+    await expect(page.locator('.board-title')).toHaveText(/publisher board/i)
+    await expect(page.locator('.board-metric-card')).toHaveCount(4)
+    await expect(page.locator('.board-board')).toBeVisible()
     await expect(page.getByRole('heading', { name: /your announcements/i })).toBeVisible()
     await expect(page.getByRole('heading', { name: /needs attention/i })).toBeVisible()
     await expect(page.getByRole('link', { name: /^Publisher$/ })).toBeVisible()

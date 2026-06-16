@@ -18,6 +18,11 @@ type StorageBucket = {
   remove: (paths: string[]) => Promise<{ data: unknown; error: unknown }>
 }
 
+export type BannerStorageFile = {
+  path: string
+  size: number
+}
+
 type BannerCleanupClient = {
   from: (table: 'announcements') => {
     select: (columns: string) => {
@@ -68,6 +73,12 @@ function isStorageFile(entry: StorageEntry, depth: number) {
   return depth >= 2 && /\.[a-z0-9]+$/i.test(entry.name)
 }
 
+function storageFileSize(entry: StorageEntry) {
+  if (!entry.metadata || typeof entry.metadata !== 'object') return 0
+  const size = (entry.metadata as { size?: unknown }).size
+  return typeof size === 'number' && Number.isFinite(size) ? size : 0
+}
+
 export function bannerStoragePath(publicUrl: string | null | undefined) {
   if (!publicUrl) return null
 
@@ -80,7 +91,11 @@ export function bannerStoragePath(publicUrl: string | null | undefined) {
   return decodeURIComponent(path)
 }
 
-async function listBannerPaths(bucket: StorageBucket, prefix = '', depth = 0): Promise<string[]> {
+async function listBannerFiles(
+  bucket: StorageBucket,
+  prefix = '',
+  depth = 0
+): Promise<BannerStorageFile[]> {
   const { data, error } = await bucket.list(prefix, {
     limit: 1000,
     sortBy: { column: 'name', order: 'asc' },
@@ -88,21 +103,25 @@ async function listBannerPaths(bucket: StorageBucket, prefix = '', depth = 0): P
   if (error)
     throw new Error(`Could not list banner storage path "${prefix || '/'}": ${errorMessage(error)}`)
 
-  const paths: string[] = []
-  const nestedPathPromises: Array<Promise<string[]>> = []
+  const files: BannerStorageFile[] = []
+  const nestedPathPromises: Array<Promise<BannerStorageFile[]>> = []
   for (const entry of data ?? []) {
     if (entry.name === '.emptyFolderPlaceholder') continue
 
     const path = joinStoragePath(prefix, entry.name)
     if (isStorageFile(entry, depth)) {
-      paths.push(path)
+      files.push({ path, size: storageFileSize(entry) })
     } else if (depth < MAX_FOLDER_DEPTH) {
-      nestedPathPromises.push(listBannerPaths(bucket, path, depth + 1))
+      nestedPathPromises.push(listBannerFiles(bucket, path, depth + 1))
     }
   }
 
   const nestedPathGroups = await Promise.all(nestedPathPromises)
-  return paths.concat(nestedPathGroups.flat())
+  return files.concat(nestedPathGroups.flat())
+}
+
+export async function listBannerStorageFiles(bucket: StorageBucket) {
+  return listBannerFiles(bucket)
 }
 
 export async function cleanupOrphanBannerImages(
@@ -114,9 +133,9 @@ export async function cleanupOrphanBannerImages(
   const dryRun = Boolean(options.dryRun)
   const bucket = client.storage.from(BANNER_BUCKET)
 
-  const [{ data: announcementRows, error: announcementError }, scannedPaths] = await Promise.all([
+  const [{ data: announcementRows, error: announcementError }, scannedFiles] = await Promise.all([
     client.from('announcements').select('banner_url').not('banner_url', 'is', null),
-    listBannerPaths(bucket),
+    listBannerStorageFiles(bucket),
   ])
 
   if (announcementError) {
@@ -128,6 +147,7 @@ export async function cleanupOrphanBannerImages(
       .map((row) => bannerStoragePath(row.banner_url))
       .filter((path): path is string => Boolean(path))
   )
+  const scannedPaths = scannedFiles.map((file) => file.path)
   const allOrphanedPaths = scannedPaths.filter((path) => !referencedPaths.has(path))
   const orphanedPaths = allOrphanedPaths.slice(0, maxDeletes)
   const errors: string[] = []

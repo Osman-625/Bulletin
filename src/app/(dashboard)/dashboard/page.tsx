@@ -1,21 +1,20 @@
 import { Eye, FileEdit, Megaphone, Plus, Send } from 'lucide-react'
-import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import type { DashboardIndexAnnouncement } from '@/components/dashboard/DashboardContentsIndex'
 import {
-  DashboardDeskBoard,
-  DashboardDeskEmpty,
-  DashboardDeskHeader,
-  DashboardDeskMetrics,
-  DashboardDeskPage,
-  DashboardDeskPanel,
-  DashboardDeskRow,
-} from '@/components/dashboard/DashboardDesk'
-import { getCurrentAccessContext } from '@/lib/auth/authz'
+  DashboardBoardBoard,
+  DashboardBoardEmpty,
+  DashboardBoardHeader,
+  DashboardBoardMetrics,
+  DashboardBoardPage,
+  DashboardBoardPanel,
+  DashboardBoardRow,
+} from '@/components/dashboard/DashboardBoard'
+import { requireUsableAccessContext } from '@/lib/auth/authz'
 import { shouldScopeAnnouncementsToMembership } from '@/lib/announcements/access'
 import { formatCampusCompactDate } from '@/lib/announcements/public-board'
 
-export const metadata = { title: 'Publisher Desk' }
+export const metadata = { title: 'Publisher Board' }
 
 function formatShortDate(iso: string | null): string {
   return formatCampusCompactDate(iso)
@@ -49,8 +48,7 @@ type DashboardAnnouncement = DashboardIndexAnnouncement & {
 }
 
 export default async function DashboardPage() {
-  const access = await getCurrentAccessContext()
-  if (!access) redirect('/login')
+  const access = await requireUsableAccessContext()
 
   const supabase = await createClient()
 
@@ -115,15 +113,15 @@ export default async function DashboardPage() {
     totalViews >= 1000 ? `${(totalViews / 1000).toFixed(1)}k` : String(totalViews)
 
   return (
-    <DashboardDeskPage className="publisher-dashboard-shell">
-      <DashboardDeskHeader
-        kicker="Publisher desk"
-        title="Publisher desk"
+    <DashboardBoardPage className="publisher-dashboard-shell">
+      <DashboardBoardHeader
+        kicker="Publisher board"
+        title="Publisher board"
         description="Your announcements, drafts, and what's going live."
         action={{ href: '/dashboard/announcements/new', label: 'New announcement', icon: Plus }}
       />
 
-      <DashboardDeskMetrics
+      <DashboardBoardMetrics
         metrics={[
           {
             label: 'Live notices',
@@ -157,23 +155,23 @@ export default async function DashboardPage() {
         ]}
       />
 
-      <DashboardDeskBoard>
-        <DashboardDeskPanel
+      <DashboardBoardBoard>
+        <DashboardBoardPanel
           title="Your announcements"
           count={`${recentAnnouncements.length}`}
           action={{ href: '/dashboard/announcements', label: 'View all' }}
         >
           {!hasAnnouncementScope ? (
-            <DashboardDeskEmpty>
+            <DashboardBoardEmpty>
               No organization is assigned to this publisher account yet.
-            </DashboardDeskEmpty>
+            </DashboardBoardEmpty>
           ) : recentAnnouncements.length === 0 ? (
-            <DashboardDeskEmpty>
-              No announcements yet. Create the first announcement for your desk.
-            </DashboardDeskEmpty>
+            <DashboardBoardEmpty>
+              No announcements yet. Create the first announcement for your board.
+            </DashboardBoardEmpty>
           ) : (
             recentAnnouncements.slice(0, 6).map((announcement, index) => (
-              <DashboardDeskRow
+              <DashboardBoardRow
                 key={announcement.id}
                 href={`/dashboard/announcements/${announcement.id}/edit`}
                 title={announcement.title}
@@ -196,16 +194,16 @@ export default async function DashboardPage() {
               />
             ))
           )}
-        </DashboardDeskPanel>
+        </DashboardBoardPanel>
 
-        <DashboardDeskPanel title="Needs attention" count={`${attentionItems.length}`}>
+        <DashboardBoardPanel title="Needs attention" count={`${attentionItems.length}`}>
           {attentionItems.length === 0 ? (
-            <DashboardDeskEmpty>No drafts waiting. Your desk is clear.</DashboardDeskEmpty>
+            <DashboardBoardEmpty>No drafts waiting. Your board is clear.</DashboardBoardEmpty>
           ) : (
             attentionItems
               .slice(0, 5)
               .map((announcement, index) => (
-                <DashboardDeskRow
+                <DashboardBoardRow
                   key={announcement.id}
                   href={`/dashboard/announcements/${announcement.id}/edit`}
                   title={announcement.title}
@@ -219,8 +217,8 @@ export default async function DashboardPage() {
                 />
               ))
           )}
-        </DashboardDeskPanel>
-      </DashboardDeskBoard>
-    </DashboardDeskPage>
+        </DashboardBoardPanel>
+      </DashboardBoardBoard>
+    </DashboardBoardPage>
   )
 }

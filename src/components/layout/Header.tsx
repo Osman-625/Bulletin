@@ -2,20 +2,19 @@ import Link from 'next/link'
 import { ThemeToggle } from './ThemeToggle'
 import { BrandMark } from './BrandMark'
 import { HeaderLoadingSignal } from './HeaderLoadingSignal'
-import { getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
+import { getDefaultAppPath, type AccessContext } from '@/lib/auth/authz'
 import { formatCampusLongDate } from '@/lib/announcements/public-board'
 
 function formatRole(role: string) {
   return role.replaceAll('_', ' ')
 }
 
-export default async function Header() {
-  const access = await getCurrentAccessContext()
+export default async function Header({ access }: { access: AccessContext | null }) {
   const workspaceHref = access ? getDefaultAppPath(access.role) : '/login'
   const today = formatCampusLongDate()
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--color-border-subtle)] shadow-[var(--shadow-header)]">
+    <header className="relative z-[70] overflow-visible border-b border-[var(--color-border-subtle)] bg-[var(--color-header-bg)] shadow-[var(--shadow-header)]">
       <HeaderLoadingSignal />
       <div aria-hidden="true" className="flex h-[3px]">
         <span className="flex-1 bg-[var(--color-accent-inti)]" />
@@ -26,7 +25,7 @@ export default async function Header() {
       <div className="bg-[var(--color-header-bg)] backdrop-blur-[18px]">
         <nav
           aria-label="Public navigation"
-          className="mx-auto flex min-h-16 w-full max-w-[1440px] items-center justify-between gap-2 px-3 py-2 sm:gap-4 sm:px-6 lg:px-10"
+          className="public-layout-inner public-chrome-inner flex min-h-16 items-center justify-between gap-2 py-2 sm:gap-4"
         >
           <Link
             href="/"
@@ -62,11 +61,14 @@ export default async function Header() {
         </nav>
       </div>
       {access && (
-        <div className="border-t border-[var(--color-border)] bg-[var(--color-surface)]/92 px-4 py-2.5 text-center text-xs font-medium text-[var(--color-text-muted)]">
-          Public view as {formatRole(access.role)} ·{' '}
-          <Link href={workspaceHref} className="text-[var(--color-accent-inti)] hover:underline">
-            Back to workspace
-          </Link>
+        <div className="min-h-[var(--public-owner-bar-height)] border-t border-[var(--color-border)] bg-[var(--color-surface)] text-center text-xs font-medium text-[var(--color-text-muted)]">
+          <div className="public-layout-inner public-chrome-inner flex min-h-[var(--public-owner-bar-height)] flex-wrap items-center justify-center gap-x-1.5 gap-y-1 py-2">
+            <span>Public view as {formatRole(access.role)}</span>
+            <span aria-hidden="true">·</span>
+            <Link href={workspaceHref} className="text-[var(--color-accent-inti)] hover:underline">
+              Back to workspace
+            </Link>
+          </div>
         </div>
       )}
     </header>

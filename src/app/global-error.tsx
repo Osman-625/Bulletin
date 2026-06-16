@@ -21,7 +21,10 @@ export default function GlobalError({
   return (
     <html lang="en">
       <body>
-        <main className="future-warm-plane flex min-h-screen items-center justify-center px-6 py-12 text-center">
+        <main
+          id="main-content"
+          className="future-warm-plane flex min-h-screen items-center justify-center px-6 py-12 text-center"
+        >
           <section className="future-bento-cell max-w-xl rounded-[1.5rem] px-6 py-10">
             <p className="future-kicker">Bulletin paused</p>
             <h1 className="mt-4 text-3xl font-bold text-[var(--color-text-primary)]">
@@ -33,7 +36,7 @@ export default function GlobalError({
             <button
               type="button"
               onClick={reset}
-              className="action-lift mt-6 min-h-11 rounded-[0.95rem] bg-[var(--color-accent)] px-5 text-sm font-semibold text-white shadow-[var(--shadow-button)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
+              className="action-lift mt-6 min-h-11 rounded-[0.95rem] bg-[var(--color-accent)] px-5 text-sm font-semibold text-[var(--color-on-accent)] shadow-[var(--shadow-button)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)] focus-visible:ring-offset-2"
             >
               Reload page
             </button>

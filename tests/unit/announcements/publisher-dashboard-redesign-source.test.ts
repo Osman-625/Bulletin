@@ -5,16 +5,16 @@ function source(path: string) {
   return readFileSync(path, 'utf8')
 }
 
-describe('dashboard desk redesign source guards', () => {
-  it('uses the compact desk base for the publisher overview', () => {
+describe('dashboard board redesign source guards', () => {
+  it('uses the compact board base for the publisher overview', () => {
     const page = source('src/app/(dashboard)/dashboard/page.tsx')
-    const shared = source('src/components/dashboard/DashboardDesk.tsx')
+    const shared = source('src/components/dashboard/DashboardBoard.tsx')
     const css = source('src/app/globals.css')
 
     expect(page).toContain('publisher-dashboard-shell')
-    expect(page).toContain('DashboardDeskHeader')
-    expect(page).toContain('DashboardDeskMetrics')
-    expect(page).toContain('DashboardDeskBoard')
+    expect(page).toContain('DashboardBoardHeader')
+    expect(page).toContain('DashboardBoardMetrics')
+    expect(page).toContain('DashboardBoardBoard')
     expect(page).toContain('Your announcements')
     expect(page).toContain('Needs attention')
     expect(page).toContain('New announcement')
@@ -22,38 +22,40 @@ describe('dashboard desk redesign source guards', () => {
     expect(page).not.toContain('pub-ledger')
     expect(page).not.toContain('pub-wire')
 
-    expect(shared).toContain('DashboardDeskHeader')
-    expect(shared).toContain('DashboardDeskMetrics')
-    expect(shared).toContain('DashboardDeskRow')
-    expect(css).toContain('.desk-header')
-    expect(css).toContain('.desk-metrics')
-    expect(css).toContain('.desk-board')
-    expect(css).toContain('.desk-panel')
-    expect(css).toContain('.desk-row')
+    expect(shared).toContain('DashboardBoardHeader')
+    expect(shared).toContain('DashboardBoardMetrics')
+    expect(shared).toContain('DashboardBoardRow')
+    expect(css).toContain('.board-header')
+    expect(css).toContain('.board-metrics')
+    expect(css).toContain('.board-board')
+    expect(css).toContain('.board-panel')
+    expect(css).toContain('.board-row')
   })
 
-  it('standardizes publisher schedule and insights on the shared desk primitives', () => {
+  it('standardizes publisher schedule and insights on the shared board primitives', () => {
     for (const file of [
       'src/app/(dashboard)/dashboard/schedule/page.tsx',
       'src/app/(dashboard)/dashboard/insights/page.tsx',
     ]) {
       const page = source(file)
 
-      expect(page).toContain('DashboardDeskPage')
-      expect(page).toContain('DashboardDeskHeader')
-      expect(page).toContain('DashboardDeskMetrics')
-      expect(page).toContain('DashboardDeskPanel')
-      expect(page).toContain('DashboardDeskRow')
+      expect(page).toContain('DashboardBoardPage')
+      expect(page).toContain('DashboardBoardHeader')
+      expect(page).toContain('DashboardBoardMetrics')
+      expect(page).toContain('DashboardBoardPanel')
+      expect(page).toContain('DashboardBoardRow')
       expect(page).not.toContain('pub-mast-title')
       expect(page).not.toContain('pub-ledger')
       expect(page).not.toContain('pub-wire')
       expect(page).not.toContain('pub-entry')
     }
 
-    expect(source('src/components/dashboard/DashboardDesk.tsx')).toContain('DashboardDeskStaticRow')
+    expect(source('src/components/dashboard/DashboardBoard.tsx')).toContain(
+      'DashboardBoardStaticRow'
+    )
   })
 
-  it('applies the same compact desk structure to all role overview dashboards', () => {
+  it('applies the same compact board structure to all role overview dashboards', () => {
     for (const file of [
       'src/app/(dashboard)/dashboard/page.tsx',
       'src/app/(admin)/admin/page.tsx',
@@ -62,47 +64,59 @@ describe('dashboard desk redesign source guards', () => {
     ]) {
       const page = source(file)
 
-      expect(page).toContain('DashboardDeskHeader')
-      expect(page).toContain('DashboardDeskMetrics')
-      expect(page).toContain('DashboardDeskPanel')
-      expect(page).toContain('DashboardDeskRow')
+      expect(page).toContain('DashboardBoardHeader')
+      expect(page).toContain('DashboardBoardMetrics')
+      expect(page).toContain('DashboardBoardPanel')
+      expect(page).toContain('DashboardBoardRow')
     }
   })
 
-  it('keeps cross-role dashboard switching owner-only in the sidebar', () => {
-    const sidebar = source('src/components/dashboard/DashboardSidebar.tsx')
+  it('keeps cross-role dashboard switching owner-only in the rail and mobile drawer', () => {
+    const navConfig = source('src/components/dashboard/nav-config.ts')
+    const rail = source('src/components/dashboard/DashboardRail.tsx')
+    const mobileNav = source('src/components/dashboard/DashboardMobileNav.tsx')
 
-    expect(sidebar).toContain('ROLE_TABS')
-    expect(sidebar).toContain("label: 'Publisher'")
-    expect(sidebar).toContain("label: 'Admin'")
-    expect(sidebar).toContain("label: 'Super'")
-    expect(sidebar).toContain("label: 'Owner'")
-    expect(sidebar.indexOf("label: 'Owner'")).toBeLessThan(sidebar.indexOf("label: 'Publisher'"))
-    expect(sidebar).toContain("if (role === 'owner') return true")
-    expect(sidebar).toContain("return tabVariant === 'super_admin'")
-    expect(sidebar).toContain("return tabVariant === 'admin'")
-    expect(sidebar).toContain("return tabVariant === 'publisher'")
-    expect(sidebar).toContain('Only the owner can open another role dashboard')
-    expect(sidebar).not.toContain("label: 'Publisher desk', icon: Megaphone")
-    expect(sidebar).not.toContain("label: 'Admin desk', icon: ClipboardList")
+    expect(navConfig).toContain('ROLE_TABS')
+    expect(navConfig).toContain("label: 'Publisher'")
+    expect(navConfig).toContain("label: 'Admin'")
+    expect(navConfig).toContain("label: 'Super'")
+    expect(navConfig).toContain("label: 'Owner'")
+    expect(navConfig.indexOf("label: 'Owner'")).toBeLessThan(
+      navConfig.indexOf("label: 'Publisher'")
+    )
+    expect(navConfig).toContain("from '@/lib/auth/roles'")
+    expect(navConfig).toContain('canAccessOwnerArea')
+    expect(navConfig).toContain('canAccessSuperAdminArea')
+    expect(navConfig).toContain('canAccessAdminArea')
+    expect(navConfig).toContain('canAccessPublisherArea')
+    expect(rail).toContain('workspaceTabs.length > 1')
+    expect(rail).toContain('Workspace switcher')
+    expect(rail).toContain("navItems.filter((item) => item.href !== '/')")
+    expect(mobileNav).toContain('ROLE_TABS.map')
+    expect(mobileNav).toContain('canUseRoleTab(role, tab.variant)')
   })
 
   it('uses a uniform desktop shell while preserving mobile navigation', () => {
     const shell = source('src/components/dashboard/DashboardShell.tsx')
-    const sidebar = source('src/components/dashboard/DashboardSidebar.tsx')
-    const topNav = source('src/components/dashboard/DashboardTopNav.tsx')
+    const rail = source('src/components/dashboard/DashboardRail.tsx')
+    const topBar = source('src/components/dashboard/DashboardTopBar.tsx')
+    const mobileNav = source('src/components/dashboard/DashboardMobileNav.tsx')
+    const mobileDock = source('src/components/dashboard/DashboardMobileDock.tsx')
 
-    expect(shell).toContain('md:pl-[5rem]')
-    expect(shell).toContain('xl:pt-0 xl:pl-[18rem]')
-    expect(shell).toContain('xl:hidden')
-    expect(sidebar).toContain('w-[5rem] xl:w-[18rem]')
-    expect(sidebar).toContain('<BrandMark')
-    expect(sidebar).toContain('size="md"')
-    expect(sidebar).toContain('preload')
-    expect(topNav).toContain("import { BrandMark } from '@/components/layout/BrandMark'")
-    expect(topNav).toContain('md:hidden')
-    expect(topNav).toContain('xl:hidden')
-    expect(topNav).toContain('preload')
+    expect(shell).toContain('md:pl-[4.5rem]')
+    expect(shell).toContain('DashboardTopBar')
+    expect(shell).toContain('DashboardRail')
+    expect(shell).toContain('DashboardMobileNav')
+    expect(shell).toContain('DashboardMobileDock')
+    expect(rail).toContain('w-[4.5rem] hover:w-[17rem]')
+    expect(rail).toContain('ROLE_CODES')
+    expect(topBar).toContain("import { BrandMark } from '@/components/layout/BrandMark'")
+    expect(topBar).toContain('fixed inset-x-0 top-0 z-40')
+    expect(topBar).toContain('md:hidden')
+    expect(topBar).toContain('preload')
+    expect(mobileNav).toContain('<dialog')
+    expect(mobileDock).toContain('dashboard-mobile-dock')
+    expect(mobileDock).toContain('md:hidden')
   })
 
   it('gives the new announcement page a dedicated editor workflow', () => {
@@ -111,7 +125,7 @@ describe('dashboard desk redesign source guards', () => {
     const css = source('src/app/globals.css')
 
     expect(page).toContain('new-announcement-page')
-    expect(page).toContain('DashboardDeskHeader')
+    expect(page).toContain('DashboardBoardHeader')
     expect(page).toContain('New announcement')
     expect(page).toContain('Write the notice first')
     expect(page).toContain("export const metadata = { title: 'New Announcement' }")

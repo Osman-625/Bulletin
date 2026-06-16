@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { UserPlus } from 'lucide-react'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { logAuditEvent } from '@/lib/audit'
 import { formatCampusDateTime, formatCampusShortDate } from '@/lib/announcements/public-board'
@@ -98,7 +98,7 @@ function UserPagination({
         <Link
           href={superAdminUsersHref({ role, page: previousPage })}
           aria-disabled={page <= 1}
-          className={`inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
+          className={`inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
             page <= 1
               ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
               : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
@@ -109,10 +109,10 @@ function UserPagination({
         <Link
           href={superAdminUsersHref({ role, page: nextPage })}
           aria-disabled={page >= totalPages}
-          className={`inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
+          className={`inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
             page >= totalPages
               ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
-              : 'bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]'
+              : 'bg-[var(--color-accent)] text-[var(--color-on-accent)] hover:bg-[var(--color-accent-hover)]'
           }`}
         >
           Next
@@ -501,7 +501,7 @@ function SuperAdminNewUserForm({
         </div>
         <button
           type="submit"
-          className="rounded-xl bg-[var(--color-accent)] px-5 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90"
+          className="min-h-11 rounded-xl bg-[var(--color-accent)] px-5 text-xs font-bold text-[var(--color-on-accent)] transition-opacity hover:opacity-90"
         >
           Create User
         </button>
@@ -598,9 +598,9 @@ function SuperAdminRoleFilterTabs({
         <Link
           key={key}
           href={superAdminUsersHref({ role: key || undefined })}
-          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-medium transition-colors ${
             filterRole === key || (!filterRole && !key)
-              ? 'bg-[var(--color-accent)] text-white'
+              ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]'
               : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
           }`}
         >
@@ -626,7 +626,7 @@ function SuperAdminUsersEmptyState({ filterRole }: { filterRole?: string }) {
         {filterRole && (
           <Link
             href="/super-admin/users"
-            className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-[var(--color-surface-elevated)] px-4 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+            className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[var(--color-surface-elevated)] px-4 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
           >
             Clear the role filter
           </Link>
@@ -655,9 +655,9 @@ function SuperAdminUserEditPanel({
           <form key={assignableRole} action={setRole.bind(null, user.id, assignableRole)}>
             <button
               type="submit"
-              className={`rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+              className={`min-h-11 rounded-xl px-4 text-xs font-semibold transition-colors ${
                 role === assignableRole
-                  ? 'bg-[var(--color-accent)] text-white'
+                  ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]'
                   : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-surface)] hover:text-[var(--color-accent)]'
               }`}
             >
@@ -675,11 +675,11 @@ function SuperAdminUserEditPanel({
           required
           minLength={TEMPORARY_PASSWORD_MIN_LENGTH}
           placeholder={`At least ${TEMPORARY_PASSWORD_MIN_LENGTH} characters`}
-          className="w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
+          className="min-h-11 w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
         />
         <button
           type="submit"
-          className="shrink-0 rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-2 text-xs font-semibold text-[var(--color-status-submitted-text)] transition-opacity hover:opacity-80"
+          className="min-h-11 shrink-0 rounded-xl bg-[var(--color-status-submitted-bg)] px-4 text-xs font-semibold text-[var(--color-status-submitted-text)] transition-opacity hover:opacity-80"
         >
           Set Password
         </button>
@@ -700,7 +700,7 @@ function SuperAdminUserDeletePanel({ user }: { user: DbUser }) {
       <form action={deleteUser.bind(null, user.id)}>
         <button
           type="submit"
-          className="rounded-xl bg-[var(--color-status-rejected-text)] px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-80"
+          className="min-h-11 rounded-xl bg-[var(--color-status-rejected-text)] px-4 text-xs font-bold text-[var(--color-on-accent)] transition-opacity hover:opacity-80"
         >
           Yes, delete permanently
         </button>
@@ -791,13 +791,13 @@ function SuperAdminUserCard({
           <div className="flex shrink-0 gap-2">
             <Link
               href={`${base}${separator}edit=${user.id}`}
-              className="rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+              className="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-surface-elevated)] px-3 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
             >
               Edit
             </Link>
             <Link
               href={`${base}${separator}confirm=${user.id}`}
-              className="rounded-lg bg-[var(--color-status-rejected-bg)] px-3 py-1.5 text-xs font-medium text-[var(--color-status-rejected-text)] transition-opacity hover:opacity-80"
+              className="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-status-rejected-bg)] px-3 text-xs font-medium text-[var(--color-status-rejected-text)] transition-opacity hover:opacity-80"
             >
               Delete
             </Link>
@@ -807,7 +807,7 @@ function SuperAdminUserCard({
         {(isEditing || isConfirming) && (
           <Link
             href={base}
-            className="shrink-0 rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+            className="inline-flex min-h-11 shrink-0 items-center rounded-lg bg-[var(--color-surface-elevated)] px-3 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
           >
             Cancel
           </Link>
@@ -876,8 +876,8 @@ export default async function SuperAdminUsersPage({
   const separator = base.includes('?') ? '&' : '?'
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker="Super directory"
         title="Users"
         description={`${usersPage.total} users${
@@ -933,6 +933,6 @@ export default async function SuperAdminUsersPage({
         ))}
       </div>
       <UserPagination page={usersPage.page} totalPages={usersPage.totalPages} role={filterRole} />
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

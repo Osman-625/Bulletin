@@ -33,6 +33,31 @@ describe('performance source guards', () => {
     expect(dashboardClient).not.toContain('filtered.slice')
   })
 
+  it('does not compute publisher schedule metrics from the limited display rows', () => {
+    const schedule = source('src/app/(dashboard)/dashboard/schedule/page.tsx')
+
+    expect(schedule).toContain('scheduleCountQuery')
+    expect(schedule).toContain('liveCountResult')
+    expect(schedule).toContain('upcomingSubmittedCountResult')
+    expect(schedule).toContain('scheduledFutureCountResult')
+    expect(schedule).toContain('expiringCountResult')
+    expect(schedule).not.toContain('value: liveRows.length')
+    expect(schedule).not.toContain('value: upcomingRows.length')
+    expect(schedule).not.toContain('value: expiringRows.length')
+  })
+
+  it('does not compute publisher insights metrics from the limited top-notices query', () => {
+    const insights = source('src/app/(dashboard)/dashboard/insights/page.tsx')
+
+    expect(insights).toContain('INSIGHT_METRIC_PAGE_SIZE')
+    expect(insights).toContain('fetchInsightMetricRows')
+    expect(insights).toContain('metricRows')
+    expect(insights).toContain('.range(offset, offset + INSIGHT_METRIC_PAGE_SIZE - 1)')
+    expect(insights).toContain('.limit(48)')
+    expect(insights).not.toContain('const totalViews = rows.reduce')
+    expect(insights).not.toContain('const liveCount = rows.filter')
+  })
+
   it('paginates admin, owner, and super-admin user management at the Supabase query boundary', () => {
     const data = source('src/lib/data.ts')
     const adminUsers = source('src/app/(admin)/admin/users/page.tsx')

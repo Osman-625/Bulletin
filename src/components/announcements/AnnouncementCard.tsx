@@ -17,11 +17,15 @@ import {
   deadlineLabel,
   formatCampusShortDate,
 } from '@/lib/announcements/public-board'
-import { announcementPath, toSafeHttpUrl } from '@/lib/announcements/urls'
+import { announcementPath, toSafeHttpUrl, toSafeImageUrl } from '@/lib/announcements/urls'
 import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
-import type { AnnouncementWithRelations } from '@/lib/types'
+import type { PublicAnnouncement } from '@/lib/types'
 
 export type AnnouncementCardVisual = 'poster' | 'letterbox' | 'stamp' | 'ribbon'
+
+type AnnouncementCardStyle = CSSProperties & {
+  '--announcement-card-category-color'?: string
+}
 
 const STATUS_CHIP_STYLES: Record<'urgency' | 'published' | 'open' | 'closing', CSSProperties> = {
   urgency: {
@@ -79,12 +83,14 @@ function PosterImage({
   src,
   alt,
   sizes,
+  fit = 'cover',
   preload = false,
   className,
 }: {
   src: string
   alt: string
   sizes: string
+  fit?: 'cover' | 'contain'
   preload?: boolean
   className?: string
 }) {
@@ -93,17 +99,21 @@ function PosterImage({
       src={src}
       alt={alt}
       fill
-      className={cn('object-contain', className)}
+      className={cn(
+        'announcement-card-image block object-center',
+        fit === 'contain' ? 'object-contain' : 'object-cover',
+        className
+      )}
+      style={{ objectFit: fit }}
       sizes={sizes}
       preload={preload}
     />
   )
 }
 
-// Soft, enlarged copy of the poster that fills the panel behind the contained
-// image, so portrait/square posters leave no empty mat — the poster itself is
-// never cropped, the blur just extends it to the frame edges.
-function PosterBackdrop({ src }: { src: string }) {
+// Soft, enlarged copy of the poster that fills the panel behind the card crop,
+// so portrait/square posters keep the card frame visually full.
+function PosterBackdrop({ src, preload = false }: { src: string; preload?: boolean }) {
   return (
     <>
       <Image
@@ -112,7 +122,8 @@ function PosterBackdrop({ src }: { src: string }) {
         aria-hidden
         fill
         sizes="320px"
-        className="scale-110 object-cover blur-2xl"
+        preload={preload}
+        className="scale-110 object-cover object-center blur-2xl"
       />
       <div
         className="absolute inset-0"
@@ -133,10 +144,10 @@ function StatusChip({
 }) {
   return (
     <span
-      className="announcement-card-chip rounded-md px-2.5 py-1.5 text-[0.72rem] font-bold sm:text-[0.76rem]"
+      className="announcement-card-chip inline-flex h-5 max-w-[7.5rem] shrink-0 items-center overflow-hidden rounded-md px-2 text-[0.62rem] leading-none font-bold tracking-tight sm:text-[0.66rem]"
       style={STATUS_CHIP_STYLES[tone]}
     >
-      {label}
+      <span className="truncate">{label}</span>
     </span>
   )
 }
@@ -144,7 +155,7 @@ function StatusChip({
 function CategoryChip({ color, label }: { color: string; label: string }) {
   return (
     <span
-      className="announcement-card-chip inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[0.72rem] font-bold sm:text-[0.76rem]"
+      className="announcement-card-chip inline-flex h-5 max-w-[7.5rem] shrink-0 items-center gap-1 overflow-hidden rounded-md border px-2 text-[0.62rem] leading-none font-bold tracking-tight sm:text-[0.66rem]"
       style={categoryBadgeStyle(color)}
     >
       <span
@@ -152,7 +163,7 @@ function CategoryChip({ color, label }: { color: string; label: string }) {
         style={{ background: color }}
         aria-hidden="true"
       />
-      {label}
+      <span className="truncate">{label}</span>
     </span>
   )
 }
@@ -197,7 +208,7 @@ export default function AnnouncementCard({
   featureLabel,
   visual = 'letterbox',
 }: {
-  announcement: AnnouncementWithRelations
+  announcement: PublicAnnouncement
   featured?: boolean
   featureLabel?: string
   visual?: AnnouncementCardVisual
@@ -210,15 +221,13 @@ export default function AnnouncementCard({
 }
 
 // ── Standard (grid) ────────────────────────────────────────────────────────────
-// The outer Link clips to its rounded corners with overflow-hidden so the image
-// panel and card chrome share one radius. Card heights are locked by the board
-// CSS into two interlocking sizes (image = 2× text); long copy is clipped, not
-// grown, and the image panel flex-fills its height so nothing is left empty.
+// The outer Link clips only its own rounded chrome and media crop. The board
+// assigns fixed row spans by card type so the footer and crop stay aligned.
 function StandardCard({
   announcement,
   visual,
 }: {
-  announcement: AnnouncementWithRelations
+  announcement: PublicAnnouncement
   visual: AnnouncementCardVisual
 }) {
   const {
@@ -241,31 +250,39 @@ function StandardCard({
   const titleFontClass = getAnnouncementTitleFontClass(displayFont)
   const pinned = isAnnouncementPinned(announcement)
   const registrationHref = toSafeHttpUrl(registration_link)
-  const hasImage = Boolean(banner_url)
+  const imageUrl = toSafeImageUrl(banner_url)
+  const hasImage = Boolean(imageUrl)
+  const summary = body ? stripMarkdown(body) : 'Details are available in the full notice.'
+  const sourceName = organizations?.name ?? 'Campus source'
   const hasBadgeRow =
     urgency !== 'normal' || pinned || Boolean(categories) || Boolean(registrationHref) || expiring
+  const cardHref = announcementPath(announcement)
+  const titleId = `announcement-card-title-${announcement.id}`
+  const cardStyle: AnnouncementCardStyle = {
+    '--announcement-card-category-color': catColor,
+    background: 'color-mix(in oklab, var(--color-surface) 92%, var(--color-canvas))',
+    border: `1px solid color-mix(in oklab, var(--color-border) 82%, var(--color-canvas))`,
+    boxShadow: 'var(--shadow-soft)',
+  }
 
   return (
-    <Link
-      href={announcementPath(announcement)}
+    <article
+      aria-labelledby={titleId}
       data-testid="announcement-card"
-      data-has-image={banner_url ? 'true' : 'false'}
+      data-has-image={hasImage ? 'true' : 'false'}
       data-image-layout={visual}
       data-uniform-card="true"
+      data-urgent={urgency !== 'normal' || expiring ? 'true' : undefined}
       className={cn(
-        'card-lift group relative flex h-full flex-col overflow-hidden rounded-[1.25rem] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2',
+        'announcement-card card-lift group relative rounded-[1.25rem]',
         hasImage ? 'card-with-image' : 'card-without-image'
       )}
-      style={{
-        background: 'color-mix(in oklab, var(--color-surface) 92%, var(--color-canvas))',
-        border: `1px solid color-mix(in oklab, var(--color-border) 82%, var(--color-canvas))`,
-        boxShadow: 'var(--shadow-soft)',
-      }}
+      style={cardStyle}
     >
-      {banner_url && (
+      {imageUrl && (
         <div
           data-card-media={visual}
-          className="relative aspect-[16/9] flex-shrink-0 overflow-hidden rounded-t-[1.15rem] border-b border-[var(--color-border-subtle)]"
+          className="announcement-card-media relative overflow-hidden rounded-t-[1.15rem] border-b border-[var(--color-border-subtle)]"
           style={{
             background:
               visual === 'stamp'
@@ -273,92 +290,88 @@ function StandardCard({
                 : `color-mix(in oklab, ${catColor} 5%, var(--color-surface-elevated))`,
           }}
         >
-          <PosterBackdrop src={banner_url} />
-          <div className="absolute inset-2 overflow-hidden rounded-[0.75rem] sm:inset-3">
+          <PosterBackdrop src={imageUrl} />
+          <div className="absolute inset-3 overflow-hidden rounded-[0.9rem]">
             <PosterImage
-              src={banner_url}
+              src={imageUrl}
               alt={title}
-              sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 31vw"
+              sizes="(max-width: 639px) 100vw, (max-width: 1024px) 50vw, 33vw"
               className="transition-transform duration-500 ease-[var(--ease-ui)] group-hover:scale-[1.015]"
             />
           </div>
         </div>
       )}
 
-      {!banner_url && (
-        <div
-          className="announcement-card-folio-strip h-2 flex-shrink-0"
-          style={{
-            background: `linear-gradient(90deg, color-mix(in oklab, ${catColor} 28%, var(--color-surface-elevated)), color-mix(in oklab, var(--color-surface-elevated) 64%, var(--color-surface)))`,
-          }}
-          aria-hidden="true"
-        />
-      )}
+      <div className="announcement-card-body p-[20px]">
+        <div className="announcement-card-main">
+          {hasBadgeRow && (
+            <div
+              className={cn(
+                'announcement-card-badges flex flex-wrap items-center gap-1.5',
+                hasImage ? 'announcement-card-badges--media mb-3' : 'mb-4'
+              )}
+            >
+              {urgency === 'urgent' && <StatusChip label={urgencyMeta.label} tone="urgency" />}
+              {urgency === 'important' && <StatusChip label={urgencyMeta.label} tone="closing" />}
+              {pinned && <StatusChip label="Pinned" tone="published" />}
+              {categories && <CategoryChip color={catColor} label={categories.name} />}
+              {registrationHref && !expiring && (
+                <StatusChip label="Registration open" tone="open" />
+              )}
+              {expiring && <StatusChip label={deadlineLabel(expires_at)} tone="closing" />}
+            </div>
+          )}
 
-      <div className="announcement-card-body flex min-h-0 flex-1 flex-col p-4 sm:p-5">
-        {hasBadgeRow && (
-          <div
+          <h3
+            id={titleId}
             className={cn(
-              'announcement-card-badges flex flex-wrap items-center gap-1.5',
-              hasImage ? 'mb-3' : 'mb-4'
+              titleFontClass,
+              'announcement-card-title leading-[1.06] font-bold tracking-normal'
             )}
+            style={{ fontSize: CARD_TITLE_SIZES[displaySize], color: 'var(--color-text-primary)' }}
           >
-            {urgency === 'urgent' && <StatusChip label={urgencyMeta.label} tone="urgency" />}
-            {urgency === 'important' && <StatusChip label={urgencyMeta.label} tone="closing" />}
-            {pinned && <StatusChip label="Pinned" tone="published" />}
-            {categories && <CategoryChip color={catColor} label={categories.name} />}
-            {registrationHref && !expiring && <StatusChip label="Registration open" tone="open" />}
-            {expiring && <StatusChip label={deadlineLabel(expires_at)} tone="closing" />}
-          </div>
-        )}
+            {title}
+          </h3>
 
-        <h2
-          className={cn(
-            titleFontClass,
-            'announcement-card-title leading-[1.06] font-bold tracking-[-0.01em]'
-          )}
-          style={{ fontSize: CARD_TITLE_SIZES[displaySize], color: 'var(--color-text-primary)' }}
-        >
-          {title}
-        </h2>
-
-        <p
-          className={cn(
-            'announcement-card-summary mt-2.5 text-[0.84rem] leading-[1.55] sm:text-[0.9rem]',
-            hasImage ? '' : 'mt-3'
-          )}
-          data-summary-source-guard="announcement-card-summary-clamp-2 announcement-card-summary-clamp-3 announcement-card-summary-clamp-4"
-          style={{ color: 'var(--color-text-secondary)' }}
-        >
-          {body ? stripMarkdown(body) : ''}
-        </p>
-
-        {(published_at || expires_at) && (
-          <div className="announcement-card-meta-grid mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {published_at && (
-              <EventMetaPill label="Posted" value={formatCampusShortDate(published_at)} />
+          <p
+            className={cn(
+              'announcement-card-summary announcement-card-summary-clamp mt-2.5 text-[0.84rem] leading-[1.55] sm:text-[0.9rem]',
+              hasImage
+                ? 'announcement-card-summary-clamp-3'
+                : 'announcement-card-summary-clamp-4 mt-3'
             )}
-            {expires_at && (
-              <EventMetaPill
-                label="Deadline"
-                value={deadlineLabel(expires_at)}
-                tone={expiring ? 'deadline' : 'neutral'}
-              />
-            )}
-          </div>
-        )}
+            data-summary-source-guard="announcement-card-summary-clamp-3 announcement-card-summary-clamp-4"
+            style={{ color: 'var(--color-text-secondary)' }}
+          >
+            {summary}
+          </p>
 
-        {/* Footer anchored to bottom; mt-auto collapses dead space on short cards */}
+          {(published_at || expires_at) && (
+            <div className="announcement-card-meta announcement-card-meta-grid mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {published_at && (
+                <EventMetaPill label="Posted" value={formatCampusShortDate(published_at)} />
+              )}
+              {expires_at && (
+                <EventMetaPill
+                  label="Deadline"
+                  value={deadlineLabel(expires_at)}
+                  tone={expiring ? 'deadline' : 'neutral'}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
         <div
-          className="announcement-card-footer mt-auto flex items-center justify-between gap-3 border-t pt-3 text-sm"
-          style={{ borderColor: 'var(--color-border-subtle)', marginTop: 'auto' }}
+          className="announcement-card-footer flex items-center justify-between gap-3 border-t pt-3 text-sm"
+          style={{ borderColor: 'var(--color-border-subtle)' }}
         >
           <div className="flex min-w-0 flex-col gap-0.5">
             <span
               className="truncate text-[0.78rem] leading-tight font-semibold"
               style={{ color: 'var(--color-text-muted)' }}
             >
-              {organizations?.name}
+              {sourceName}
             </span>
           </div>
           <span className="shrink-0 rounded-[8px] px-2.5 py-1 font-mono text-[0.66rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase transition-[background,color] group-hover:bg-[var(--color-accent-surface)] group-hover:text-[var(--color-accent-inti)]">
@@ -366,7 +379,14 @@ function StandardCard({
           </span>
         </div>
       </div>
-    </Link>
+      <Link
+        href={cardHref}
+        aria-labelledby={titleId}
+        className="announcement-card-link absolute inset-0 z-10 rounded-[1.25rem] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2"
+      >
+        <span className="sr-only">Read details for {title}</span>
+      </Link>
+    </article>
   )
 }
 
@@ -378,7 +398,7 @@ function FeaturedCard({
   featureLabel = 'Featured',
   visual,
 }: {
-  announcement: AnnouncementWithRelations
+  announcement: PublicAnnouncement
   featureLabel?: string
   visual: AnnouncementCardVisual
 }) {
@@ -403,40 +423,57 @@ function FeaturedCard({
   const pinned = isAnnouncementPinned(announcement)
   const registrationHref = toSafeHttpUrl(registration_link)
   const deadlineIsActive = isExpiringSoon(expires_at)
+  const imageUrl = toSafeImageUrl(banner_url)
+  const summary = body ? stripMarkdown(body) : 'Details are available in the full notice.'
+  const sourceName = organizations?.name ?? 'Campus source'
   const hasBadgeRow =
     urgency !== 'normal' || pinned || Boolean(categories) || Boolean(registrationHref) || expiring
+  const hasImage = Boolean(imageUrl)
+  const cardHref = announcementPath(announcement)
+  const titleId = `featured-announcement-card-title-${announcement.id}`
+  const cardStyle: AnnouncementCardStyle = {
+    '--announcement-card-category-color': catColor,
+    background: 'color-mix(in oklab, var(--color-surface) 94%, var(--color-canvas))',
+    border: `1px solid color-mix(in oklab, var(--color-border) 84%, var(--color-canvas))`,
+    boxShadow: 'var(--shadow-soft)',
+  }
 
   return (
-    <Link
-      href={announcementPath(announcement)}
+    <article
+      aria-labelledby={titleId}
       data-testid="announcement-card"
-      data-has-image={banner_url ? 'true' : 'false'}
+      data-has-image={hasImage ? 'true' : 'false'}
       data-image-layout={visual}
-      className="featured-announcement-card card-lift group relative flex h-full min-h-[20rem] flex-col overflow-hidden rounded-[1.45rem] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2"
-      style={{
-        background: 'color-mix(in oklab, var(--color-surface) 94%, var(--color-canvas))',
-        border: `1px solid color-mix(in oklab, var(--color-border) 84%, var(--color-canvas))`,
-        boxShadow: 'var(--shadow-soft)',
-      }}
+      data-urgent={urgency !== 'normal' || expiring ? 'true' : undefined}
+      className={cn(
+        'announcement-card featured-announcement-card card-lift group relative min-h-0 rounded-[1.35rem]',
+        hasImage ? 'card-with-image' : 'card-without-image'
+      )}
+      style={cardStyle}
     >
-      {banner_url && (
+      {imageUrl && (
         <div
           data-card-media={visual}
           className={cn(
-            'relative flex-shrink-0 overflow-hidden rounded-t-[1.35rem] border-b border-[var(--color-border-subtle)]',
-            visual === 'ribbon' ? 'aspect-[21/9]' : 'aspect-[16/9] sm:aspect-[16/10]'
+            'announcement-card-media relative overflow-hidden rounded-t-[1.35rem] border-b border-[var(--color-border-subtle)]',
+            visual === 'poster' || visual === 'ribbon'
+              ? 'aspect-[4/3] sm:aspect-[16/9] lg:aspect-[16/6]'
+              : 'aspect-[16/9]'
           )}
           style={categoryPanelStyle(catColor)}
         >
-          <PosterBackdrop src={banner_url} />
-          <div className="absolute inset-2 overflow-hidden rounded-[0.85rem] sm:inset-3">
-            <PosterImage
-              src={banner_url}
-              alt={title}
-              sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 60vw"
-              preload
-              className="transition-transform duration-500 ease-[var(--ease-ui)] group-hover:scale-[1.015]"
-            />
+          <div className="featured-announcement-media-frame absolute inset-2 overflow-hidden rounded-[0.95rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5 shadow-[var(--shadow-soft)] sm:inset-3 sm:p-2">
+            <div className="featured-announcement-image-window relative h-full overflow-hidden rounded-[0.72rem] bg-[var(--color-surface-elevated)]">
+              <PosterImage
+                src={imageUrl}
+                alt={title}
+                sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 60vw"
+                fit="cover"
+                preload
+                className="transition-transform duration-500 ease-[var(--ease-ui)] group-hover:scale-[1.015]"
+              />
+            </div>
+            <span className="featured-announcement-corner" aria-hidden="true" />
           </div>
           {/* Editorial badge — overlaid on the image for maximum presence */}
           <div className="featured-card-gradient-scrim absolute right-0 bottom-0 left-0" />
@@ -446,7 +483,7 @@ function FeaturedCard({
         </div>
       )}
 
-      {!banner_url && (
+      {!imageUrl && (
         <div
           className="featured-card-no-image-header flex-shrink-0 border-b border-[var(--color-border-subtle)] px-5 pt-5 pb-4"
           style={{
@@ -460,56 +497,61 @@ function FeaturedCard({
       )}
 
       {/* Content body */}
-      <div className="announcement-card-body flex min-h-0 flex-1 flex-col p-4 sm:p-5">
-        {hasBadgeRow && (
-          <div className="announcement-card-badges mb-3.5 flex flex-wrap items-center gap-2">
-            {urgency === 'urgent' && <StatusChip label={urgencyMeta.label} tone="urgency" />}
-            {urgency === 'important' && <StatusChip label={urgencyMeta.label} tone="closing" />}
-            {pinned && <StatusChip label="Pinned" tone="published" />}
-            {categories && <CategoryChip color={catColor} label={categories.name} />}
-            {registrationHref && !expiring && <StatusChip label="Registration open" tone="open" />}
-            {expiring && <StatusChip label={deadlineLabel(expires_at)} tone="closing" />}
-          </div>
-        )}
-
-        <h2
-          className={cn(
-            titleFontClass,
-            'announcement-card-title leading-[1.04] font-bold tracking-[-0.02em]'
+      <div className="announcement-card-body p-4 sm:p-[18px]">
+        <div className="announcement-card-main">
+          {hasBadgeRow && (
+            <div className="announcement-card-badges mb-2.5 flex flex-wrap items-center gap-1.5">
+              {urgency === 'urgent' && <StatusChip label={urgencyMeta.label} tone="urgency" />}
+              {urgency === 'important' && <StatusChip label={urgencyMeta.label} tone="closing" />}
+              {pinned && <StatusChip label="Pinned" tone="published" />}
+              {categories && <CategoryChip color={catColor} label={categories.name} />}
+              {registrationHref && !expiring && (
+                <StatusChip label="Registration open" tone="open" />
+              )}
+              {expiring && <StatusChip label={deadlineLabel(expires_at)} tone="closing" />}
+            </div>
           )}
-          style={{
-            fontSize: `min(${FEATURED_TITLE_SIZES[displaySize]}, 2.25rem)`,
-            color: 'var(--color-text-primary)',
-          }}
-        >
-          {title}
-        </h2>
 
-        <p
-          className="announcement-card-summary mt-3 text-[0.95rem] leading-[1.65]"
-          data-summary-source-guard="announcement-card-summary-clamp-4"
-          style={{ color: 'var(--color-text-secondary)' }}
-        >
-          {body ? stripMarkdown(body) : ''}
-        </p>
+          <h3
+            id={titleId}
+            className={cn(
+              titleFontClass,
+              'announcement-card-title leading-[1.04] font-bold tracking-normal'
+            )}
+            style={{
+              fontSize: `min(${FEATURED_TITLE_SIZES[displaySize]}, 1.5rem)`,
+              color: 'var(--color-text-primary)',
+            }}
+          >
+            {title}
+          </h3>
 
-        {(published_at || expires_at) && (
-          <div className="announcement-card-meta-grid mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {published_at && (
-              <EventMetaPill label="Posted" value={formatCampusShortDate(published_at)} />
-            )}
-            {expires_at && (
-              <EventMetaPill
-                label="Deadline"
-                value={deadlineLabel(expires_at)}
-                tone={deadlineIsActive ? 'deadline' : 'neutral'}
-              />
-            )}
-          </div>
-        )}
+          <p
+            className="announcement-card-summary announcement-card-summary-clamp announcement-card-summary-clamp-2 mt-2.5 text-[0.84rem] leading-[1.45]"
+            data-summary-source-guard="announcement-card-summary-clamp-4"
+            style={{ color: 'var(--color-text-secondary)' }}
+          >
+            {summary}
+          </p>
+
+          {(published_at || expires_at) && (
+            <div className="announcement-card-meta announcement-card-meta-grid mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {published_at && (
+                <EventMetaPill label="Posted" value={formatCampusShortDate(published_at)} />
+              )}
+              {expires_at && (
+                <EventMetaPill
+                  label="Deadline"
+                  value={deadlineLabel(expires_at)}
+                  tone={deadlineIsActive ? 'deadline' : 'neutral'}
+                />
+              )}
+            </div>
+          )}
+        </div>
 
         <div
-          className="announcement-card-footer mt-auto flex items-center justify-between gap-3 border-t pt-4"
+          className="announcement-card-footer flex items-center justify-between gap-3 border-t pt-3"
           style={{ borderColor: 'var(--color-border)' }}
         >
           <div className="flex min-w-0 flex-col gap-0.5">
@@ -517,20 +559,27 @@ function FeaturedCard({
               className="min-w-0 truncate text-sm font-semibold"
               style={{ color: 'var(--color-text-secondary)' }}
             >
-              {organizations?.name}
+              {sourceName}
             </span>
           </div>
           <span
-            className="shrink-0 rounded-[8px] px-4 py-2 text-sm font-bold transition-colors"
+            className="shrink-0 rounded-[8px] px-3 py-1.5 text-sm font-bold transition-colors"
             style={{
               background: 'var(--color-accent-surface)',
               color: 'var(--color-accent-hover)',
             }}
           >
-            Read notice
+            Read details
           </span>
         </div>
       </div>
-    </Link>
+      <Link
+        href={cardHref}
+        aria-labelledby={titleId}
+        className="announcement-card-link absolute inset-0 z-10 rounded-[1.45rem] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)] focus-visible:ring-offset-2"
+      >
+        <span className="sr-only">Read details for {title}</span>
+      </Link>
+    </article>
   )
 }

@@ -1,14 +1,15 @@
 import { BarChart3, ClipboardList, FileText, ShieldCheck, Tag, UserCog, Users } from 'lucide-react'
 import {
-  DashboardDeskBoard,
-  DashboardDeskEmpty,
-  DashboardDeskHeader,
-  DashboardDeskMetrics,
-  DashboardDeskPage,
-  DashboardDeskPanel,
-  DashboardDeskRow,
-} from '@/components/dashboard/DashboardDesk'
+  DashboardBoardBoard,
+  DashboardBoardEmpty,
+  DashboardBoardHeader,
+  DashboardBoardMetrics,
+  DashboardBoardPage,
+  DashboardBoardPanel,
+  DashboardBoardRow,
+} from '@/components/dashboard/DashboardBoard'
 import { getPlatformStats } from '@/lib/data'
+import { requireUsableAccessContext } from '@/lib/auth/authz'
 
 export const metadata = { title: 'Platform Overview' }
 
@@ -40,6 +41,7 @@ const SUPER_ADMIN_QUICK_LINKS = [
 ]
 
 export default async function SuperAdminPage() {
+  await requireUsableAccessContext()
   const stats = await getPlatformStats()
 
   const tiles = [
@@ -50,15 +52,15 @@ export default async function SuperAdminPage() {
   ]
 
   return (
-    <DashboardDeskPage>
-      <DashboardDeskHeader
-        kicker="Super desk"
-        title="Super desk"
+    <DashboardBoardPage>
+      <DashboardBoardHeader
+        kicker="Super board"
+        title="Super board"
         description="Platform-wide publishing structure, admin access, categories, and user support."
         action={{ href: '/super-admin/admins', label: 'Manage admins', icon: ShieldCheck }}
       />
 
-      <DashboardDeskMetrics
+      <DashboardBoardMetrics
         metrics={[
           ...tiles.map(({ label, value, icon }) => ({
             label,
@@ -78,10 +80,10 @@ export default async function SuperAdminPage() {
         ]}
       />
 
-      <DashboardDeskBoard>
-        <DashboardDeskPanel title="Platform work" count={`${SUPER_ADMIN_QUICK_LINKS.length}`}>
+      <DashboardBoardBoard>
+        <DashboardBoardPanel title="Platform work" count={`${SUPER_ADMIN_QUICK_LINKS.length}`}>
           {SUPER_ADMIN_QUICK_LINKS.map(({ href, label, desc }, index) => (
-            <DashboardDeskRow
+            <DashboardBoardRow
               key={href}
               href={href}
               title={label}
@@ -89,14 +91,14 @@ export default async function SuperAdminPage() {
               meta={[{ label: desc }]}
             />
           ))}
-        </DashboardDeskPanel>
+        </DashboardBoardPanel>
 
-        <DashboardDeskPanel
+        <DashboardBoardPanel
           title="Needs attention"
           count={stats.pendingReview > 0 ? `${stats.pendingReview}` : '0'}
         >
           {stats.pendingReview > 0 ? (
-            <DashboardDeskRow
+            <DashboardBoardRow
               href="/super-admin/analytics"
               title="Review pressure is building"
               index={0}
@@ -107,10 +109,10 @@ export default async function SuperAdminPage() {
               statusTone="submitted"
             />
           ) : (
-            <DashboardDeskEmpty>No platform-wide queue pressure right now.</DashboardDeskEmpty>
+            <DashboardBoardEmpty>No platform-wide queue pressure right now.</DashboardBoardEmpty>
           )}
-        </DashboardDeskPanel>
-      </DashboardDeskBoard>
-    </DashboardDeskPage>
+        </DashboardBoardPanel>
+      </DashboardBoardBoard>
+    </DashboardBoardPage>
   )
 }

@@ -7,11 +7,11 @@ import {
   type AnnouncementTabCounts,
 } from '@/components/dashboard/AnnouncementsClient'
 import {
-  DashboardDeskHeader,
-  DashboardDeskMetrics,
-  DashboardDeskPage,
-  DashboardDeskPanel,
-} from '@/components/dashboard/DashboardDesk'
+  DashboardBoardHeader,
+  DashboardBoardMetrics,
+  DashboardBoardPage,
+  DashboardBoardPanel,
+} from '@/components/dashboard/DashboardBoard'
 import { getCurrentAccessContext } from '@/lib/auth/authz'
 import { shouldScopeAnnouncementsToMembership } from '@/lib/announcements/access'
 import { reportServerError } from '@/lib/error-reporting'
@@ -158,7 +158,8 @@ export default async function AnnouncementsPage({
     countQuery().eq('status', 'published'),
     countQuery()
       .eq('status', 'published')
-      .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`),
+      .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${nowIso}`)
+      .or(`expires_at.is.null,expires_at.gt.${nowIso}`),
     countQuery().eq('status', 'draft'),
     countQuery().eq('status', 'published').gt('scheduled_publish_at', nowIso),
     countQuery().in('status', ['archived', 'expired']),
@@ -229,8 +230,8 @@ export default async function AnnouncementsPage({
   ]
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-4">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-4">
+      <DashboardBoardHeader
         kicker="Announcement register"
         title="Manage campus posts"
         description={
@@ -245,7 +246,7 @@ export default async function AnnouncementsPage({
         }}
       />
 
-      <DashboardDeskMetrics
+      <DashboardBoardMetrics
         metrics={stats.map(({ label, value, icon }) => ({
           label,
           value,
@@ -262,7 +263,7 @@ export default async function AnnouncementsPage({
         }))}
       />
 
-      <DashboardDeskPanel title="Announcement register" count={`${totalResults} results`}>
+      <DashboardBoardPanel title="Announcement register" count={`${totalResults} results`}>
         <AnnouncementsClient
           announcements={announcements}
           activeTab={activeTab}
@@ -274,7 +275,7 @@ export default async function AnnouncementsPage({
           tabCounts={tabCounts}
           nowMs={nowMs}
         />
-      </DashboardDeskPanel>
-    </DashboardDeskPage>
+      </DashboardBoardPanel>
+    </DashboardBoardPage>
   )
 }

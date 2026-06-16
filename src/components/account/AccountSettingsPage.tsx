@@ -2,9 +2,10 @@ import Link from 'next/link'
 import { ArrowUpRight, KeyRound, Palette, UserRound } from 'lucide-react'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { updateAccountPassword, updateDisplayName } from '@/lib/account/actions'
 import { getDefaultAppPath, type AccessContext } from '@/lib/auth/authz'
+import { PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
 
 type SettingsVariant = 'publisher' | 'admin' | 'super_admin' | 'owner'
 
@@ -78,8 +79,8 @@ export function AccountSettingsPage({
   )
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker={`${WORKSPACE_LABELS[variant]} settings`}
         title="Settings"
         description="Manage your Bulletin identity, password, theme, and workspace shortcuts."
@@ -129,7 +130,7 @@ export function AccountSettingsPage({
             </div>
             <button
               type="submit"
-              className="inline-flex min-h-10 items-center rounded-xl bg-[var(--color-accent-inti)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)]"
+              className="inline-flex min-h-11 items-center rounded-xl bg-[var(--color-accent-inti)] px-4 text-sm font-semibold text-[var(--color-on-accent)] transition-colors hover:bg-[var(--color-accent-hover)]"
             >
               Save name
             </button>
@@ -210,7 +211,7 @@ export function AccountSettingsPage({
                   type="password"
                   aria-label="New password"
                   required
-                  minLength={8}
+                  minLength={PASSWORD_MIN_LENGTH}
                   autoComplete="new-password"
                   className="input-inti w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] focus:outline-none"
                 />
@@ -228,7 +229,7 @@ export function AccountSettingsPage({
                   type="password"
                   aria-label="Confirm password"
                   required
-                  minLength={8}
+                  minLength={PASSWORD_MIN_LENGTH}
                   autoComplete="new-password"
                   className="input-inti w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] focus:outline-none"
                 />
@@ -236,7 +237,7 @@ export function AccountSettingsPage({
             </div>
             <button
               type="submit"
-              className="inline-flex min-h-10 items-center rounded-xl bg-[var(--color-accent-inti)] px-4 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-accent-hover)]"
+              className="inline-flex min-h-11 items-center rounded-xl bg-[var(--color-accent-inti)] px-4 text-sm font-semibold text-[var(--color-on-accent)] transition-colors hover:bg-[var(--color-accent-hover)]"
             >
               Update password
             </button>
@@ -262,6 +263,6 @@ export function AccountSettingsPage({
           </div>
         </GlassCard>
       </div>
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

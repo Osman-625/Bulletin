@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { ArrowLeft, Check, Send } from 'lucide-react'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { getCurrentAccessContext } from '@/lib/auth/authz'
 import { getAllOrganizations } from '@/lib/data'
@@ -46,8 +46,8 @@ export default async function InvitePublisherPage({
     : null
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker="Admin directory"
         title="Invite publisher"
         description="Generate a scoped invite link and assign the publisher to approved organizations."
@@ -194,6 +194,6 @@ export default async function InvitePublisherPage({
           </p>
         </GlassCard>
       </div>
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

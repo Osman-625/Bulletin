@@ -38,7 +38,8 @@
     "errorHandling": ".codex/rules/error-handling.md",
     "frontend": ".codex/rules/frontend.md",
     "security": ".codex/rules/security.md",
-    "testing": ".codex/rules/testing.md"
+    "testing": ".codex/rules/testing.md",
+    "uxResearchQuality": ".codex/rules/ux-research-quality.md"
   },
   "reviewers": {
     "code": ".codex/agents/code-reviewer.md",

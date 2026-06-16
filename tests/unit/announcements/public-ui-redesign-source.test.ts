@@ -53,7 +53,7 @@ describe('optimized public UI redesign source guards', () => {
     expect(globals).toContain('.featured-announcement-badge')
     expect(feedPagination).toContain('pagination-progress')
     expect(feedPagination).toContain('aria-label="Pagination progress"')
-    expect(feedPagination).toContain('Load more notices')
+    expect(feedPagination).toContain('Next page')
   })
 
   it('adds a skip link and public Open Graph metadata without changing the theme provider contract', () => {

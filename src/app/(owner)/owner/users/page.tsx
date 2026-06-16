@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { UserPlus } from 'lucide-react'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { logAuditEvent } from '@/lib/audit'
 import { formatCampusShortDate } from '@/lib/announcements/public-board'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -96,7 +96,7 @@ function UserPagination({
         <Link
           href={ownerUsersHref({ role, page: previousPage })}
           aria-disabled={page <= 1}
-          className={`inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
+          className={`inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
             page <= 1
               ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
               : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
@@ -107,10 +107,10 @@ function UserPagination({
         <Link
           href={ownerUsersHref({ role, page: nextPage })}
           aria-disabled={page >= totalPages}
-          className={`inline-flex min-h-10 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
+          className={`inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
             page >= totalPages
               ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
-              : 'bg-[var(--color-accent)] text-white hover:bg-[var(--color-accent-hover)]'
+              : 'bg-[var(--color-accent)] text-[var(--color-on-accent)] hover:bg-[var(--color-accent-hover)]'
           }`}
         >
           Next
@@ -207,7 +207,7 @@ function OwnerNewUserForm({ err, assignableRoles }: { err?: string; assignableRo
         </div>
         <button
           type="submit"
-          className="rounded-xl bg-[var(--color-accent)] px-5 py-2 text-xs font-bold text-white transition-opacity hover:opacity-90"
+          className="min-h-11 rounded-xl bg-[var(--color-accent)] px-5 text-xs font-bold text-[var(--color-on-accent)] transition-opacity hover:opacity-90"
         >
           Create User
         </button>
@@ -242,9 +242,9 @@ function OwnerRoleFilterTabs({
         <Link
           key={key}
           href={ownerUsersHref({ role: key || undefined })}
-          className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+          className={`inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-medium transition-colors ${
             filterRole === key || (!filterRole && !key)
-              ? 'bg-[var(--color-accent)] text-white'
+              ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]'
               : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
           }`}
         >
@@ -270,7 +270,7 @@ function OwnerUsersEmptyState({ filterRole }: { filterRole?: string }) {
         {filterRole && (
           <Link
             href="/owner/users"
-            className="mt-4 inline-flex min-h-10 items-center rounded-xl bg-[var(--color-surface-elevated)] px-4 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+            className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[var(--color-surface-elevated)] px-4 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
           >
             Clear the role filter
           </Link>
@@ -299,9 +299,9 @@ function OwnerUserEditPanel({
           <form key={assignableRole} action={setRole.bind(null, user.id, assignableRole)}>
             <button
               type="submit"
-              className={`rounded-xl px-4 py-2 text-xs font-semibold transition-colors ${
+              className={`min-h-11 rounded-xl px-4 text-xs font-semibold transition-colors ${
                 role === assignableRole
-                  ? 'bg-[var(--color-accent)] text-white'
+                  ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]'
                   : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-surface)] hover:text-[var(--color-accent)]'
               }`}
             >
@@ -319,11 +319,11 @@ function OwnerUserEditPanel({
           required
           minLength={TEMPORARY_PASSWORD_MIN_LENGTH}
           placeholder={`At least ${TEMPORARY_PASSWORD_MIN_LENGTH} characters`}
-          className="w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
+          className="min-h-11 w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
         />
         <button
           type="submit"
-          className="shrink-0 rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-2 text-xs font-semibold text-[var(--color-status-submitted-text)] transition-opacity hover:opacity-80"
+          className="min-h-11 shrink-0 rounded-xl bg-[var(--color-status-submitted-bg)] px-4 text-xs font-semibold text-[var(--color-status-submitted-text)] transition-opacity hover:opacity-80"
         >
           Set Password
         </button>
@@ -344,7 +344,7 @@ function OwnerUserDeletePanel({ user }: { user: DbUser }) {
       <form action={deleteUser.bind(null, user.id)}>
         <button
           type="submit"
-          className="rounded-xl bg-[var(--color-status-rejected-text)] px-4 py-2 text-xs font-bold text-white transition-opacity hover:opacity-80"
+          className="min-h-11 rounded-xl bg-[var(--color-status-rejected-text)] px-4 text-xs font-bold text-[var(--color-on-accent)] transition-opacity hover:opacity-80"
         >
           Yes, delete permanently
         </button>
@@ -406,23 +406,22 @@ function OwnerUserCard({
             <p className="text-sm font-semibold text-[var(--color-text-primary)]">
               {user.display_name}
             </p>
-            <span className="rounded bg-[var(--color-surface-elevated)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-text-muted)] uppercase">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-text-secondary)]">
+              <span
+                className="size-2 shrink-0 rounded-full"
+                style={{ background: LEVEL_COLOR[level] }}
+                aria-hidden="true"
+              />
               {ROLE_LABELS[role] ?? role}
             </span>
-            <span
-              className="rounded bg-[var(--color-surface-elevated)] px-1.5 py-0.5 font-mono text-[15px] font-bold"
-              style={{ color: LEVEL_COLOR[level] }}
-            >
-              L{level}
-            </span>
             {isMe && (
-              <span className="rounded bg-[var(--color-accent-surface)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-accent)] uppercase">
+              <span className="rounded-full bg-[var(--color-accent-surface)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-accent)]">
                 You
               </span>
             )}
             {user.force_password_change && (
-              <span className="rounded bg-[var(--color-status-submitted-bg)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-status-submitted-text)] uppercase">
-                Must change pw
+              <span className="rounded-full bg-[var(--color-status-submitted-bg)] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-status-submitted-text)]">
+                Password change required
               </span>
             )}
           </div>
@@ -437,13 +436,13 @@ function OwnerUserCard({
           <div className="flex shrink-0 gap-2">
             <Link
               href={`${base}${separator}edit=${user.id}`}
-              className="rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+              className="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-surface-elevated)] px-3 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
             >
               Edit
             </Link>
             <Link
               href={`${base}${separator}confirm=${user.id}`}
-              className="rounded-lg bg-[var(--color-status-rejected-bg)] px-3 py-1.5 text-xs font-medium text-[var(--color-status-rejected-text)] transition-opacity hover:opacity-80"
+              className="inline-flex min-h-11 items-center rounded-lg bg-[var(--color-status-rejected-bg)] px-3 text-xs font-medium text-[var(--color-status-rejected-text)] transition-opacity hover:opacity-80"
             >
               Delete
             </Link>
@@ -452,7 +451,7 @@ function OwnerUserCard({
         {(isEditing || isConfirming) && (
           <Link
             href={base}
-            className="shrink-0 rounded-lg bg-[var(--color-surface-elevated)] px-3 py-1.5 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
+            className="inline-flex min-h-11 shrink-0 items-center rounded-lg bg-[var(--color-surface-elevated)] px-3 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
           >
             Cancel
           </Link>
@@ -773,8 +772,8 @@ export default async function OwnerUsersPage({
   const separator = base.includes('?') ? '&' : '?'
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker="Owner directory"
         title="All users"
         description={`${visibleUsersTotal} users${
@@ -825,6 +824,6 @@ export default async function OwnerUsersPage({
         ))}
       </div>
       <UserPagination page={usersPage} totalPages={totalPages} role={filterRole} />
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

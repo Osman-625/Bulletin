@@ -4,12 +4,8 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { logAuditEvent } from '@/lib/audit'
 import { getWritableOrganizationId } from '@/lib/announcements/access'
-import {
-  readAnnouncementTextFields,
-  readOptionalBannerUrl,
-  readOptionalHttpUrl,
-  readOptionalIsoDate,
-} from '@/lib/announcements/form'
+import { readAnnouncementTextFields } from '@/lib/announcements/form'
+import { readAnnouncementMutationFields } from '@/lib/announcements/mutations'
 import {
   normalizeAnnouncementDisplayFont,
   normalizeAnnouncementDisplaySize,
@@ -18,6 +14,7 @@ import {
 import { getCurrentAccessContext } from '@/lib/auth/authz'
 import { reportServerError } from '@/lib/error-reporting'
 import { notifyAnnouncementSubmitted } from '@/lib/notifications'
+import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
 const ANNOUNCEMENT_SAVE_ERROR = 'Could not save announcement. Try again.'
@@ -41,14 +38,15 @@ export async function createAnnouncement(formData: FormData) {
 
   const organizationId = await getWritableOrganizationId(supabase, access)
   if (!organizationId) throw new Error('No organization')
+  const rateLimit = await checkActionRateLimit('announcement-create', access.userId)
+  if (rateLimit.limited) throw new Error('Too many attempts. Try again shortly.')
 
   const { title, body } = readAnnouncementTextFields(formData)
-  const categoryId = formData.get('category_id') as string | null
-  const bannerUrl = readOptionalBannerUrl(formData, 'banner_url')
-  const registrationLink = readOptionalHttpUrl(formData, 'registration_link', 'Registration link')
-  const expiresAt = readOptionalIsoDate(formData, 'expires_at')
-  const scheduledPublishAt = readOptionalIsoDate(formData, 'scheduled_publish_at')
-  const pinnedUntil = readOptionalIsoDate(formData, 'pinned_until')
+  const { categoryId, bannerUrl, registrationLink, expiresAt, scheduledPublishAt, pinnedUntil } =
+    await readAnnouncementMutationFields(supabase, formData, {
+      actorId: access.userId,
+      organizationId,
+    })
   const urgency = normalizeAnnouncementUrgency(formData.get('urgency'))
   const displayFont = normalizeAnnouncementDisplayFont(formData.get('display_font'))
   const displaySize = normalizeAnnouncementDisplaySize(formData.get('display_size'))
@@ -124,14 +122,15 @@ export async function createAndSubmitAnnouncement(formData: FormData) {
 
   const organizationId = await getWritableOrganizationId(supabase, access)
   if (!organizationId) throw new Error('No organization')
+  const rateLimit = await checkActionRateLimit('announcement-submit-new', access.userId)
+  if (rateLimit.limited) throw new Error('Too many attempts. Try again shortly.')
 
   const { title, body } = readAnnouncementTextFields(formData, { requireComplete: true })
-  const categoryId = formData.get('category_id') as string | null
-  const bannerUrl = readOptionalBannerUrl(formData, 'banner_url')
-  const registrationLink = readOptionalHttpUrl(formData, 'registration_link', 'Registration link')
-  const expiresAt = readOptionalIsoDate(formData, 'expires_at')
-  const scheduledPublishAt = readOptionalIsoDate(formData, 'scheduled_publish_at')
-  const pinnedUntil = readOptionalIsoDate(formData, 'pinned_until')
+  const { categoryId, bannerUrl, registrationLink, expiresAt, scheduledPublishAt, pinnedUntil } =
+    await readAnnouncementMutationFields(supabase, formData, {
+      actorId: access.userId,
+      organizationId,
+    })
   const urgency = normalizeAnnouncementUrgency(formData.get('urgency'))
   const displayFont = normalizeAnnouncementDisplayFont(formData.get('display_font'))
   const displaySize = normalizeAnnouncementDisplaySize(formData.get('display_size'))

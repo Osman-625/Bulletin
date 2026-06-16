@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { logAuditEvent } from '@/lib/audit'
+import { validatePassword } from '@/lib/auth/password-policy'
 import { reportServerError } from '@/lib/error-reporting'
 import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -38,8 +39,11 @@ export async function completeRegistration(formData: FormData) {
     redirect(`/register?token=${encodedToken}&error=All+fields+are+required`)
   }
 
-  if (password.length < 8) {
-    redirect(`/register?token=${encodedToken}&error=Password+must+be+at+least+8+characters`)
+  const passwordValidation = validatePassword(password)
+  if (!passwordValidation.valid) {
+    redirect(
+      `/register?token=${encodedToken}&error=${encodeURIComponent(passwordValidation.message)}`
+    )
   }
 
   const admin = createAdminClient()

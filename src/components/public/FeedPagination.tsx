@@ -1,6 +1,9 @@
+'use client'
+
 import Link from 'next/link'
 import type { BoardSort } from '@/lib/announcements/public-board'
 import { buildFeedHref } from './FeedHref'
+import { useFeedNavigation } from './FeedNavigation'
 
 export function FeedPagination({
   page,
@@ -21,6 +24,11 @@ export function FeedPagination({
   search: string
   activeSort: BoardSort
 }) {
+  const { navigate } = useFeedNavigation()
+  // Land back at the top of the feed after a page change instead of the hero.
+  const pageHref = (target: number) =>
+    `${buildFeedHref({ category, q: search, sort: activeSort, page: target })}#announcements`
+
   return (
     <nav
       className="mt-8 flex flex-col gap-3 rounded-[1.15rem] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 sm:flex-row sm:items-center sm:justify-between"
@@ -44,15 +52,19 @@ export function FeedPagination({
       <div className="flex items-center gap-2">
         {page > 1 ? (
           <Link
-            href={buildFeedHref({ category, q: search, sort: activeSort, page: page - 1 })}
-            className="action-lift inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border)] px-3 text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+            href={pageHref(page - 1)}
+            onClick={(event) => {
+              event.preventDefault()
+              navigate(pageHref(page - 1), { scroll: true })
+            }}
+            className="action-lift inline-flex min-h-11 items-center rounded-[0.85rem] border border-[var(--color-border)] px-4 text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
           >
             Previous
           </Link>
         ) : (
           <span
             aria-disabled="true"
-            className="inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-muted)] opacity-55"
+            className="inline-flex min-h-11 items-center rounded-[0.85rem] border border-[var(--color-border-subtle)] px-4 text-sm font-semibold text-[var(--color-text-muted)] opacity-55"
           >
             Previous
           </span>
@@ -64,15 +76,19 @@ export function FeedPagination({
 
         {page < totalPages ? (
           <Link
-            href={buildFeedHref({ category, q: search, sort: activeSort, page: page + 1 })}
-            className="action-lift inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border)] px-3 text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+            href={pageHref(page + 1)}
+            onClick={(event) => {
+              event.preventDefault()
+              navigate(pageHref(page + 1), { scroll: true })
+            }}
+            className="action-lift inline-flex min-h-11 items-center rounded-[0.85rem] border border-[var(--color-border)] px-4 text-sm font-semibold text-[var(--color-text-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
           >
-            Load more notices
+            Next page
           </Link>
         ) : (
           <span
             aria-disabled="true"
-            className="inline-flex min-h-10 items-center rounded-[0.85rem] border border-[var(--color-border-subtle)] px-3 text-sm font-semibold text-[var(--color-text-muted)] opacity-55"
+            className="inline-flex min-h-11 items-center rounded-[0.85rem] border border-[var(--color-border-subtle)] px-4 text-sm font-semibold text-[var(--color-text-muted)] opacity-55"
           >
             All caught up
           </span>
