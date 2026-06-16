@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { BrandMark } from '@/components/layout/BrandMark'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
+import { PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { completeRegistration } from './actions'
 
@@ -129,8 +130,8 @@ export default async function RegisterPage({
               name="password"
               type="password"
               required
-              minLength={8}
-              placeholder="At least 8 characters"
+              minLength={PASSWORD_MIN_LENGTH}
+              placeholder={`At least ${PASSWORD_MIN_LENGTH} characters`}
               className="input-inti w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
             />
           </div>

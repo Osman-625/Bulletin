@@ -138,7 +138,7 @@ export default async function AnnouncementPage({ params }: { params: Promise<{ i
         organizationId={announcement.organization_id ?? null}
         hasRegistrationLink={Boolean(registrationHref)}
       />
-      <main className="mx-auto w-full max-w-[1461px] px-3 py-10 sm:px-5 lg:px-8">
+      <main id="main-content" className="mx-auto w-full max-w-[75rem] px-4 py-10 sm:px-5 lg:px-6">
         <article className="animate-fade-up mx-auto max-w-[82rem]">
           <BackButton />
 

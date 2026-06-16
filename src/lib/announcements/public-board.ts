@@ -1,4 +1,4 @@
-import type { AnnouncementWithRelations } from '@/lib/types'
+import type { PublicAnnouncement } from '@/lib/types'
 import {
   URGENCY_META,
   isAnnouncementPinned,
@@ -54,6 +54,10 @@ type CampusDateFormat = keyof typeof CAMPUS_DATE_FORMATTERS
 
 export type BoardSort = (typeof BOARD_SORTS)[number]
 export type BoardSectionId = 'daily' | 'closing' | 'future' | 'campus'
+type PublicBoardSortable = Pick<
+  PublicAnnouncement,
+  'expires_at' | 'pinned_until' | 'published_at' | 'urgency'
+>
 
 export const BOARD_SORT_OPTIONS: Array<{
   sort: BoardSort
@@ -108,6 +112,11 @@ export const BOARD_SECTION_META: Record<
 
 export function normalizeBoardSort(value?: string): BoardSort {
   return BOARD_SORTS.includes(value as BoardSort) ? (value as BoardSort) : 'priority'
+}
+
+function normalizeBoardPage(value?: string | number | null) {
+  const parsedPage = typeof value === 'number' ? value : Number.parseInt(value ?? '1', 10)
+  return Number.isFinite(parsedPage) && parsedPage > 0 ? Math.floor(parsedPage) : 1
 }
 
 function toValidCampusDate(date: CampusDateInput) {
@@ -182,7 +191,7 @@ function futureDeadlineValue(iso?: string | null, now = Date.now()) {
   return value > now ? value : Number.POSITIVE_INFINITY
 }
 
-function closingRank(announcement: AnnouncementWithRelations, now = Date.now()) {
+function closingRank(announcement: PublicBoardSortable, now = Date.now()) {
   const days = daysUntilDeadline(announcement.expires_at, now)
   if (days === null) return 0
   if (days <= 3) return 3
@@ -191,8 +200,8 @@ function closingRank(announcement: AnnouncementWithRelations, now = Date.now()) 
   return 0
 }
 
-export function sortAnnouncementsForPublicBoard(
-  announcements: AnnouncementWithRelations[],
+export function sortAnnouncementsForPublicBoard<T extends PublicBoardSortable>(
+  announcements: T[],
   sort: BoardSort,
   now = Date.now()
 ) {
@@ -229,13 +238,67 @@ export function sortAnnouncementsForPublicBoard(
   })
 }
 
+export function paginatePublicBoardItems<T extends PublicAnnouncement>(
+  announcements: T[],
+  {
+    sort,
+    page,
+    pageSize,
+    now = Date.now(),
+  }: {
+    sort: BoardSort
+    page?: string | number | null
+    pageSize: number
+    now?: number
+  }
+) {
+  const sorted = sortAnnouncementsForPublicBoard(announcements, sort, now)
+  const total = sorted.length
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  const currentPage = Math.min(normalizeBoardPage(page), totalPages)
+  const from = (currentPage - 1) * pageSize
+
+  return {
+    items: sorted.slice(from, from + pageSize),
+    total,
+    page: currentPage,
+    pageSize,
+    totalPages,
+  }
+}
+
+export function selectPublicBoardHighlights(
+  announcements: PublicAnnouncement[],
+  now = Date.now(),
+  pinnedLimit = 3
+) {
+  const featured =
+    announcements.find(
+      (announcement) => announcement.banner_url && !isAnnouncementPinned(announcement, now)
+    ) ??
+    announcements.find((announcement) => !isAnnouncementPinned(announcement, now)) ??
+    announcements[0]
+  const featuredIsPinned = featured ? isAnnouncementPinned(featured, now) : false
+  const pinnedFeatures = announcements
+    .filter(
+      (announcement) => isAnnouncementPinned(announcement, now) && announcement.id !== featured?.id
+    )
+    .slice(0, pinnedLimit)
+  const pinnedFeatureIds = new Set(pinnedFeatures.map((announcement) => announcement.id))
+  const rest = announcements.filter(
+    (announcement) => announcement.id !== featured?.id && !pinnedFeatureIds.has(announcement.id)
+  )
+
+  return { featured, featuredIsPinned, pinnedFeatures, rest }
+}
+
 export function boardSectionOrder(sort: BoardSort): BoardSectionId[] {
   if (sort === 'closing') return ['closing', 'daily', 'future', 'campus']
   if (sort === 'issued') return ['daily', 'future', 'closing', 'campus']
   return ['daily', 'closing', 'future', 'campus']
 }
 
-function isIssuedToday(iso?: string | null, now = Date.now()) {
+export function isIssuedToday(iso?: string | null, now = Date.now()) {
   if (!iso) return false
   const value = dateValue(iso)
   if (!value) return false
@@ -253,7 +316,7 @@ export function isFutureEventForBoard(iso?: string | null, now = Date.now()) {
 }
 
 function announcementMatchesSection(
-  announcement: AnnouncementWithRelations,
+  announcement: PublicAnnouncement,
   sectionId: BoardSectionId,
   now: number
 ) {
@@ -264,12 +327,12 @@ function announcementMatchesSection(
 }
 
 export function buildAnnouncementSections(
-  announcements: AnnouncementWithRelations[],
+  announcements: PublicAnnouncement[],
   sort: BoardSort,
   now = Date.now()
 ) {
   const order = boardSectionOrder(sort)
-  const sections = new Map<BoardSectionId, AnnouncementWithRelations[]>(order.map((id) => [id, []]))
+  const sections = new Map<BoardSectionId, PublicAnnouncement[]>(order.map((id) => [id, []]))
 
   announcements.forEach((announcement) => {
     const sectionId = order.find((id) => announcementMatchesSection(announcement, id, now))!

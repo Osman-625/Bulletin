@@ -5,6 +5,8 @@ import {
   deadlineLabel,
   formatCampusLongDate,
   normalizeBoardSort,
+  paginatePublicBoardItems,
+  selectPublicBoardHighlights,
   sortAnnouncementsForPublicBoard,
 } from '@/lib/announcements/public-board'
 import type { AnnouncementWithRelations } from '@/lib/types'
@@ -81,6 +83,86 @@ describe('public board helpers', () => {
       'closing',
       'standard-latest',
     ])
+  })
+
+  it('sorts the full public board dataset before slicing a page', () => {
+    const items = [
+      announcement('latest-page-one', { published_at: '2026-05-20T00:00:00.000Z' }),
+      announcement('standard-page-one', { published_at: '2026-05-19T00:00:00.000Z' }),
+      announcement('old-pinned', {
+        pinned_until: '2026-05-24T00:00:00.000Z',
+        published_at: '2026-05-01T00:00:00.000Z',
+      }),
+      announcement('urgent-page-two', {
+        urgency: 'urgent',
+        published_at: '2026-05-18T00:00:00.000Z',
+      }),
+    ]
+
+    const page = paginatePublicBoardItems(items, {
+      sort: 'priority',
+      page: 1,
+      pageSize: 2,
+      now,
+    })
+
+    expect(page.items.map((item) => item.id)).toEqual(['old-pinned', 'urgent-page-two'])
+    expect(page.total).toBe(4)
+    expect(page.totalPages).toBe(2)
+  })
+
+  it('separates the featured notice from active pinned side notices', () => {
+    const items = [
+      announcement('pinned-a', { pinned_until: '2026-05-24T00:00:00.000Z' }),
+      announcement('banner-feature', { banner_url: '/feature.jpg' }),
+      announcement('pinned-b', { pinned_until: '2026-05-25T00:00:00.000Z' }),
+      announcement('standard'),
+    ]
+
+    const result = selectPublicBoardHighlights(items, now)
+
+    expect(result.featured?.id).toBe('banner-feature')
+    expect(result.featuredIsPinned).toBe(false)
+    expect(result.pinnedFeatures.map((item) => item.id)).toEqual(['pinned-a', 'pinned-b'])
+    expect(result.rest.map((item) => item.id)).toEqual(['standard'])
+  })
+
+  it('uses the first active pinned notice as the featured fallback when every notice is pinned', () => {
+    const items = [
+      announcement('pinned-feature', {
+        banner_url: '/pinned-feature.jpg',
+        pinned_until: '2026-05-24T00:00:00.000Z',
+      }),
+      announcement('pinned-side', { pinned_until: '2026-05-25T00:00:00.000Z' }),
+    ]
+
+    const result = selectPublicBoardHighlights(items, now)
+
+    expect(result.featured?.id).toBe('pinned-feature')
+    expect(result.featuredIsPinned).toBe(true)
+    expect(result.pinnedFeatures.map((item) => item.id)).toEqual(['pinned-side'])
+    expect(result.rest).toEqual([])
+  })
+
+  it('limits pinned side notices and leaves overflow pins in the regular feed', () => {
+    const items = [
+      announcement('banner-feature', { banner_url: '/feature.jpg' }),
+      announcement('pinned-1', { pinned_until: '2026-05-24T00:00:00.000Z' }),
+      announcement('pinned-2', { pinned_until: '2026-05-24T00:00:00.000Z' }),
+      announcement('pinned-3', { pinned_until: '2026-05-24T00:00:00.000Z' }),
+      announcement('pinned-4', { pinned_until: '2026-05-24T00:00:00.000Z' }),
+      announcement('pinned-5', { pinned_until: '2026-05-24T00:00:00.000Z' }),
+    ]
+
+    const result = selectPublicBoardHighlights(items, now)
+
+    expect(result.featured?.id).toBe('banner-feature')
+    expect(result.pinnedFeatures.map((item) => item.id)).toEqual([
+      'pinned-1',
+      'pinned-2',
+      'pinned-3',
+    ])
+    expect(result.rest.map((item) => item.id)).toEqual(['pinned-4', 'pinned-5'])
   })
 
   it('builds sections using the campus timezone instead of the server timezone', () => {

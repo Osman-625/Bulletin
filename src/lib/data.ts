@@ -15,6 +15,7 @@
 import { createClient, createServiceClient } from './supabase/server'
 import { canAccessAdminArea, canAccessSuperAdminArea, getCurrentAccessContext } from './auth/authz'
 import type {
+  PublicAnnouncement,
   AnnouncementWithRelations,
   AnnouncementForReview,
   DbCategory,
@@ -22,7 +23,13 @@ import type {
   OrgWithMembers,
   PublisherWithOrgs,
 } from './types'
-import { sortAnnouncementsForFeed } from './announcements/presentation'
+import {
+  daysUntilDeadline,
+  isIssuedToday,
+  normalizeBoardSort,
+  paginatePublicBoardItems,
+  type BoardSort,
+} from './announcements/public-board'
 import { announcementLookupId } from './announcements/urls'
 import { reportServerError } from '@/lib/error-reporting'
 
@@ -33,12 +40,36 @@ const ANNOUNCEMENT_SELECT = `
   organizations ( id, name, slug, logo_url )
 ` as const
 
-/**
- * Like `ANNOUNCEMENT_SELECT` but uses an inner join on categories so that
- * `.eq('categories.slug', ...)` filters rows rather than just nulling the relation.
- */
-const ANNOUNCEMENT_SELECT_WITH_CATEGORY_FILTER = `
-  *,
+const PUBLIC_ANNOUNCEMENT_SELECT = `
+  id,
+  title,
+  body,
+  banner_url,
+  urgency,
+  display_font,
+  display_size,
+  registration_link,
+  scheduled_publish_at,
+  pinned_until,
+  published_at,
+  expires_at,
+  categories ( id, name, slug, color ),
+  organizations ( id, name, slug, logo_url )
+` as const
+
+const PUBLIC_ANNOUNCEMENT_SELECT_WITH_CATEGORY_FILTER = `
+  id,
+  title,
+  body,
+  banner_url,
+  urgency,
+  display_font,
+  display_size,
+  registration_link,
+  scheduled_publish_at,
+  pinned_until,
+  published_at,
+  expires_at,
   categories!inner ( id, name, slug, color ),
   organizations ( id, name, slug, logo_url )
 ` as const
@@ -48,11 +79,31 @@ const USER_MANAGEMENT_PAGE_SIZE = 24
 
 /** Paginated result for the public announcement feed. */
 type PublicAnnouncementsPage = {
-  items: AnnouncementWithRelations[]
+  items: PublicAnnouncement[]
   total: number
   page: number
   pageSize: number
   totalPages: number
+  error: string | null
+  /** Computed over the full filtered result set, not just the current page. */
+  stats: {
+    latest: PublicAnnouncement | null
+    closingThisWeek: number
+    publishedToday: number
+  }
+}
+
+const EMPTY_PUBLIC_FEED_STATS: PublicAnnouncementsPage['stats'] = {
+  latest: null,
+  closingThisWeek: 0,
+  publishedToday: 0,
+}
+
+type PublicAnnouncementCategory = NonNullable<PublicAnnouncement['categories']>
+type PublicAnnouncementOrganization = NonNullable<PublicAnnouncement['organizations']>
+type PublicAnnouncementQueryRow = Omit<PublicAnnouncement, 'categories' | 'organizations'> & {
+  categories: PublicAnnouncementCategory | PublicAnnouncementCategory[] | null
+  organizations: PublicAnnouncementOrganization | PublicAnnouncementOrganization[] | null
 }
 
 /** Generic paginated result for user management tables; includes per-role counts. */
@@ -103,12 +154,25 @@ function normalizePageInput(pageInput?: string | number | null) {
   return Number.isFinite(parsedPage) && parsedPage > 0 ? Math.floor(parsedPage) : 1
 }
 
+function singleRelation<T>(value: T | T[] | null): T | null {
+  return Array.isArray(value) ? (value[0] ?? null) : value
+}
+
+function normalizePublicAnnouncementRows(rows: PublicAnnouncementQueryRow[]): PublicAnnouncement[] {
+  return rows.map((row) => ({
+    ...row,
+    categories: singleRelation(row.categories),
+    organizations: singleRelation(row.organizations),
+  }))
+}
+
 /**
  * Fetches a paginated page of published announcements for the public feed.
  *
  * Filters out announcements that have not yet reached their `scheduled_publish_at`
  * date or have passed their `expires_at` date. Results are post-sorted by
- * `sortAnnouncementsForFeed` after the DB query to apply custom feed ordering.
+ * `paginatePublicBoardItems` after the DB query to apply custom feed ordering
+ * before slicing the requested page.
  *
  * @param categorySlug - When provided, restricts results to a single category.
  * @param searchQuery  - Raw user input; sanitized before use in the `ilike` filter.
@@ -118,21 +182,23 @@ function normalizePageInput(pageInput?: string | number | null) {
 export async function getPublicAnnouncements(
   categorySlug?: string,
   searchQuery?: string,
-  pageInput?: string | number | null
+  pageInput?: string | number | null,
+  sortInput?: BoardSort | string,
+  nowInput = Date.now()
 ): Promise<PublicAnnouncementsPage> {
   const supabase = await createClient()
-  const now = new Date().toISOString()
+  const now = new Date(nowInput).toISOString()
   const search = normalizePublicSearchQuery(searchQuery)
   const page = normalizePageInput(pageInput)
-  const from = (page - 1) * PUBLIC_FEED_PAGE_SIZE
-  const to = from + PUBLIC_FEED_PAGE_SIZE - 1
+  const activeSort = normalizeBoardSort(sortInput)
 
   let query = supabase
     .from('announcements')
-    .select(categorySlug ? ANNOUNCEMENT_SELECT_WITH_CATEGORY_FILTER : ANNOUNCEMENT_SELECT, {
-      count: 'exact',
-    })
+    .select(
+      categorySlug ? PUBLIC_ANNOUNCEMENT_SELECT_WITH_CATEGORY_FILTER : PUBLIC_ANNOUNCEMENT_SELECT
+    )
     .eq('status', 'published')
+    .is('archived_at', null)
     .or(`scheduled_publish_at.is.null,scheduled_publish_at.lte.${now}`)
     .or(`expires_at.is.null,expires_at.gt.${now}`)
 
@@ -144,15 +210,14 @@ export async function getPublicAnnouncements(
     query = query.or(`title.ilike.%${search}%,body.ilike.%${search}%`)
   }
 
-  const { data, error, count } = await query
-    .order('published_at', { ascending: false })
-    .range(from, to)
+  const { data, error } = await query.order('published_at', { ascending: false })
 
   if (error) {
     reportServerError('data.public_announcements.query_failed', error, {
       categorySlug: categorySlug ?? null,
       hasSearch: Boolean(search),
       page,
+      sort: activeSort,
     })
     return {
       items: [],
@@ -160,16 +225,36 @@ export async function getPublicAnnouncements(
       page,
       pageSize: PUBLIC_FEED_PAGE_SIZE,
       totalPages: 1,
+      error: 'public_announcements_query_failed',
+      stats: EMPTY_PUBLIC_FEED_STATS,
     }
   }
 
-  const total = count ?? data?.length ?? 0
-  return {
-    items: sortAnnouncementsForFeed((data ?? []) as AnnouncementWithRelations[]),
-    total,
+  const publicAnnouncements = normalizePublicAnnouncementRows(
+    (data ?? []) as unknown as PublicAnnouncementQueryRow[]
+  )
+  const pageResult = paginatePublicBoardItems(publicAnnouncements, {
+    sort: activeSort,
     page,
     pageSize: PUBLIC_FEED_PAGE_SIZE,
-    totalPages: Math.max(1, Math.ceil(total / PUBLIC_FEED_PAGE_SIZE)),
+    now: nowInput,
+  })
+
+  return {
+    ...pageResult,
+    error: null,
+    stats: {
+      // The query is ordered by published_at desc, so the first row is the
+      // newest published notice across the whole filtered set.
+      latest: publicAnnouncements[0] ?? null,
+      closingThisWeek: publicAnnouncements.filter((announcement) => {
+        const days = daysUntilDeadline(announcement.expires_at, nowInput)
+        return days !== null && days <= 7
+      }).length,
+      publishedToday: publicAnnouncements.filter((announcement) =>
+        isIssuedToday(announcement.published_at, nowInput)
+      ).length,
+    },
   }
 }
 

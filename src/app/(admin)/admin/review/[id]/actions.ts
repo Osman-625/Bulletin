@@ -6,6 +6,7 @@ import { logAuditEvent } from '@/lib/audit'
 import { canAccessAdminArea, getCurrentAccessContext } from '@/lib/auth/authz'
 import { reportServerError } from '@/lib/error-reporting'
 import { notifyAnnouncementReviewed } from '@/lib/notifications'
+import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
 import { createClient } from '@/lib/supabase/server'
 
 const REVIEW_WRITE_ERROR = 'review_failed'
@@ -18,6 +19,11 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
   const access = await getCurrentAccessContext()
   if (!access) redirect('/login')
   if (!canAccessAdminArea(access.role)) redirect('/login')
+  const rateLimit = await checkActionRateLimit(
+    'announcement-review',
+    `${access.userId}:${announcementId}`
+  )
+  if (rateLimit.limited) redirectWithReviewError(announcementId)
 
   const action = formData.get('_action')
   const comment = (formData.get('comment') as string | null)?.trim() || null

@@ -3,6 +3,7 @@ import { unstable_rethrow } from 'next/navigation'
 import { formatCampusDateTime } from '@/lib/announcements/public-board'
 import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import { reportServerError, reportServerWarning } from '@/lib/error-reporting'
+import { bannerStoragePath, listBannerStorageFiles } from '@/lib/storage/banner-cleanup'
 
 type ResourceMetric = {
   label: string
@@ -25,6 +26,7 @@ export type AnnouncementViewRow = {
   view_count: number | null
   published_at: string | null
   registration_link: string | null
+  banner_url: string | null
   categories: { name: string; color: string | null } | null
   organizations: { name: string } | null
 }
@@ -39,6 +41,7 @@ export type OwnerResourceOverview = {
   bannerFiles: number
   bannerStorageBytes: number
   bannerStorageStatus: 'ready' | 'missing' | 'error'
+  orphanedFiles: number
   topAnnouncements: AnnouncementViewRow[]
   viewsByCategory: Array<{ name: string; color: string; views: number }>
   viewsByOrganization: Array<{ name: string; views: number }>
@@ -46,13 +49,6 @@ export type OwnerResourceOverview = {
     vercel: ExternalResourceCard
     supabase: ExternalResourceCard
   }
-}
-
-type StorageFile = {
-  name: string
-  metadata?: {
-    size?: number
-  } | null
 }
 
 type VercelDeployment = {
@@ -88,19 +84,14 @@ type ExternalApiContext = {
 }
 
 const SUPABASE_PROJECT_REF_PATTERN = /^[a-z]{20}$/
+const OWNER_RESOURCE_ANNOUNCEMENTS_PAGE_SIZE = 1000
 
 export async function getOwnerResourceOverview(
   supabase: SupabaseClient
 ): Promise<OwnerResourceOverview> {
   const [announcementResult, passwordResetResult, bannerStorage, vercel, supabaseExternal] =
     await Promise.all([
-      supabase
-        .from('announcements')
-        .select(
-          'id, title, status, view_count, published_at, registration_link, categories(name, color), organizations(name)'
-        )
-        .order('view_count', { ascending: false })
-        .limit(1000),
+      fetchOwnerAnnouncementRows(supabase),
       supabase
         .from('password_reset_requests')
         .select('*', { count: 'exact', head: true })
@@ -126,6 +117,13 @@ export async function getOwnerResourceOverview(
     view_count: row.view_count ?? 0,
   }))
 
+  const bannerUrls = new Set(
+    announcements
+      .map((a) => bannerStoragePath(a.banner_url))
+      .filter((path): path is string => Boolean(path))
+  )
+  const orphanedFiles = bannerStorage.filePaths.filter((path) => !bannerUrls.has(path)).length
+
   const totalViews = announcements.reduce((sum, row) => sum + (row.view_count ?? 0), 0)
   const publishedRows = announcements.filter((row) => row.status === 'published')
   const publishedViews = publishedRows.reduce((sum, row) => sum + (row.view_count ?? 0), 0)
@@ -143,6 +141,7 @@ export async function getOwnerResourceOverview(
     bannerFiles: bannerStorage.files,
     bannerStorageBytes: bannerStorage.bytes,
     bannerStorageStatus: bannerStorage.status,
+    orphanedFiles,
     topAnnouncements: announcements.filter((row) => (row.view_count ?? 0) > 0).slice(0, 10),
     viewsByCategory: summarizeViewsByCategory(announcements),
     viewsByOrganization: summarizeViewsByOrganization(announcements),
@@ -153,31 +152,54 @@ export async function getOwnerResourceOverview(
   }
 }
 
-async function getBannerStorageSummary(supabase: SupabaseClient) {
-  const { data, error } = await supabase.storage.from('banner-images').list('', {
-    limit: 1000,
-    sortBy: { column: 'created_at', order: 'desc' },
-  })
+async function fetchOwnerAnnouncementRows(supabase: SupabaseClient) {
+  const rows: unknown[] = []
+  let offset = 0
 
-  if (error) {
+  while (true) {
+    const { data, error } = await supabase
+      .from('announcements')
+      .select(
+        'id, title, status, view_count, published_at, registration_link, banner_url, categories(name, color), organizations(name)'
+      )
+      .order('view_count', { ascending: false })
+      .range(offset, offset + OWNER_RESOURCE_ANNOUNCEMENTS_PAGE_SIZE - 1)
+
+    if (error) return { data: rows, error }
+
+    const page = data ?? []
+    rows.push(...page)
+    if (page.length < OWNER_RESOURCE_ANNOUNCEMENTS_PAGE_SIZE) {
+      return { data: rows, error: null }
+    }
+
+    offset += OWNER_RESOURCE_ANNOUNCEMENTS_PAGE_SIZE
+  }
+}
+
+async function getBannerStorageSummary(supabase: SupabaseClient) {
+  try {
+    const files = await listBannerStorageFiles(supabase.storage.from('banner-images'))
+    return {
+      files: files.length,
+      bytes: files.reduce((sum, file) => sum + file.size, 0),
+      filePaths: files.map((file) => file.path),
+      status: 'ready',
+    } as const
+  } catch (error) {
     reportServerError('owner.resources.banner_storage_list_failed', error, {
       bucket: 'banner-images',
     })
     return {
       files: 0,
       bytes: 0,
-      status: error.message.toLowerCase().includes('not found') ? 'missing' : 'error',
+      filePaths: [] as string[],
+      status:
+        error instanceof Error && error.message.toLowerCase().includes('not found')
+          ? 'missing'
+          : 'error',
     } as const
   }
-
-  const files = ((data ?? []) as StorageFile[]).filter(
-    (file) => file.name !== '.emptyFolderPlaceholder'
-  )
-  return {
-    files: files.length,
-    bytes: files.reduce((sum, file) => sum + (file.metadata?.size ?? 0), 0),
-    status: 'ready',
-  } as const
 }
 
 async function getVercelResourceCard(): Promise<ExternalResourceCard> {

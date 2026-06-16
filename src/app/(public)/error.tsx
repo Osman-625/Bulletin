@@ -30,7 +30,7 @@ export default function PublicError({
         <button
           type="button"
           onClick={reset}
-          className="action-lift mt-7 min-h-12 rounded-[10px] bg-[var(--color-accent-inti)] px-6 text-base font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+          className="action-lift mt-7 min-h-12 rounded-[10px] bg-[var(--color-accent-inti)] px-6 text-base font-semibold text-[var(--color-on-accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
         >
           Try again
         </button>

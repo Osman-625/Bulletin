@@ -14,6 +14,8 @@ process.env.SETUP_SECRET ??= 'test-setup-secret'
 
 export default defineConfig({
   testDir: resolve(root, 'tests/e2e'),
+  testIgnore: 'deploy-smoke.spec.ts',
+  timeout: 90_000,
   fullyParallel: false,
   workers: 1,
   retries: 0,

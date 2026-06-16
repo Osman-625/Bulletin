@@ -1,6 +1,6 @@
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { CountUp } from '@/components/dashboard/CountUp'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { formatCampusCompactDate } from '@/lib/announcements/public-board'
 import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
 import { createServiceClient } from '@/lib/supabase/server'
@@ -16,12 +16,17 @@ const ROLE_ROWS = [
 export default async function OwnerAnalyticsPage() {
   const supabase = await createServiceClient()
 
+  const now = new Date()
+  const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+
   const [
     { data: users },
     { data: byStatus },
     { data: byOrg },
     { data: byCategory },
     { data: recentUsers },
+    { count: closingCount },
+    { data: byRejectedOrg },
   ] = await Promise.all([
     supabase.from('users').select('role, created_at'),
     supabase.from('announcements').select('status'),
@@ -35,6 +40,13 @@ export default async function OwnerAnalyticsPage() {
       .select('display_name, role, created_at, email')
       .order('created_at', { ascending: false })
       .limit(10),
+    supabase
+      .from('announcements')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'published')
+      .gt('expires_at', now.toISOString())
+      .lt('expires_at', sevenDaysFromNow.toISOString()),
+    supabase.from('announcements').select('organizations(name), status').eq('status', 'rejected'),
   ])
 
   const roleCounts = (users ?? []).reduce<Record<string, number>>((acc, u) => {
@@ -73,29 +85,62 @@ export default async function OwnerAnalyticsPage() {
   )
   const sortedCats = Object.entries(catCounts).sort((a, b) => b[1].count - a[1].count)
 
+  const rejectedOrgCounts = (byRejectedOrg ?? []).reduce<Record<string, number>>((acc, r) => {
+    const name =
+      (r as { organizations?: { name?: string } | null }).organizations?.name ?? 'Unknown'
+    acc[name] = (acc[name] ?? 0) + 1
+    return acc
+  }, {})
+  const sortedRejectedOrgs = Object.entries(rejectedOrgCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+
+  const closingThisWeek = closingCount ?? 0
   const totalAnnouncements = Object.values(statusCounts).reduce((s, n) => s + n, 0)
   const totalUsers = users?.length ?? 0
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-6">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-6">
+      <DashboardBoardHeader
         kicker="Owner analytics"
         title="Platform analytics"
         description="Full system view across roles, announcements, organizations, categories, and account movement."
       />
 
       {/* Top stats */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         {[
-          { label: 'Total Users', value: totalUsers },
-          { label: 'Total Announcements', value: totalAnnouncements },
-          { label: 'Published', value: statusCounts['published'] ?? 0 },
-          { label: 'Pending Review', value: statusCounts['submitted'] ?? 0 },
-        ].map(({ label, value }) => (
-          <GlassCard key={label} hover={false} className="p-5">
+          { label: 'Total Users', value: totalUsers, accent: 'var(--color-navy)' },
+          {
+            label: 'Total Announcements',
+            value: totalAnnouncements,
+            accent: 'var(--color-accent-inti)',
+          },
+          {
+            label: 'Published',
+            value: statusCounts['published'] ?? 0,
+            accent: 'var(--color-status-published-text)',
+          },
+          {
+            label: 'Pending Review',
+            value: statusCounts['submitted'] ?? 0,
+            accent: 'var(--color-gold)',
+          },
+          {
+            label: 'Closing This Week',
+            value: closingThisWeek,
+            accent: 'var(--color-gold)',
+          },
+        ].map(({ label, value, accent }) => (
+          <GlassCard key={label} hover={false} className="relative overflow-hidden p-5 pl-6">
+            <span
+              className="absolute inset-y-0 left-0 w-1 rounded-l-2xl"
+              style={{ background: accent }}
+              aria-hidden="true"
+            />
             <CountUp
               value={value}
-              className="font-mono text-3xl font-bold text-[var(--color-accent)]"
+              className="font-mono text-3xl font-bold text-[var(--color-text-primary)]"
             />
             <p className="mt-1 text-xs tracking-widest text-[var(--color-text-muted)] uppercase">
               {label}
@@ -156,7 +201,7 @@ export default async function OwnerAnalyticsPage() {
                 {totalAnnouncements > 0 && (
                   <div className="mt-2 h-0.5 rounded-full bg-[var(--color-surface-elevated)]">
                     <div
-                      className="h-0.5 rounded-full bg-[var(--color-accent)]"
+                      className="h-0.5 rounded-full bg-[var(--color-accent-inti)]"
                       style={{
                         width: `${Math.round(((statusCounts[s] ?? 0) / totalAnnouncements) * 100)}%`,
                       }}
@@ -169,7 +214,7 @@ export default async function OwnerAnalyticsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div>
           <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">
             Most Active Organizations
@@ -200,6 +245,42 @@ export default async function OwnerAnalyticsPage() {
                 </p>
                 <p className="mt-1 text-[var(--color-text-secondary)]">
                   Published announcement counts will appear after organizations start posting.
+                </p>
+              </output>
+            </GlassCard>
+          )}
+        </div>
+
+        <div>
+          <h2 className="mb-4 text-lg font-semibold text-[var(--color-text-primary)]">
+            Most Rejected Organizations
+          </h2>
+          {sortedRejectedOrgs.length > 0 ? (
+            <div className="space-y-2">
+              {sortedRejectedOrgs.map(([name, count], i) => (
+                <GlassCard key={name} hover={false} className="flex items-center gap-4 px-5 py-3">
+                  <span className="w-5 shrink-0 font-mono text-sm text-[var(--color-text-muted)]">
+                    {i + 1}
+                  </span>
+                  <p className="flex-1 truncate text-sm font-medium text-[var(--color-text-primary)]">
+                    {name}
+                  </p>
+                  <CountUp
+                    value={count}
+                    className="font-mono text-sm font-bold text-[var(--color-text-primary)]"
+                  />
+                  <p className="text-xs text-[var(--color-text-muted)]">rejected</p>
+                </GlassCard>
+              ))}
+            </div>
+          ) : (
+            <GlassCard hover={false} className="p-6">
+              <output className="block text-sm">
+                <p className="font-semibold text-[var(--color-text-primary)]">
+                  No rejected announcements yet
+                </p>
+                <p className="mt-1 text-[var(--color-text-secondary)]">
+                  Rejection counts will appear after moderation decisions are recorded.
                 </p>
               </output>
             </GlassCard>
@@ -281,6 +362,6 @@ export default async function OwnerAnalyticsPage() {
           </GlassCard>
         )}
       </div>
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

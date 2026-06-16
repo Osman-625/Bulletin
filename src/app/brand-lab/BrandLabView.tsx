@@ -23,7 +23,7 @@ export function BrandLabView({ directions, activeSlug, researchAnchors }: BrandL
     directions.find((direction) => direction.slug === activeSlug) ?? directions[0]
 
   return (
-    <main className={styles.labShell}>
+    <main id="main-content" className={styles.labShell}>
       <section className={styles.hero}>
         <div className={styles.heroCopy}>
           <p className={styles.kicker}>Bulletin Brand Lab / INTI-inspired identity system</p>

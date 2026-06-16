@@ -74,6 +74,7 @@ describe('security source guards', () => {
     const roleCheckIndex = actions.indexOf('canAccessAdminArea')
     const validationIndex = actions.indexOf('readOrganizationFormData')
     const insertIndex = actions.indexOf(".from('organizations')")
+    const membershipInsertIndex = actions.indexOf(".from('organization_members')")
 
     expect(actions).toContain("from '@/lib/auth/authz'")
     expect(actions).toContain("from '@/lib/organizations/validation'")
@@ -81,9 +82,12 @@ describe('security source guards', () => {
     expect(roleCheckIndex).toBeGreaterThan(-1)
     expect(validationIndex).toBeGreaterThan(-1)
     expect(insertIndex).toBeGreaterThan(-1)
+    expect(membershipInsertIndex).toBeGreaterThan(-1)
     expect(accessCheckIndex).toBeLessThan(insertIndex)
     expect(roleCheckIndex).toBeLessThan(insertIndex)
     expect(validationIndex).toBeLessThan(insertIndex)
+    expect(insertIndex).toBeLessThan(membershipInsertIndex)
+    expect(actions).toContain("member_role: 'admin'")
   })
 
   it('ships a storage policy migration that scopes banner uploads to the actor and organization', () => {
@@ -148,17 +152,19 @@ describe('security source guards', () => {
     expect(proxy).toContain('Content-Security-Policy')
   })
 
-  it('ships a no-store health route with non-secret debug channels', () => {
+  it('ships a no-store health route without public operational debug details', () => {
     const route = source('src/app/api/health/route.ts')
 
     expect(route).toContain("export const runtime = 'nodejs'")
     expect(route).toContain("export const dynamic = 'force-dynamic'")
     expect(route).toContain('createAdminClient')
-    expect(route).toContain('debugChannels')
     expect(route).toContain('/api/health')
     expect(route).toContain('Cache-Control')
     expect(route).toContain('no-store')
     expect(route).toContain("reportServerWarning('health.database.unreachable'")
+    expect(route).not.toContain('debugChannels')
+    expect(route).not.toContain('github_actions')
+    expect(route).not.toContain('backup_artifacts')
     expect(route).not.toContain('SUPABASE_SERVICE_ROLE_KEY')
     expect(route).not.toContain('NEXT_PUBLIC_SUPABASE_ANON_KEY')
   })
@@ -179,6 +185,9 @@ describe('security source guards', () => {
     const actionLimiter = source('src/lib/security/action-rate-limit.ts')
     const setupRoute = source('src/app/api/setup/route.ts')
     const migration = source('supabase/migrations/20260521000019_rate_limit_buckets.sql')
+    const remediation = source(
+      'supabase/migrations/20260606031448_security_advisor_remediation.sql'
+    )
     const databaseTypes = source('src/lib/database.types.ts')
 
     expect(persistentLimiter).toContain("import 'server-only'")
@@ -191,11 +200,47 @@ describe('security source guards', () => {
     expect(migration).toContain('create table if not exists public.rate_limit_buckets')
     expect(migration).toContain('create or replace function public.hit_rate_limit')
     expect(migration).toContain('grant execute on function public.hit_rate_limit')
+    expect(remediation).toContain(
+      'revoke execute on function public.hit_rate_limit(text, integer, integer, timestamptz)'
+    )
+    expect(remediation).toContain('from public, anon, authenticated')
+    expect(remediation).toContain(
+      'grant execute on function public.hit_rate_limit(text, integer, integer, timestamptz)'
+    )
+    expect(remediation).toContain('to service_role')
+    expect(remediation).toContain(
+      "raise exception 'rate_limit_buckets must remain deny-all without client policies'"
+    )
+    expect(remediation).not.toContain('create policy')
     expect(databaseTypes).toContain('rate_limit_buckets: {')
     expect(databaseTypes).toContain('hit_rate_limit: {')
   })
 
+  it('ships database advisor remediation for internal functions and future grants', () => {
+    const migration = source('supabase/migrations/20260606031448_security_advisor_remediation.sql')
+
+    expect(migration).toContain('revoke execute on function public.handle_new_user()')
+    expect(migration).toContain('revoke execute on function public.set_updated_at()')
+    expect(migration).toContain('revoke execute on function public.set_expires_at()')
+    expect(migration).toContain(
+      'revoke execute on function public.prevent_publisher_org_approval_field_updates()'
+    )
+    expect(migration).toContain(
+      "'revoke execute on function public.rls_auto_enable() from public, anon, authenticated'"
+    )
+    expect(migration).toContain('alter default privileges for role postgres in schema public')
+    expect(migration).toContain('revoke execute on functions from public, anon, authenticated')
+    expect(migration).toContain(
+      'revoke select, insert, update, delete on tables from anon, authenticated'
+    )
+    expect(migration).toContain('revoke usage, select on sequences from anon, authenticated')
+    expect(migration).toContain('alter function public.current_user_role()')
+    expect(migration).toContain('alter function public.increment_announcement_view(uuid)')
+    expect(migration).toContain('set search_path = pg_catalog')
+  })
+
   it('uses the shared temporary-password policy in privileged user management flows', () => {
+    const adminUsers = source('src/app/(admin)/admin/users/page.tsx')
     const ownerUsers = source('src/app/(owner)/owner/users/page.tsx')
     const superAdminUsers = source('src/app/(super-admin)/super-admin/users/page.tsx')
     const superAdminActions = source('src/app/(super-admin)/super-admin/users/actions.ts')
@@ -204,20 +249,44 @@ describe('security source guards', () => {
     )
     const resetButton = source('src/app/(super-admin)/super-admin/users/_ResetButton.tsx')
 
-    for (const file of [ownerUsers, superAdminUsers, superAdminActions]) {
+    for (const file of [adminUsers, ownerUsers, superAdminUsers, superAdminActions]) {
       expect(file).toContain("from '@/lib/auth/password-policy'")
       expect(file).toContain('validateTemporaryPassword')
     }
 
-    for (const file of [ownerUsers, superAdminUsers, resetRequestButton, resetButton]) {
+    for (const file of [adminUsers, ownerUsers, superAdminUsers, resetRequestButton, resetButton]) {
       expect(file).toContain("from '@/lib/auth/password-policy'")
       expect(file).toContain('TEMPORARY_PASSWORD_MIN_LENGTH')
     }
 
-    for (const file of [ownerUsers, superAdminUsers, superAdminActions]) {
+    for (const file of [adminUsers, ownerUsers, superAdminUsers, superAdminActions]) {
       expect(file).not.toContain('temp.length < 8')
       expect(file).not.toContain('tempPassword.length < 8')
       expect(file).not.toContain('minLength={8}')
+    }
+  })
+
+  it('uses the shared 12-character password policy in registration and change flows', () => {
+    const registerAction = source('src/app/register/actions.ts')
+    const registerPage = source('src/app/register/page.tsx')
+    const changePasswordAction = source('src/app/change-password/actions.ts')
+    const changePasswordPage = source('src/app/change-password/page.tsx')
+    const accountActions = source('src/lib/account/actions.ts')
+    const accountSettings = source('src/components/account/AccountSettingsPage.tsx')
+
+    for (const file of [registerAction, changePasswordAction, accountActions]) {
+      expect(file).toContain("from '@/lib/auth/password-policy'")
+      expect(file).toContain('validatePassword')
+      expect(file).not.toContain('password.length < 8')
+      expect(file).not.toContain('newPassword.length < 8')
+      expect(file).not.toContain('at least 8 characters')
+    }
+
+    for (const file of [registerPage, changePasswordPage, accountSettings]) {
+      expect(file).toContain("from '@/lib/auth/password-policy'")
+      expect(file).toContain('PASSWORD_MIN_LENGTH')
+      expect(file).not.toContain('minLength={8}')
+      expect(file).not.toContain('At least 8 characters')
     }
   })
 
@@ -257,6 +326,49 @@ describe('security source guards', () => {
     expect(announcementPolicy.match(/organization_members/g)?.length).toBeGreaterThanOrEqual(2)
     expect(announcementPolicy).toContain('where organization_id = announcements.organization_id')
     expect(announcementPolicy).toContain('and user_id = auth.uid()')
+  })
+
+  it('ships backend improvement RLS and RPC hardening for announcement revisions and view counts', () => {
+    const migrationPath = 'supabase/migrations/20260615000000_backend_improvement_hardening.sql'
+
+    expect(existsSync(migrationPath)).toBe(true)
+
+    const migration = source(migrationPath)
+    const publisherUpdatePolicyStart = migration.indexOf(
+      'create policy "announcements: publisher update own"'
+    )
+    const viewCounterGrantStart = migration.indexOf(
+      'revoke execute on function public.increment_announcement_view(uuid)'
+    )
+    const publisherUpdatePolicy = migration.slice(publisherUpdatePolicyStart, viewCounterGrantStart)
+
+    expect(publisherUpdatePolicyStart).toBeGreaterThan(-1)
+    expect(viewCounterGrantStart).toBeGreaterThan(publisherUpdatePolicyStart)
+    expect(publisherUpdatePolicy).toContain("status in ('draft', 'submitted', 'rejected')")
+    expect(migration).toContain('from public, anon, authenticated')
+    expect(migration).toContain(
+      'grant execute on function public.increment_announcement_view(uuid) to service_role'
+    )
+  })
+
+  it('rate-limits privileged announcement, review, and organization mutation actions', () => {
+    const newActions = source('src/app/(dashboard)/dashboard/announcements/new/actions.ts')
+    const editActions = source('src/app/(dashboard)/dashboard/announcements/[id]/edit/actions.ts')
+    const reviewActions = source('src/app/(admin)/admin/review/[id]/actions.ts')
+    const orgActions = source('src/app/(admin)/admin/orgs/new/actions.ts')
+
+    for (const file of [newActions, editActions, reviewActions, orgActions]) {
+      expect(file).toContain("from '@/lib/security/action-rate-limit'")
+      expect(file).toContain('checkActionRateLimit(')
+      expect(file).toContain('rateLimit.limited')
+    }
+
+    expect(newActions).toContain("'announcement-create'")
+    expect(newActions).toContain("'announcement-submit-new'")
+    expect(editActions).toContain("'announcement-update'")
+    expect(editActions).toContain("'announcement-submit'")
+    expect(reviewActions).toContain("'announcement-review'")
+    expect(orgActions).toContain("'organization-create'")
   })
 
   it('keeps unsafe eval out of production CSP while allowing React development diagnostics', () => {
@@ -392,6 +504,9 @@ describe('security source guards', () => {
       ])
     )
     expect(viewAction).toContain("rpc('increment_announcement_view'")
+    expect(viewAction).toContain('await checkPersistentRateLimit')
+    expect(viewAction).toContain("rateLimitKey('announcement-view'")
+    expect(viewAction).toContain('if (rateLimit.limited) return')
 
     expect(forgotPasswordAction).toContain("checkActionRateLimit('forgot-password'")
     expect(forgotPasswordAction).toContain('redirectAsSent()')

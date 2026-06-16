@@ -2,10 +2,10 @@ import Link from 'next/link'
 import { ShieldCheck } from 'lucide-react'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import {
-  DashboardDeskHeader,
-  DashboardDeskPage,
-  DashboardDeskPanel,
-} from '@/components/dashboard/DashboardDesk'
+  DashboardBoardHeader,
+  DashboardBoardPage,
+  DashboardBoardPanel,
+} from '@/components/dashboard/DashboardBoard'
 import { formatCampusShortDate } from '@/lib/announcements/public-board'
 import { getAllAdmins } from '@/lib/data'
 
@@ -20,18 +20,18 @@ export default async function AdminsPage() {
   const admins = await getAllAdmins()
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker="Super directory"
         title="Admins"
         description={`${admins.length} admin user${admins.length === 1 ? '' : 's'} with review and management access.`}
         action={{ href: '/super-admin/admins/invite', label: 'Invite admin', icon: ShieldCheck }}
       />
 
-      <DashboardDeskPanel
+      <DashboardBoardPanel
         title="Admin directory"
         count={`${admins.length} total`}
-        bodyClassName="desk-panel-body"
+        bodyClassName="board-panel-body"
       >
         {admins.length === 0 ? (
           <output className="mx-auto block max-w-md py-12 text-center">
@@ -75,7 +75,7 @@ export default async function AdminsPage() {
             ))}
           </div>
         )}
-      </DashboardDeskPanel>
-    </DashboardDeskPage>
+      </DashboardBoardPanel>
+    </DashboardBoardPage>
   )
 }

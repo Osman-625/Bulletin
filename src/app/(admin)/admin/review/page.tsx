@@ -8,11 +8,11 @@ import {
   Clock3,
 } from 'lucide-react'
 import {
-  DashboardDeskHeader,
-  DashboardDeskMetrics,
-  DashboardDeskPage,
-  DashboardDeskPanel,
-} from '@/components/dashboard/DashboardDesk'
+  DashboardBoardHeader,
+  DashboardBoardMetrics,
+  DashboardBoardPage,
+  DashboardBoardPanel,
+} from '@/components/dashboard/DashboardBoard'
 import { StatusBadge } from '@/components/dashboard/StatusBadge'
 import { formatCampusShortDate } from '@/lib/announcements/public-board'
 import { getSubmittedAnnouncements } from '@/lib/data'
@@ -83,9 +83,9 @@ export default async function ReviewQueuePage() {
   const oldest = queue[0]?.updated_at
 
   return (
-    <DashboardDeskPage className="admin-review-page flex flex-col gap-4">
-      <DashboardDeskHeader
-        kicker="Admin desk"
+    <DashboardBoardPage className="admin-review-page flex flex-col gap-4">
+      <DashboardBoardHeader
+        kicker="Admin board"
         title="Review queue"
         description={
           queue.length === 0
@@ -96,7 +96,7 @@ export default async function ReviewQueuePage() {
         }
       />
 
-      <DashboardDeskMetrics
+      <DashboardBoardMetrics
         metrics={[
           {
             label: 'Waiting',
@@ -127,7 +127,7 @@ export default async function ReviewQueuePage() {
         ]}
       />
 
-      <DashboardDeskPanel title="Pending submissions" count={`${queue.length} waiting`}>
+      <DashboardBoardPanel title="Pending submissions" count={`${queue.length} waiting`}>
         {queue.length === 0 ? (
           <div className="grid min-h-[18rem] place-items-center px-5 py-16 text-center">
             <div className="mx-auto flex size-12 items-center justify-center rounded-[1rem] bg-[var(--color-status-published-bg)] text-[var(--color-status-published-text)]">
@@ -147,7 +147,7 @@ export default async function ReviewQueuePage() {
             ))}
           </div>
         )}
-      </DashboardDeskPanel>
-    </DashboardDeskPage>
+      </DashboardBoardPanel>
+    </DashboardBoardPage>
   )
 }

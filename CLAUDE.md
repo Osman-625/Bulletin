@@ -95,6 +95,7 @@ Role enforcement: Supabase RLS (data boundary) + `src/proxy.ts` (route redirects
 - CSP nonce is generated in `src/proxy.ts` — any new `<script>` tags must use `nonce`.
 - Banner images go to Supabase Storage `banner-images` bucket only. Cleanup runs via cron at `/api/maintenance/cleanup-orphan-banners`.
 - Date/time logic for announcements: always use `Asia/Kuala_Lumpur` timezone, centralized in `src/lib/announcements/public-board.ts`.
+- When auditing or fixing UI, follow `.claude/rules/ux-research-quality.md` — verify from evidence, fix root causes not symptoms, preserve the 3-column board and data behavior, and report every bug with file/cause/visible failure/exact fix/test step.
 
 ## graphify
 

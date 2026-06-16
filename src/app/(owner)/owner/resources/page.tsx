@@ -1,8 +1,17 @@
 import Link from 'next/link'
-import { Activity, ArrowUpRight, Database, Eye, HardDrive, LockKeyhole, Server } from 'lucide-react'
+import {
+  Activity,
+  ArrowUpRight,
+  Database,
+  Eye,
+  FileX,
+  HardDrive,
+  LockKeyhole,
+  Server,
+} from 'lucide-react'
 import { CountUp } from '@/components/dashboard/CountUp'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { createServiceClient } from '@/lib/supabase/server'
 import {
   type ExternalResourceCard,
@@ -32,8 +41,8 @@ export default async function OwnerResourcesPage() {
   const overview = await getOwnerResourceOverview(supabase)
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-6">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-6">
+      <DashboardBoardHeader
         kicker="Owner only · Read-only"
         title="Resources"
         description="Platform health, announcement view counters, storage footprint, and optional Vercel and Supabase resource signals."
@@ -45,7 +54,7 @@ export default async function OwnerResourcesPage() {
         }}
       />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <MetricCard
           icon={Eye}
           label="Total Views"
@@ -57,13 +66,25 @@ export default async function OwnerResourcesPage() {
           label="Published Views"
           value={overview.publishedViews}
           helper={`${overview.averageViews.toLocaleString('en-MY')} average per published post`}
+          progress={
+            overview.totalViews > 0
+              ? Math.round((overview.publishedViews / overview.totalViews) * 100)
+              : 0
+          }
         />
         <MetricCard
           icon={HardDrive}
           label="Banner Storage"
           value={overview.bannerFiles}
-          helper={`${formatBytes(overview.bannerStorageBytes)} in banner-images`}
+          helper={`${formatBytes(overview.bannerStorageBytes)} used`}
           tone={overview.bannerStorageStatus === 'ready' ? 'accent' : 'warn'}
+        />
+        <MetricCard
+          icon={FileX}
+          label="Orphaned Files"
+          value={overview.orphanedFiles}
+          helper="Unused banner assets"
+          tone={overview.orphanedFiles > 0 ? 'warn' : 'accent'}
         />
         <MetricCard
           icon={LockKeyhole}
@@ -101,7 +122,7 @@ export default async function OwnerResourcesPage() {
           }))}
         />
       </section>
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }
 
@@ -111,15 +132,17 @@ function MetricCard({
   value,
   helper,
   tone = 'accent',
+  progress,
 }: {
   icon: React.ComponentType<{ size?: number; className?: string }>
   label: string
   value: number
   helper: string
   tone?: 'accent' | 'warn'
+  progress?: number
 }) {
   return (
-    <GlassCard hover={false} className="p-5">
+    <GlassCard hover={false} className="flex flex-col gap-0 p-5">
       <div className="mb-4 flex items-center justify-between gap-4">
         <p className="text-xs font-semibold tracking-[0.16em] text-[var(--color-text-muted)] uppercase">
           {label}
@@ -137,8 +160,30 @@ function MetricCard({
         className="font-mono text-4xl font-bold text-[var(--color-text-primary)]"
       />
       <p className="mt-2 text-xs leading-5 text-[var(--color-text-muted)]">{helper}</p>
+      {progress !== undefined && (
+        <div className="mt-4">
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-surface-elevated)]">
+            <div
+              className={`h-1.5 rounded-full transition-all duration-700 ${
+                tone === 'warn' ? 'bg-[var(--color-gold)]' : 'bg-[var(--color-accent-inti)]'
+              }`}
+              style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+            />
+          </div>
+          <p className="mt-1.5 text-right font-mono text-[11px] text-[var(--color-text-muted)]">
+            {Math.round(progress)}%
+          </p>
+        </div>
+      )}
     </GlassCard>
   )
+}
+
+const STATUS_BAR: Record<ExternalResourceCard['status'], { width: string; color: string }> = {
+  ready: { width: '100%', color: 'var(--color-status-published-text)' },
+  attention: { width: '60%', color: 'var(--color-gold)' },
+  not_configured: { width: '0%', color: 'var(--color-text-muted)' },
+  error: { width: '20%', color: 'var(--color-status-rejected-text)' },
 }
 
 function ExternalResourcePanel({
@@ -148,8 +193,10 @@ function ExternalResourcePanel({
   icon: React.ComponentType<{ size?: number; className?: string }>
   resource: ExternalResourceCard
 }) {
+  const bar = STATUS_BAR[resource.status]
+
   return (
-    <GlassCard hover={false} className="p-5">
+    <GlassCard hover={false} className="overflow-hidden p-5">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-xl bg-[var(--color-surface-elevated)] text-[var(--color-accent-inti)]">
@@ -165,10 +212,18 @@ function ExternalResourcePanel({
           </div>
         </div>
         <span
-          className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-bold tracking-[0.08em] uppercase ${resourceStatusStyles[resource.status]}`}
+          className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-bold tracking-[0.08em] uppercase ${resourceStatusStyles[resource.status]}`}
         >
           {resource.status.replace('_', ' ')}
         </span>
+      </div>
+
+      {/* Status health bar */}
+      <div className="mb-4 h-1 w-full overflow-hidden rounded-full bg-[var(--color-surface-elevated)]">
+        <div
+          className="h-1 rounded-full transition-all duration-700"
+          style={{ width: bar.width, background: bar.color }}
+        />
       </div>
 
       <div className="grid gap-2 sm:grid-cols-2">

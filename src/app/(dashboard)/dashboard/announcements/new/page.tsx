@@ -2,7 +2,7 @@ import { ArrowLeft } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { AnnouncementForm } from '@/components/dashboard/AnnouncementForm'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { createAnnouncement, createAndSubmitAnnouncement } from './actions'
 import { getWritableOrganizationId } from '@/lib/announcements/access'
 import { getCurrentAccessContext } from '@/lib/auth/authz'
@@ -48,8 +48,8 @@ export default async function NewAnnouncementPage() {
   ])
 
   return (
-    <DashboardDeskPage className="new-announcement-page flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="new-announcement-page flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker="Publisher editor"
         title="New announcement"
         description="Write the notice first, then tune category, timing, and preview details before sending it for review."
@@ -70,6 +70,6 @@ export default async function NewAnnouncementPage() {
         organizationId={organizationId}
         isNew
       />
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

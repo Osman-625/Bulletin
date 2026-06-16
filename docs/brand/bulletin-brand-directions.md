@@ -59,7 +59,7 @@ Research anchors:
 **Personality:** Editorial, credible, measured  
 **Tagline:** A campus broadsheet rebuilt for a fast university feed.
 
-Campus Press is closest to the academic institution. It makes Bulletin feel like a curated editorial desk: issue numbers, date stamps, clear sections, strict metadata, and warm paper surfaces. It is the safest direction for stakeholder approval because it immediately reads as official.
+Campus Press is closest to the academic institution. It makes Bulletin feel like a curated editorial board: issue numbers, date stamps, clear sections, strict metadata, and warm paper surfaces. It is the safest direction for stakeholder approval because it immediately reads as official.
 
 ### Typography
 
@@ -211,7 +211,7 @@ Commons-board modules:
 - Poster-native cards
 - Offset clusters and board rhythm
 - Clear category chips
-- Dashboard as a publishing desk
+- Dashboard as a publishing board
 
 ### Motion
 

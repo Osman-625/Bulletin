@@ -1,5 +1,4 @@
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const UUID_IN_SEGMENT_PATTERN =
   /([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i
 
@@ -12,6 +11,16 @@ export function toSafeHttpUrl(value: string | null | undefined): string | null {
   } catch {
     return null
   }
+}
+
+export function toSafeImageUrl(value: string | null | undefined): string | null {
+  if (!value) return null
+
+  if (value.startsWith('/') && !value.startsWith('//')) {
+    return value
+  }
+
+  return toSafeHttpUrl(value)
 }
 
 export function slugifyAnnouncementTitle(title: string): string {
@@ -27,13 +36,7 @@ export function slugifyAnnouncementTitle(title: string): string {
   return slug || 'announcement'
 }
 
-export function announcementPathSegment({
-  id,
-  title,
-}: {
-  id: string
-  title: string
-}): string {
+export function announcementPathSegment({ id, title }: { id: string; title: string }): string {
   return `${slugifyAnnouncementTitle(title)}-${id}`
 }
 

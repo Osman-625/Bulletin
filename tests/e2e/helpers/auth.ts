@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import { requireEnv } from './env'
+import { gotoApp, waitForAppURL } from './navigation'
 
 export type TestRole = 'owner' | 'super_admin' | 'admin' | 'publisher'
 
@@ -30,13 +31,13 @@ export function credentialsForRole(role: TestRole) {
 
 export async function loginAs(page: Page, role: TestRole) {
   const { email, password } = credentialsForRole(role)
-  await page.goto('/login')
+  await gotoApp(page, '/login')
   await page.getByLabel(/email or username/i).fill(email)
   await page.getByLabel(/password/i).fill(password)
   await page.getByRole('button', { name: /sign in/i }).click()
-  await page.waitForURL(/\/(owner|super-admin|admin|dashboard)/)
+  await waitForAppURL(page, /\/(owner|super-admin|admin|dashboard)/)
 }
 
 export async function logout(page: Page) {
-  await page.goto('/login')
+  await gotoApp(page, '/login')
 }

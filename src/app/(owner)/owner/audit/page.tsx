@@ -10,7 +10,7 @@ import {
   UserRound,
   type LucideIcon,
 } from 'lucide-react'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { dateValue, formatCampusDateTime } from '@/lib/announcements/public-board'
 import type { Database, Json, Tables } from '@/lib/database.types'
 import { reportServerError } from '@/lib/error-reporting'
@@ -474,7 +474,15 @@ function AuditEmptyState({ hasFilters }: { hasFilters: boolean }) {
   )
 }
 
-function AuditEventCard({ entry, nowMs }: { entry: AuditEntry; nowMs: number }) {
+function AuditEventCard({
+  entry,
+  nowMs,
+  isLast,
+}: {
+  entry: AuditEntry
+  nowMs: number
+  isLast: boolean
+}) {
   const tone = eventTone(entry.action)
   const Icon = tone.icon
   const actorData = entry.users
@@ -484,14 +492,20 @@ function AuditEventCard({ entry, nowMs }: { entry: AuditEntry; nowMs: number }) 
   return (
     <article className="grid gap-4 p-4 transition-colors hover:bg-[var(--color-surface-elevated)]/60 md:grid-cols-[1fr_auto]">
       <div className="flex min-w-0 gap-3">
-        <div className="relative mt-1 flex size-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-surface-elevated)]">
-          <span
-            className={`absolute -top-1 -right-1 h-3 w-3 rounded-full ring-2 ring-[var(--color-surface)] ${tone.mark}`}
-          />
-          <Icon size={18} strokeWidth={1.8} className="text-[var(--color-text-secondary)]" />
+        {/* Icon with timeline connector */}
+        <div className="relative flex shrink-0 flex-col items-center">
+          <div className="relative mt-1 flex size-10 items-center justify-center rounded-xl bg-[var(--color-surface-elevated)]">
+            <span
+              className={`absolute -top-1 -right-1 h-3 w-3 rounded-full ring-2 ring-[var(--color-surface)] ${tone.mark}`}
+            />
+            <Icon size={18} strokeWidth={1.8} className="text-[var(--color-text-secondary)]" />
+          </div>
+          {!isLast && (
+            <div className="mt-2 w-px flex-1 bg-[var(--color-border)]" aria-hidden="true" />
+          )}
         </div>
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 pb-4">
           <div className="flex flex-wrap items-center gap-2">
             <span className={`rounded-lg px-2 py-1 text-[11px] font-semibold ${tone.badge}`}>
               {tone.label}
@@ -578,9 +592,14 @@ function AuditEventsPanel({
       {entries.length === 0 ? (
         <AuditEmptyState hasFilters={hasFilters} />
       ) : (
-        <div className="divide-y divide-[var(--color-border)]">
-          {entries.map((entry) => (
-            <AuditEventCard key={entry.id} entry={entry} nowMs={nowMs} />
+        <div className="p-2">
+          {entries.map((entry, i) => (
+            <AuditEventCard
+              key={entry.id}
+              entry={entry}
+              nowMs={nowMs}
+              isLast={i === entries.length - 1}
+            />
           ))}
         </div>
       )}
@@ -743,8 +762,8 @@ export default async function AuditLogPage({
   const nowMs = await getRequestNowMs()
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker="Owner control"
         title="Audit trail"
         description="Tracks logins, invitations, publishing decisions, category edits, user changes, password resets, and destructive actions across Bulletin."
@@ -780,6 +799,6 @@ export default async function AuditLogPage({
         targetFilter={targetFilter}
         actorFilter={actorFilter}
       />
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

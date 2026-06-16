@@ -1,6 +1,6 @@
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { CountUp } from '@/components/dashboard/CountUp'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { createClient } from '@/lib/supabase/server'
 import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
 import { formatCampusCompactDate } from '@/lib/announcements/public-board'
@@ -68,8 +68,8 @@ export default async function AdminAnalyticsPage() {
   const total = Object.values(statusCounts).reduce((s, n) => s + n, 0)
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-6">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-6">
+      <DashboardBoardHeader
         kicker="Admin analytics"
         title="Analytics"
         description="Publishing activity, status pressure, and category performance in your scope."
@@ -173,6 +173,6 @@ export default async function AdminAnalyticsPage() {
           </GlassCard>
         )}
       </div>
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

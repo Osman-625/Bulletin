@@ -2,10 +2,10 @@ import Link from 'next/link'
 import { Plus, Users } from 'lucide-react'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import {
-  DashboardDeskHeader,
-  DashboardDeskPage,
-  DashboardDeskPanel,
-} from '@/components/dashboard/DashboardDesk'
+  DashboardBoardHeader,
+  DashboardBoardPage,
+  DashboardBoardPanel,
+} from '@/components/dashboard/DashboardBoard'
 import { formatCampusShortDate } from '@/lib/announcements/public-board'
 import { getAllPublishers } from '@/lib/data'
 
@@ -15,18 +15,18 @@ export default async function PublishersPage() {
   const publishers = await getAllPublishers()
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker="Admin directory"
         title="Publishers"
         description={`${publishers.length} publisher account${publishers.length === 1 ? '' : 's'} with organization assignments.`}
         action={{ href: '/admin/publishers/invite', label: 'Invite publisher', icon: Users }}
       />
 
-      <DashboardDeskPanel
+      <DashboardBoardPanel
         title="Publisher directory"
         count={`${publishers.length} total`}
-        bodyClassName="desk-panel-body"
+        bodyClassName="board-panel-body"
       >
         {publishers.length === 0 ? (
           <output className="mx-auto block max-w-md py-12 text-center">
@@ -88,7 +88,7 @@ export default async function PublishersPage() {
             })}
           </div>
         )}
-      </DashboardDeskPanel>
-    </DashboardDeskPage>
+      </DashboardBoardPanel>
+    </DashboardBoardPage>
   )
 }

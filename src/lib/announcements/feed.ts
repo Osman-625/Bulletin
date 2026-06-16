@@ -1,7 +1,7 @@
-import type { AnnouncementWithRelations } from '../types'
+import type { PublicAnnouncement } from '../types'
 import type { DbCategory } from '../types'
 
-export function matchesSearch(announcement: AnnouncementWithRelations, query: string): boolean {
+export function matchesSearch(announcement: PublicAnnouncement, query: string): boolean {
   if (!query) return true
   const normalized = query.toLowerCase()
   return [
@@ -14,7 +14,7 @@ export function matchesSearch(announcement: AnnouncementWithRelations, query: st
 
 export function derivePublicTopics(
   activeCategories: DbCategory[],
-  announcements: AnnouncementWithRelations[]
+  announcements: PublicAnnouncement[]
 ): DbCategory[] {
   if (activeCategories.length > 0) return activeCategories
 

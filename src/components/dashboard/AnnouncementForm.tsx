@@ -530,11 +530,13 @@ export function AnnouncementForm({
     setFormError('')
     const hasTimingError =
       Boolean(futureDateTimeError(scheduledPublishAt, 'Publish time')) ||
-      Boolean(futureDateTimeError(pinnedUntil, 'Pin end time'))
+      Boolean(futureDateTimeError(pinnedUntil, 'Pin end time')) ||
+      Boolean(futureDateTimeError(expiresAt, 'Expiry date'))
     if (hasTimingError) {
       setFormError(
         futureDateTimeError(scheduledPublishAt, 'Publish time') ||
-          futureDateTimeError(pinnedUntil, 'Pin end time')
+          futureDateTimeError(pinnedUntil, 'Pin end time') ||
+          futureDateTimeError(expiresAt, 'Expiry date')
       )
       setSaveState('error')
       return
@@ -570,11 +572,13 @@ export function AnnouncementForm({
 
     const hasTimingError =
       Boolean(futureDateTimeError(scheduledPublishAt, 'Publish time')) ||
-      Boolean(futureDateTimeError(pinnedUntil, 'Pin end time'))
+      Boolean(futureDateTimeError(pinnedUntil, 'Pin end time')) ||
+      Boolean(futureDateTimeError(expiresAt, 'Expiry date'))
     if (hasTimingError) {
       setFormError(
         futureDateTimeError(scheduledPublishAt, 'Publish time') ||
-          futureDateTimeError(pinnedUntil, 'Pin end time')
+          futureDateTimeError(pinnedUntil, 'Pin end time') ||
+          futureDateTimeError(expiresAt, 'Expiry date')
       )
       setSaveState('error')
       return
@@ -728,6 +732,7 @@ export function AnnouncementForm({
   const isPinned = isFutureDateTime(pinnedUntil)
   const scheduledPublishError = futureDateTimeError(scheduledPublishAt, 'Publish time')
   const pinnedUntilError = futureDateTimeError(pinnedUntil, 'Pin end time')
+  const expiresAtError = futureDateTimeError(expiresAt, 'Expiry date')
 
   // ─── Render ──────────────────────────────────────────────────
 
@@ -1062,6 +1067,9 @@ export function AnnouncementForm({
                   onDragLeave={() => setIsDragOver(false)}
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
+                  aria-describedby={
+                    bannerSizeError || bannerUploadError ? 'banner-image-upload-error' : undefined
+                  }
                   className={cn(
                     'flex w-full flex-col items-center justify-center gap-3 rounded-xl py-12 text-center',
                     'border-2 border-dashed transition-all duration-200',
@@ -1086,15 +1094,20 @@ export function AnnouncementForm({
                     <p className="mt-1 text-xs text-[var(--color-text-muted)]">
                       JPG, PNG, or WebP, max {BANNER_MAX_FILE_SIZE_MB}MB
                     </p>
-                    {bannerSizeError && (
-                      <p className="mt-1 text-xs font-semibold text-[var(--color-destructive)]">
-                        File exceeds {BANNER_MAX_FILE_SIZE_MB} MB limit. Choose a smaller image.
-                      </p>
-                    )}
-                    {bannerUploadError && (
-                      <p className="mt-1 text-xs font-semibold text-[var(--color-destructive)]">
-                        {bannerUploadError}
-                      </p>
+                    {(bannerSizeError || bannerUploadError) && (
+                      <div
+                        id="banner-image-upload-error"
+                        role="alert"
+                        aria-live="polite"
+                        className="mt-1 text-xs font-semibold text-[var(--color-destructive)]"
+                      >
+                        {bannerSizeError && (
+                          <p>
+                            File exceeds {BANNER_MAX_FILE_SIZE_MB} MB limit. Choose a smaller image.
+                          </p>
+                        )}
+                        {bannerUploadError && <p>{bannerUploadError}</p>}
+                      </div>
                     )}
                   </div>
                 </button>
@@ -1107,6 +1120,10 @@ export function AnnouncementForm({
                 accept="image/jpeg,image/png,image/webp"
                 onChange={handleFileChange}
                 aria-label="Upload banner image"
+                aria-invalid={bannerSizeError || Boolean(bannerUploadError)}
+                aria-describedby={
+                  bannerSizeError || bannerUploadError ? 'banner-image-upload-error' : undefined
+                }
                 className="hidden"
               />
             </div>
@@ -1134,6 +1151,8 @@ export function AnnouncementForm({
                     clearFormErrorOnEdit()
                   }}
                   onBlur={handleUrlBlur}
+                  aria-invalid={Boolean(urlError)}
+                  aria-describedby={urlError ? 'registration-link-error' : undefined}
                   placeholder="https://forms.google.com/..."
                   className={cn(
                     'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
@@ -1148,7 +1167,14 @@ export function AnnouncementForm({
                 />
               </div>
               {urlError && (
-                <p className="mt-1.5 text-xs text-[var(--color-destructive)]">{urlError}</p>
+                <p
+                  id="registration-link-error"
+                  role="alert"
+                  aria-live="polite"
+                  className="mt-1.5 text-xs text-[var(--color-destructive)]"
+                >
+                  {urlError}
+                </p>
               )}
             </div>
           </section>
@@ -1293,15 +1319,29 @@ export function AnnouncementForm({
                   type="date"
                   value={expiresAt}
                   onChange={(e) => setExpiresAt(e.target.value)}
+                  aria-invalid={Boolean(expiresAtError)}
+                  aria-describedby={expiresAtError ? 'expires-at-error' : undefined}
                   className={cn(
                     'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
                     'bg-transparent text-[var(--color-text-primary)]',
-                    'border border-[var(--color-glass-border)]',
-                    'focus:border-[var(--color-accent)] focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
+                    'border',
+                    expiresAtError
+                      ? 'border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30'
+                      : 'border-[var(--color-glass-border)] focus:border-[var(--color-accent)] focus:ring-[var(--color-accent)]/30',
+                    'focus:ring-2 focus:outline-none',
                     'transition-all duration-200'
                   )}
                 />
               </div>
+              {expiresAtError && (
+                <p
+                  id="expires-at-error"
+                  role="alert"
+                  className="mt-1.5 text-xs text-[var(--color-destructive)]"
+                >
+                  {expiresAtError}
+                </p>
+              )}
             </div>
           </section>
 

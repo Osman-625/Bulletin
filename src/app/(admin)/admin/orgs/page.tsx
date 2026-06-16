@@ -2,10 +2,10 @@ import Link from 'next/link'
 import { Plus, ArrowRight, Building2 } from 'lucide-react'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import {
-  DashboardDeskHeader,
-  DashboardDeskPage,
-  DashboardDeskPanel,
-} from '@/components/dashboard/DashboardDesk'
+  DashboardBoardHeader,
+  DashboardBoardPage,
+  DashboardBoardPanel,
+} from '@/components/dashboard/DashboardBoard'
 import { formatCampusShortDate } from '@/lib/announcements/public-board'
 import { getAllOrganizations } from '@/lib/data'
 
@@ -22,18 +22,18 @@ export default async function OrgsPage() {
   const orgs = await getAllOrganizations()
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker="Admin directory"
         title="Organizations"
         description={`${orgs.length} registered organization${orgs.length === 1 ? '' : 's'} with publisher workspaces and approval state.`}
         action={{ href: '/admin/orgs/new', label: 'New organization', icon: Building2 }}
       />
 
-      <DashboardDeskPanel
+      <DashboardBoardPanel
         title="Organization directory"
         count={`${orgs.length} total`}
-        bodyClassName="desk-panel-body"
+        bodyClassName="board-panel-body"
       >
         {orgs.length === 0 ? (
           <output className="mx-auto block max-w-md py-12 text-center">
@@ -84,7 +84,7 @@ export default async function OrgsPage() {
             ))}
           </div>
         )}
-      </DashboardDeskPanel>
-    </DashboardDeskPage>
+      </DashboardBoardPanel>
+    </DashboardBoardPage>
   )
 }

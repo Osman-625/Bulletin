@@ -13,6 +13,17 @@ function token(css: string, name: string) {
   return match[1].trim()
 }
 
+function tokenFromBlock(css: string, selector: ':root' | '.dark', name: string) {
+  const start = css.indexOf(`${selector} {`)
+  if (start === -1) throw new Error(`Missing ${selector}`)
+  const nextTheme =
+    selector === ':root' ? css.indexOf('.dark {', start) : css.indexOf('@keyframes', start)
+  const block = css.slice(start, nextTheme === -1 ? undefined : nextTheme)
+  const match = block.match(new RegExp(`${name}:\\s*([^;]+);`))
+  if (!match) throw new Error(`Missing ${name} in ${selector}`)
+  return match[1].trim()
+}
+
 function rgb(color: string) {
   const hex = color.match(/^#([0-9a-f]{6})$/i)
   if (hex) {
@@ -48,6 +59,10 @@ function resolveColor(value: string, css: string) {
   const end = normalized.indexOf(')', start)
   const varName = start >= 0 && end > start ? normalized.slice(start, end) : null
   return rgb(varName ? token(css, varName) : normalized)
+}
+
+function resolveThemeColor(css: string, selector: ':root' | '.dark', name: string) {
+  return rgb(tokenFromBlock(css, selector, name))
 }
 
 function resolveBackground(value: string, css: string) {
@@ -112,20 +127,20 @@ describe('Future Commons production UI guards', () => {
     expect(backNav).toContain('router.push(fallbackHref)')
     expect(publicBack).toContain('BackNavButton')
     expect(publicBack).toContain('fallbackHref="/"')
-    expect(reviewPage).toContain('DashboardDeskHeader')
+    expect(reviewPage).toContain('DashboardBoardHeader')
     expect(reviewPage).toContain("href: '/admin/review'")
     expect(announcementForm).toContain('BackNavButton')
     expect(announcementForm).toContain('backHref?: string')
     expect(announcementForm).toContain('fallbackHref={backHref}')
     expect(announcementForm).not.toContain("router.push('/dashboard/announcements')")
     expect(editPage).toContain('backHref="/dashboard/announcements"')
-    expect(newOrgPage).toContain('DashboardDeskHeader')
+    expect(newOrgPage).toContain('DashboardBoardHeader')
     expect(newOrgPage).toContain("href: '/admin/orgs'")
-    expect(invitePublisherPage).toContain('DashboardDeskHeader')
+    expect(invitePublisherPage).toContain('DashboardBoardHeader')
     expect(invitePublisherPage).toContain("href: '/admin/publishers'")
-    expect(inviteAdminPage).toContain('DashboardDeskHeader')
+    expect(inviteAdminPage).toContain('DashboardBoardHeader')
     expect(inviteAdminPage).toContain("href: '/super-admin/admins'")
-    expect(ownerResourcesPage).toContain('DashboardDeskHeader')
+    expect(ownerResourcesPage).toContain('DashboardBoardHeader')
     expect(ownerResourcesPage).toContain("href: '/owner/analytics'")
   })
 
@@ -148,8 +163,8 @@ describe('Future Commons production UI guards', () => {
     expect(detailPage).toContain('Open original announcement image')
     expect(detailPage).toContain('fill')
     expect(detailPage).toContain('lg:min-h-[31rem]')
-    expect(card).toContain('object-contain')
-    // Poster is never cropped; a blurred copy fills the mat behind it.
+    expect(card).toContain('object-cover')
+    // Public grid cards crop consistently; the detail page preserves the original poster.
     expect(card).toContain('PosterBackdrop')
     expect(card).toContain('blur-2xl')
   })
@@ -184,6 +199,7 @@ describe('Future Commons production UI guards', () => {
     const publicBoard = source('src/lib/announcements/public-board.ts')
     const categoryFilter = source('src/components/announcements/CategoryFilter.tsx')
     const card = source('src/components/announcements/AnnouncementCard.tsx')
+    const data = source('src/lib/data.ts')
 
     expect(publicBoard).toContain("export const BOARD_SORTS = ['priority', 'issued', 'closing']")
     expect(publicHome).toContain('@/lib/announcements/public-board')
@@ -191,7 +207,8 @@ describe('Future Commons production UI guards', () => {
     expect(boardOrderControls).toContain(
       'buildFeedHref({ category, q: search, sort: option.sort })'
     )
-    expect(publicHome).toContain('sortAnnouncementsForPublicBoard')
+    expect(data).toContain('paginatePublicBoardItems')
+    expect(data).toContain('PUBLIC_ANNOUNCEMENT_SELECT')
     expect(categoryFilter).toContain('new URLSearchParams(searchParams.toString())')
     expect(card).toContain('EventMetaPill')
     expect(card).toContain('Deadline')
@@ -199,7 +216,7 @@ describe('Future Commons production UI guards', () => {
 
   it('keeps audited production copy user-facing and removes internal design annotations', () => {
     const publicHome = source('src/app/(public)/page.tsx')
-    const boardStructurePanel = source('src/components/public/BoardStructurePanel.tsx')
+    const pinnedNoticesPanel = source('src/components/public/PinnedNoticesPanel.tsx')
 
     expect(publicHome).not.toContain('Campus bento board')
     expect(publicHome).not.toContain('Dense campus board')
@@ -207,8 +224,8 @@ describe('Future Commons production UI guards', () => {
     expect(publicHome).not.toContain('The logo scales up as the broadcast mark')
     expect(publicHome).not.toContain("padStart(2, '0')")
     expect(publicHome).toContain('Announcements')
-    expect(boardStructurePanel).toContain('New today')
-    expect(boardStructurePanel).toContain('Plan ahead')
+    expect(pinnedNoticesPanel).toContain('Pinned')
+    expect(pinnedNoticesPanel).toContain('Pinned Features')
   })
 
   it('keeps the search control reachable on mobile and preserves category filters', () => {
@@ -282,21 +299,22 @@ describe('Future Commons production UI guards', () => {
 
   it('keeps dashboard mobile navigation scrollable and closes it after route changes', () => {
     const shell = source('src/components/dashboard/DashboardShell.tsx')
-    const sidebar = source('src/components/dashboard/DashboardSidebar.tsx')
+    const rail = source('src/components/dashboard/DashboardRail.tsx')
+    const mobileNav = source('src/components/dashboard/DashboardMobileNav.tsx')
 
     expect(shell).toContain('usePathname')
     expect(shell).toContain('setMobileOpen(false)')
-    expect(sidebar).toContain('min-h-0')
-    expect(sidebar).toContain('overflow-y-auto')
-    expect(sidebar).toContain('mobileDialogRef')
-    expect(sidebar).toContain('<dialog')
-    expect(sidebar).toContain('dialog.showModal()')
-    expect(sidebar).toContain('onCancel={(event) =>')
-    expect(sidebar).toContain('firstMobileFocusRef')
-    expect(sidebar).toContain('previousFocusedElementRef')
-    expect(sidebar).not.toContain('handleMobileDialogKeyDown')
-    expect(sidebar).not.toContain('querySelectorAll<HTMLElement>')
-    expect(sidebar).not.toContain('onKeyDown={handleMobileDialogKeyDown}')
+    expect(rail).toContain('min-h-0')
+    expect(rail).toContain('overflow-y-auto')
+    expect(mobileNav).toContain('dialogRef')
+    expect(mobileNav).toContain('<dialog')
+    expect(mobileNav).toContain('dialog.showModal()')
+    expect(mobileNav).toContain('onCancel={(event) =>')
+    expect(mobileNav).toContain('firstFocusRef')
+    expect(mobileNav).toContain('previousFocusRef')
+    expect(mobileNav).not.toContain('handleMobileDialogKeyDown')
+    expect(mobileNav).not.toContain('querySelectorAll<HTMLElement>')
+    expect(mobileNav).not.toContain('onKeyDown={handleMobileDialogKeyDown}')
   })
 
   it('aligns dashboard canvas treatment with the public warm plane background', () => {
@@ -312,10 +330,9 @@ describe('Future Commons production UI guards', () => {
     )
 
     expect(shell).toContain('dashboard-canvas')
-    expect(dashboardCanvas).toContain('circle at 16% 0%')
-    expect(dashboardCanvas).toContain('circle at 92% 18%')
-    expect(dashboardCanvas).toContain('var(--color-coral)')
-    expect(dashboardCanvas).toContain('linear-gradient(')
+    expect(dashboardCanvas).toContain('background: var(--color-canvas)')
+    expect(dashboardCanvas).not.toContain('radial-gradient(')
+    expect(dashboardCanvas).not.toContain('linear-gradient(')
     expect(dashboardCanvas).not.toContain('28px 28px')
     expect(dashboardCanvas).not.toContain('34px 34px')
     expect(dashboardCanvas).not.toContain('transparent 1px')
@@ -443,15 +460,15 @@ describe('Future Commons production UI guards', () => {
     const ownerHome = source('src/app/(owner)/owner/page.tsx')
     const ownerResources = source('src/app/(owner)/owner/resources/page.tsx')
 
-    expect(ownerHome).toContain('DashboardDeskPage')
-    expect(ownerHome).toContain('DashboardDeskMetrics')
-    expect(ownerHome).toContain('DashboardDeskBoard')
+    expect(ownerHome).toContain('DashboardBoardPage')
+    expect(ownerHome).toContain('DashboardBoardMetrics')
+    expect(ownerHome).toContain('DashboardBoardBoard')
     expect(ownerHome).toContain('getOwnerResourceOverview')
     expect(ownerHome).toContain('Owner workspaces')
     expect(ownerHome).toContain('Needs attention')
     expect(ownerHome).toContain('Owner resources')
-    expect(ownerHome).toContain('Super desk')
-    expect(ownerHome).toContain('Publisher desk')
+    expect(ownerHome).toContain('Super board')
+    expect(ownerHome).toContain('Publisher board')
     expect(ownerResources).toContain('No tracked announcement views yet')
     expect(ownerResources).toContain('No view distribution yet')
     expect(ownerResources).toContain('<output')
@@ -515,6 +532,61 @@ describe('Future Commons production UI guards', () => {
     expect(card).toContain("background: 'var(--color-deadline-surface)'")
   })
 
+  it('keeps audited theme token pairings above WCAG AA contrast', () => {
+    const globals = source('src/app/globals.css')
+
+    expect(
+      contrastRatio(
+        resolveThemeColor(globals, ':root', '--color-text-muted'),
+        resolveThemeColor(globals, ':root', '--color-canvas')
+      )
+    ).toBeGreaterThanOrEqual(4.5)
+    expect(
+      contrastRatio(
+        resolveThemeColor(globals, ':root', '--color-accent-inti'),
+        resolveThemeColor(globals, ':root', '--color-canvas')
+      )
+    ).toBeGreaterThanOrEqual(4.5)
+    expect(
+      contrastRatio(
+        resolveThemeColor(globals, '.dark', '--color-accent-inti'),
+        resolveThemeColor(globals, '.dark', '--color-surface')
+      )
+    ).toBeGreaterThanOrEqual(4.5)
+    expect(
+      contrastRatio(
+        resolveThemeColor(globals, '.dark', '--color-on-accent'),
+        resolveThemeColor(globals, '.dark', '--color-accent-inti')
+      )
+    ).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('keeps audited public and user management controls at least 44px tall', () => {
+    const boardOrderControls = source('src/components/public/BoardOrderControls.tsx')
+    const adminUsers = source('src/app/(admin)/admin/users/page.tsx')
+    const superAdminUsers = source('src/app/(super-admin)/super-admin/users/page.tsx')
+    const ownerUsers = source('src/app/(owner)/owner/users/page.tsx')
+    const resetButton = source('src/app/(super-admin)/super-admin/users/_ResetButton.tsx')
+
+    expect(boardOrderControls).toContain('min-h-11')
+    for (const page of [adminUsers, superAdminUsers, ownerUsers]) {
+      expect(page).toContain('inline-flex min-h-11 items-center')
+      expect(page).toContain('min-h-11 rounded-xl')
+      expect(page).not.toContain('inline-flex min-h-10 items-center')
+      expect(page).not.toContain('px-3 py-1.5 text-xs')
+    }
+    expect(resetButton).toContain('min-h-11')
+  })
+
+  it('removes stale public card sizing declarations from globals', () => {
+    const globals = source('src/app/globals.css')
+
+    expect(globals).not.toContain('line-height: 2;')
+    expect(globals).not.toContain('min-height: 1;')
+    expect(globals).toContain('line-height: 1.2;')
+    expect(globals).toContain('min-height: 0;')
+  })
+
   it('keeps login and footer copy aligned with independent Bulletin branding', () => {
     const loginPage = source('src/app/(auth)/login/page.tsx')
     const footer = source('src/components/layout/Footer.tsx')
@@ -552,47 +624,71 @@ describe('Future Commons production UI guards', () => {
 
   it('uses a desktop dense board implementation while keeping mobile-friendly card flow', () => {
     const publicHome = source('src/app/(public)/page.tsx')
-    const boardStructurePanel = source('src/components/public/BoardStructurePanel.tsx')
+    const pinnedNoticesPanel = source('src/components/public/PinnedNoticesPanel.tsx')
     const card = source('src/components/announcements/AnnouncementCard.tsx')
     const globals = source('src/app/globals.css')
 
-    expect(publicHome).toContain('BoardStructurePanel')
-    expect(boardStructurePanel).toContain('Board order')
+    const heroIndex = publicHome.indexOf('<PublicHeroSection')
+    const pinnedIndex = publicHome.indexOf('<PinnedNoticesPanel')
+    const searchIndex = publicHome.indexOf('<PublicSearchFilters')
+
+    expect(publicHome).toContain('PinnedNoticesPanel')
+    expect(pinnedNoticesPanel).toContain('Pinned Features')
+    expect(pinnedNoticesPanel).toContain('pins.slice(0, 3)')
+    expect(pinnedNoticesPanel).toContain('public-board-side-column')
+    expect(pinnedNoticesPanel).toContain('overflow-visible')
+    expect(pinnedNoticesPanel).not.toContain('grid-flow-col')
+    expect(pinnedNoticesPanel).not.toContain('overflow-x-auto')
+    expect(pinnedNoticesPanel).toContain('md:grid-cols-2')
+    expect(pinnedNoticesPanel).toContain('min-h-[5.6rem]')
+    expect(pinnedNoticesPanel).toContain('lg:auto-rows-fr')
+    expect(pinnedNoticesPanel).toContain('lg:h-full')
+    expect(pinnedNoticesPanel).not.toContain('lg:mt-[1.55rem]')
+    expect(pinnedNoticesPanel).toContain('lg:justify-center')
+    expect(heroIndex).toBeGreaterThan(-1)
+    expect(searchIndex).toBeGreaterThan(heroIndex)
+    expect(pinnedIndex).toBeGreaterThan(searchIndex)
     expect(publicHome).toContain('hero-poster-card')
-    expect(publicHome).toContain('gap-12 md:gap-14')
-    expect(boardStructurePanel).toContain('New today')
-    expect(boardStructurePanel).toContain('Plan ahead')
+    expect(publicHome).toContain('public-featured-grid')
+    expect(publicHome).toContain('public-featured-compact')
+    expect(publicHome).toContain('public-featured-grid public-board-grid')
     expect(publicHome).toContain('buildAnnouncementSections')
     expect(publicHome).toContain('sectionBoardClass')
     expect(publicHome).toContain('priority-lane-board')
     expect(publicHome).toContain('dense-bento-board')
     expect(publicHome).toContain('uniform-card-board')
-    expect(publicHome).toContain('grid gap-4 md:grid-cols-2 md:gap-5 xl:grid-cols-3')
+    expect(publicHome).toContain('public-feed-card-board grid gap-3 md:gap-4')
     expect(publicHome).toContain('dense-bento-item')
     expect(publicHome).toContain('dense-bento-section-heading')
-    expect(publicHome).toContain('xl:grid-cols-3')
+    expect(publicHome).toContain('public-featured-single')
     expect(publicHome).toContain('data-bento-tile="featured"')
     expect(publicHome).toContain('bentoTileClass')
     expect(publicHome).not.toContain("classes.push('dense-bento-wide')")
     expect(publicHome).not.toContain("classes.push('dense-bento-tall')")
     expect(publicHome).not.toContain("classes.push('dense-bento-compact')")
     expect(publicHome).toContain('imageBentoVariant')
+    expect(publicHome).not.toContain('0.38 + index * 0.045')
+    expect(publicHome).toContain('Math.min(0.22, 0.08 + index * 0.012)')
     expect(card).toContain('data-image-layout={visual}')
     expect(card).toContain('data-card-media={visual}')
-    expect(card).toContain('data-has-image={banner_url ?')
-    expect(card).toContain('{banner_url && (')
+    expect(card).toContain("data-has-image={hasImage ? 'true' : 'false'}")
+    expect(card).toContain('{imageUrl && (')
     expect(card).not.toContain('announcement-card-fallback')
     expect(card).not.toContain('min-h-[26rem]')
     expect(card).not.toContain('min-h-[18rem]')
     expect(globals).toContain('.uniform-card-board > .card-with-image')
     expect(globals).toContain('.uniform-card-board > .card-without-image')
-    expect(globals).toContain('grid-row: span 2')
-    expect(globals).toContain('grid-row: span 1')
+    expect(globals).toContain('grid-row: span var(--public-board-image-span)')
+    expect(globals).toContain('grid-row: span var(--public-board-text-span)')
     expect(card).toContain('featureLabel')
     expect(card).toContain('featured-announcement-badge')
     expect(card).toContain('featured-announcement-card')
-    expect(card).toContain('aspect-[16/9] sm:aspect-[16/10]')
-    expect(card).toContain('announcement-card-summary-clamp-2')
+    expect(card).toContain("visual === 'poster' || visual === 'ribbon'")
+    expect(card).toContain('aspect-[4/3] sm:aspect-[16/9] lg:aspect-[16/6]')
+    expect(card).not.toContain('aspect-[7/2]')
+    expect(card).toContain('aspect-[16/9]')
+    expect(card).toContain('announcement-card-summary-clamp-3')
+    expect(card).toContain('announcement-card-summary-clamp-4')
     expect(card).toContain('announcement-card-body')
     expect(card).toContain('hasBadgeRow')
     expect(globals).toContain('.announcement-card-summary-clamp')
@@ -601,8 +697,18 @@ describe('Future Commons production UI guards', () => {
     expect(globals).toContain('.dense-bento-board .card-without-image')
     expect(globals).toContain('.dense-bento-board .announcement-card-body')
     expect(card).toContain("'poster' | 'letterbox' | 'stamp' | 'ribbon'")
-    expect(globals).toContain('grid-auto-flow: dense')
-    expect(globals).toContain('grid-auto-rows: var(--dense-bento-row)')
+    expect(globals).toContain('grid-auto-flow: row dense')
+    expect(globals).toContain('grid-auto-rows: var(--public-board-row)')
+    expect(globals).toContain('grid-row: span var(--public-board-image-span)')
+    expect(globals).toContain('grid-row: span var(--public-board-text-span)')
+    expect(globals).not.toContain('grid-auto-rows: auto')
+    expect(globals).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))')
+    expect(globals).toContain('grid-template-columns: repeat(2, minmax(0, 1fr))')
+    expect(globals).not.toContain('repeat(auto-fit')
+    expect(globals).not.toContain('repeat(auto-fill')
+    expect(globals).toContain('object-position: center')
+    expect(globals).toContain('object-position: center 40%')
+    expect(card).toContain('object-cover object-center')
     expect(globals).not.toContain('.priority-lane-board .dense-bento-item:only-child')
     expect(globals).not.toContain(
       '.priority-lane-board .dense-bento-item:first-child:nth-last-child(2)'

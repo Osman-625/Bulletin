@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { logAuditEvent } from '@/lib/audit'
 import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
 import {
@@ -200,8 +200,8 @@ export default async function AdminCategoriesPage({
   }
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker="Taxonomy"
         title="Categories"
         description={`${categories?.length ?? 0} categor${(categories?.length ?? 0) === 1 ? 'y' : 'ies'} available for organizing campus announcements.`}
@@ -397,6 +397,6 @@ export default async function AdminCategoriesPage({
           )}
         </div>
       </div>
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

@@ -1,5 +1,5 @@
 import { ArrowLeft, Building2 } from 'lucide-react'
-import { DashboardDeskHeader, DashboardDeskPage } from '@/components/dashboard/DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { ORGANIZATION_TYPE_OPTIONS } from '@/lib/organizations/validation'
 import { createOrganization } from './actions'
@@ -14,8 +14,8 @@ export default async function NewOrgPage({
   const { error } = await searchParams
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker="Admin directory"
         title="New organization"
         description="Create an approved campus workspace before assigning publisher accounts to it."
@@ -127,6 +127,6 @@ export default async function NewOrgPage({
           </p>
         </GlassCard>
       </div>
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }

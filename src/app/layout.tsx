@@ -75,7 +75,7 @@ export default async function RootLayout({
       <body className="flex min-h-full flex-col">
         <a
           href="#main-content"
-          className="sr-only z-[60] rounded-full bg-[var(--color-accent-inti)] px-4 py-3 text-sm font-bold text-white shadow-[var(--shadow-button-hover)] focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
+          className="sr-only z-[60] rounded-full bg-[var(--color-accent-inti)] px-4 py-3 text-sm font-bold text-white shadow-[var(--shadow-button-hover)] focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:flex focus:min-h-11 focus:items-center focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent-inti)]"
         >
           Skip to content
         </a>

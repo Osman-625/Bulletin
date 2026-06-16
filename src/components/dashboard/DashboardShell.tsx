@@ -2,41 +2,26 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { DashboardSidebar } from './DashboardSidebar'
-import { DashboardTopNav } from './DashboardTopNav'
+import { DashboardTopBar } from './DashboardTopBar'
+import { DashboardRail } from './DashboardRail'
+import { DashboardMobileNav } from './DashboardMobileNav'
+import { DashboardMobileDock } from './DashboardMobileDock'
+import {
+  getNavForVariant,
+  getNotificationsHref,
+  getSettingsHref,
+  getWorkspaceLabel,
+  type DashboardVariant,
+} from './nav-config'
 
 interface DashboardShellProps {
   children: React.ReactNode
   displayName: string | null
   organizationName?: string | null
   role: string | null
-  variant?: 'publisher' | 'admin' | 'super_admin' | 'owner'
+  variant?: DashboardVariant
   pendingReviewCount?: number
   unreadNotificationCount?: number
-}
-
-const NOTIFICATION_HREFS: Record<NonNullable<DashboardShellProps['variant']>, string> = {
-  publisher: '/dashboard/notifications',
-  admin: '/admin/notifications',
-  super_admin: '/super-admin/notifications',
-  owner: '/owner/notifications',
-}
-
-const SETTINGS_HREFS: Record<NonNullable<DashboardShellProps['variant']>, string> = {
-  publisher: '/dashboard/settings',
-  admin: '/admin/settings',
-  super_admin: '/super-admin/settings',
-  owner: '/owner/settings',
-}
-
-const ANNOUNCEMENT_SEARCH_HREFS: Record<
-  NonNullable<DashboardShellProps['variant']>,
-  string | null
-> = {
-  publisher: '/dashboard/announcements',
-  admin: null,
-  super_admin: null,
-  owner: null,
 }
 
 export function DashboardShell({
@@ -45,7 +30,7 @@ export function DashboardShell({
   organizationName,
   role,
   variant = 'publisher',
-  pendingReviewCount,
+  pendingReviewCount = 0,
   unreadNotificationCount = 0,
 }: DashboardShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -56,41 +41,50 @@ export function DashboardShell({
     return () => window.clearTimeout(timer)
   }, [pathname])
 
+  const navItems = getNavForVariant(variant, pendingReviewCount)
+  const workspaceLabel = getWorkspaceLabel(variant)
+  const subline =
+    variant === 'publisher' && organizationName
+      ? organizationName
+      : (role?.replace('_', ' ') ?? '—')
+
   return (
-    <div className="dashboard-canvas publisher-desk-canvas min-h-[100dvh] bg-[var(--color-canvas)]">
-      <DashboardSidebar
+    <div
+      className="dashboard-canvas publisher-board-canvas min-h-[100dvh] bg-[var(--color-canvas)]"
+      data-dashboard-variant={variant}
+    >
+      <DashboardTopBar
         displayName={displayName}
-        role={role}
-        mobileOpen={mobileOpen}
-        onMobileClose={() => setMobileOpen(false)}
+        subline={subline}
+        workspaceLabel={workspaceLabel}
         variant={variant}
-        pendingReviewCount={pendingReviewCount}
-        organizationName={organizationName}
+        navItems={navItems}
+        notificationCount={unreadNotificationCount}
+        notificationsHref={getNotificationsHref(variant)}
+        settingsHref={getSettingsHref(variant)}
+        onMenuClick={() => setMobileOpen(true)}
       />
 
-      {/* Mobile overlay backdrop */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-[var(--color-shell-backdrop)] backdrop-blur-[2px] md:hidden"
-          onClick={() => setMobileOpen(false)}
-          aria-hidden="true"
-        />
-      )}
+      <DashboardRail variant={variant} role={role} navItems={navItems} />
 
-      <div className="xl:hidden">
-        <DashboardTopNav
-          userName={displayName}
-          onMenuClick={() => setMobileOpen(true)}
-          notificationCount={unreadNotificationCount}
-          notificationsHref={NOTIFICATION_HREFS[variant]}
-          settingsHref={SETTINGS_HREFS[variant]}
-          announcementSearchHref={ANNOUNCEMENT_SEARCH_HREFS[variant]}
-        />
-      </div>
+      <DashboardMobileNav
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        variant={variant}
+        role={role}
+        displayName={displayName}
+        subline={subline}
+        navItems={navItems}
+      />
 
-      <main className="min-h-[100dvh] pt-16 pl-0 transition-[padding-left,padding-top] duration-300 ease-[var(--ease-ui)] md:pl-[5rem] xl:pt-0 xl:pl-[18rem]">
+      <main
+        id="main-content"
+        className="min-h-[100dvh] pt-[8.75rem] pb-8 pl-0 transition-[padding-left,padding-top] duration-300 ease-[var(--ease-ui)] md:pt-16 md:pb-0 md:pl-[4.5rem]"
+      >
         {children}
       </main>
+
+      <DashboardMobileDock navItems={navItems} />
     </div>
   )
 }

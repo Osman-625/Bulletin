@@ -5,15 +5,15 @@ import { formatCampusCompactDate } from '@/lib/announcements/public-board'
 import { getCurrentAccessContext } from '@/lib/auth/authz'
 import { createClient } from '@/lib/supabase/server'
 import {
-  DashboardDeskBoard,
-  DashboardDeskEmpty,
-  DashboardDeskHeader,
-  DashboardDeskMetrics,
-  DashboardDeskPage,
-  DashboardDeskPanel,
-  DashboardDeskRow,
-  DashboardDeskStaticRow,
-} from '@/components/dashboard/DashboardDesk'
+  DashboardBoardBoard,
+  DashboardBoardEmpty,
+  DashboardBoardHeader,
+  DashboardBoardMetrics,
+  DashboardBoardPage,
+  DashboardBoardPanel,
+  DashboardBoardRow,
+  DashboardBoardStaticRow,
+} from '@/components/dashboard/DashboardBoard'
 import type { DbAnnouncement } from '@/lib/types'
 
 export const metadata = { title: 'Insights' }
@@ -23,6 +23,7 @@ type InsightRow = Pick<DbAnnouncement, 'id' | 'title' | 'status' | 'view_count' 
 }
 
 const EMPTY_ORG_ID = '00000000-0000-0000-0000-000000000000'
+const INSIGHT_METRIC_PAGE_SIZE = 1000
 
 function formatDate(iso: string) {
   return formatCampusCompactDate(iso)
@@ -48,6 +49,33 @@ function statusTone(status: string) {
   return 'draft'
 }
 
+async function fetchInsightMetricRows(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  scopedOrgIds: string[] | null
+) {
+  const metricRows: InsightRow[] = []
+  let offset = 0
+
+  while (true) {
+    let metricQuery = supabase
+      .from('announcements')
+      .select('id, title, status, view_count, updated_at, categories(name, color)')
+      .order('view_count', { ascending: false })
+      .range(offset, offset + INSIGHT_METRIC_PAGE_SIZE - 1)
+
+    if (scopedOrgIds) metricQuery = metricQuery.in('organization_id', scopedOrgIds)
+
+    const { data, error } = await metricQuery
+    if (error) return metricRows
+
+    const page = (data ?? []) as unknown as InsightRow[]
+    metricRows.push(...page)
+    if (page.length < INSIGHT_METRIC_PAGE_SIZE) return metricRows
+
+    offset += INSIGHT_METRIC_PAGE_SIZE
+  }
+}
+
 export default async function PublisherInsightsPage() {
   const access = await getCurrentAccessContext()
   if (!access) redirect('/login')
@@ -67,15 +95,18 @@ export default async function PublisherInsightsPage() {
 
   if (scopedOrgIds) query = query.in('organization_id', scopedOrgIds)
 
-  const { data } = await query
+  const [{ data }, metricRows] = await Promise.all([
+    query,
+    fetchInsightMetricRows(supabase, scopedOrgIds),
+  ])
   const rows = (data ?? []) as unknown as InsightRow[]
-  const totalViews = rows.reduce((sum, row) => sum + (row.view_count ?? 0), 0)
-  const averageViews = rows.length > 0 ? Math.round(totalViews / rows.length) : 0
-  const liveCount = rows.filter((row) => row.status === 'published').length
-  const draftCount = rows.filter((row) => row.status === 'draft').length
+  const totalViews = metricRows.reduce((sum, row) => sum + (row.view_count ?? 0), 0)
+  const averageViews = metricRows.length > 0 ? Math.round(totalViews / metricRows.length) : 0
+  const liveCount = metricRows.filter((row) => row.status === 'published').length
+  const draftCount = metricRows.filter((row) => row.status === 'draft').length
   const topRows = rows.slice(0, 8)
 
-  const categoryTotals = rows.reduce<
+  const categoryTotals = metricRows.reduce<
     Record<string, { name: string; color: string | null; views: number; count: number }>
   >((totals, row) => {
     const name = row.categories?.name ?? 'Uncategorized'
@@ -97,8 +128,8 @@ export default async function PublisherInsightsPage() {
   const updatedLabel = formatCampusCompactDate(new Date())
 
   return (
-    <DashboardDeskPage className="publisher-dashboard-shell">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="publisher-dashboard-shell">
+      <DashboardBoardHeader
         kicker={`Publisher insights · Updated ${updatedLabel}`}
         title="Insights"
         description="A compact read on what students open, where attention gathers, and which notices need follow-up."
@@ -110,7 +141,7 @@ export default async function PublisherInsightsPage() {
         }}
       />
 
-      <DashboardDeskMetrics
+      <DashboardBoardMetrics
         metrics={[
           {
             label: 'Total views',
@@ -143,17 +174,17 @@ export default async function PublisherInsightsPage() {
         ]}
       />
 
-      <DashboardDeskBoard>
-        <DashboardDeskPanel
+      <DashboardBoardBoard>
+        <DashboardBoardPanel
           title="Top viewed"
           count={`${topRows.length}`}
           action={{ href: '/dashboard/announcements', label: 'All notices' }}
         >
           {topRows.length === 0 ? (
-            <DashboardDeskEmpty>No view data yet.</DashboardDeskEmpty>
+            <DashboardBoardEmpty>No view data yet.</DashboardBoardEmpty>
           ) : (
             topRows.map((row, index) => (
-              <DashboardDeskRow
+              <DashboardBoardRow
                 key={row.id}
                 href={`/dashboard/announcements/${row.id}/edit`}
                 title={row.title}
@@ -172,14 +203,14 @@ export default async function PublisherInsightsPage() {
               />
             ))
           )}
-        </DashboardDeskPanel>
+        </DashboardBoardPanel>
 
-        <DashboardDeskPanel title="Category pull" count={topCategory}>
+        <DashboardBoardPanel title="Category pull" count={topCategory}>
           {categoryRows.length === 0 ? (
-            <DashboardDeskEmpty>No category data yet.</DashboardDeskEmpty>
+            <DashboardBoardEmpty>No category data yet.</DashboardBoardEmpty>
           ) : (
             categoryRows.map((category, index) => (
-              <DashboardDeskStaticRow
+              <DashboardBoardStaticRow
                 key={category.name}
                 title={category.name}
                 index={index}
@@ -196,15 +227,15 @@ export default async function PublisherInsightsPage() {
               />
             ))
           )}
-        </DashboardDeskPanel>
-      </DashboardDeskBoard>
+        </DashboardBoardPanel>
+      </DashboardBoardBoard>
 
-      <DashboardDeskPanel title="Notice performance" count={`${rows.length} tracked`}>
+      <DashboardBoardPanel title="Notice performance" count={`${rows.length} tracked`}>
         {rows.length === 0 ? (
-          <DashboardDeskEmpty>No announcement performance data yet.</DashboardDeskEmpty>
+          <DashboardBoardEmpty>No announcement performance data yet.</DashboardBoardEmpty>
         ) : (
           rows.map((row, index) => (
-            <DashboardDeskRow
+            <DashboardBoardRow
               key={row.id}
               href={`/dashboard/announcements/${row.id}/edit`}
               title={row.title}
@@ -223,7 +254,7 @@ export default async function PublisherInsightsPage() {
             />
           ))
         )}
-      </DashboardDeskPanel>
-    </DashboardDeskPage>
+      </DashboardBoardPanel>
+    </DashboardBoardPage>
   )
 }

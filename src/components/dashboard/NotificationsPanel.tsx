@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Bell, CheckCheck, ExternalLink } from 'lucide-react'
 import { GlassCard } from './GlassCard'
-import { DashboardDeskHeader, DashboardDeskPage } from './DashboardDesk'
+import { DashboardBoardHeader, DashboardBoardPage } from './DashboardBoard'
 import { getNotificationsForCurrentUser } from '@/lib/notifications'
 import { markAllNotificationsRead, markNotificationRead } from '@/lib/notification-actions'
 import { formatCampusDateTime } from '@/lib/announcements/public-board'
@@ -44,8 +44,8 @@ export async function NotificationsPanel() {
   const unreadCount = notifications.filter((notification) => !notification.read_at).length
 
   return (
-    <DashboardDeskPage className="flex flex-col gap-5">
-      <DashboardDeskHeader
+    <DashboardBoardPage className="flex flex-col gap-5">
+      <DashboardBoardHeader
         kicker="Inbox"
         title="Notifications"
         description="Stay updated on approvals, submission activity, and account requests."
@@ -61,7 +61,7 @@ export async function NotificationsPanel() {
       )}
 
       {notifications.length === 0 ? (
-        <div className="desk-panel flex min-h-[24rem] flex-col items-center justify-center px-6 text-center">
+        <div className="board-panel flex min-h-[24rem] flex-col items-center justify-center px-6 text-center">
           <div className="mb-4 flex size-12 items-center justify-center rounded-[var(--radius-control)] bg-[var(--color-accent-surface)] text-[var(--color-accent-inti)]">
             <Bell size={20} aria-hidden="true" />
           </div>
@@ -135,6 +135,6 @@ export async function NotificationsPanel() {
           })}
         </div>
       )}
-    </DashboardDeskPage>
+    </DashboardBoardPage>
   )
 }
