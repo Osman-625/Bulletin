@@ -37,9 +37,7 @@ export function rateLimitKey(
   identifier?: string | null
 ): string {
   const normalizedIdentifier = identifier?.trim().toLowerCase()
-  return [scope, clientIpFromHeaders(headers), normalizedIdentifier]
-    .filter(Boolean)
-    .join(':')
+  return [scope, clientIpFromHeaders(headers), normalizedIdentifier].filter(Boolean).join(':')
 }
 
 export function checkRateLimit(key: string, options: RateLimitOptions): RateLimitResult {

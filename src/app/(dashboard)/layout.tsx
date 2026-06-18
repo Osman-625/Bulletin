@@ -4,9 +4,9 @@ import {
   canAccessPublisherArea,
   getCurrentAccessContext,
   getDefaultAppPath,
-} from '@/lib/auth/authz'
-import { getUnreadNotificationCount } from '@/lib/notifications'
-import { createClient } from '@/lib/supabase/server'
+} from '@/modules/auth/authz'
+import { getUnreadNotificationCount } from '@/modules/notifications'
+import { createClient } from '@/infrastructure/database/server'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const access = await getCurrentAccessContext()

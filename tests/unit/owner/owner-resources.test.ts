@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { getOwnerResourceOverview } from '@/lib/owner/resources'
+import { getOwnerResourceOverview } from '@/modules/owner/resources'
 
 function source(path: string) {
   return readFileSync(path, 'utf8')

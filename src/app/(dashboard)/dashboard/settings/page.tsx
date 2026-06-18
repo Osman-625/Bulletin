@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { AccountSettingsPage } from '@/components/account/AccountSettingsPage'
-import { getCurrentAccessContext } from '@/lib/auth/authz'
+import { getCurrentAccessContext } from '@/modules/auth/authz'
 
 export const metadata = { title: 'Settings - Bulletin Dashboard' }
 

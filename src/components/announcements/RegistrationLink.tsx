@@ -1,7 +1,7 @@
 'use client'
 
 import type { CSSProperties } from 'react'
-import { captureProductEvent } from '@/lib/product-analytics'
+import { captureProductEvent } from '@/shared/constants/product-analytics'
 
 export function RegistrationLink({
   href,

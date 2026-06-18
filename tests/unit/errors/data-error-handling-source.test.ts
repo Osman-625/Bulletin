@@ -9,7 +9,7 @@ describe('data helper error handling source guards', () => {
   it('logs Supabase read failures for admin and platform data helpers', () => {
     const data = source('src/lib/data.ts')
 
-    expect(data).toContain("from '@/lib/error-reporting'")
+    expect(data).toContain("from '@/shared/errors/error-reporting'")
     expect(data).toContain('submittedAnnouncementsError')
     expect(data).toContain('reviewAnnouncementError')
     expect(data).toContain('organizationsError')

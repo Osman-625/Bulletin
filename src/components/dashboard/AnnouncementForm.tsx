@@ -4,21 +4,21 @@ import { useState, useEffect, useRef, useCallback, useTransition } from 'react'
 import { unstable_rethrow } from 'next/navigation'
 import NextImage from 'next/image'
 import { AlertTriangle, Calendar, Clock, Link2, Pin, Trash2, Type, Upload, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/utils'
 import { BackNavButton } from '@/components/navigation/BackNavButton'
 import { ActionBar } from './ActionBar'
 import { GlassCard } from './GlassCard'
 import type { AutosaveStatus } from './AutosaveIndicator'
-import type { PostStatus } from '@/lib/types'
-import { createClient } from '@/lib/supabase/client'
+import type { PostStatus } from '@/shared/types'
+import { createClient } from '@/infrastructure/database/client'
 import {
   ANNOUNCEMENT_BODY_MAX,
   ANNOUNCEMENT_TITLE_MAX,
   BANNER_MAX_FILE_SIZE_BYTES,
   BANNER_MAX_FILE_SIZE_MB,
-} from '@/lib/announcements/form'
-import { reportClientError } from '@/lib/client-error-reporting'
-import { captureProductEvent } from '@/lib/product-analytics'
+} from '@/modules/announcements/form'
+import { reportClientError } from '@/shared/errors/client-error-reporting'
+import { captureProductEvent } from '@/shared/constants/product-analytics'
 import {
   ANNOUNCEMENT_DISPLAY_FONTS,
   ANNOUNCEMENT_DISPLAY_SIZES,
@@ -32,7 +32,7 @@ import {
   type AnnouncementDisplayFont,
   type AnnouncementDisplaySize,
   type AnnouncementUrgency,
-} from '@/lib/announcements/presentation'
+} from '@/modules/announcements/presentation'
 
 // ─── Types ───────────────────────────────────────────────────
 

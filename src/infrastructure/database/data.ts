@@ -12,8 +12,12 @@
  *   - Super Admin — platform-wide statistics and admin roster
  */
 
-import { createClient, createServiceClient } from './supabase/server'
-import { canAccessAdminArea, canAccessSuperAdminArea, getCurrentAccessContext } from './auth/authz'
+import { createClient, createServiceClient } from '@/infrastructure/database/server'
+import {
+  canAccessAdminArea,
+  canAccessSuperAdminArea,
+  getCurrentAccessContext,
+} from '@/modules/auth/authz'
 import type {
   PublicAnnouncement,
   AnnouncementWithRelations,
@@ -22,16 +26,16 @@ import type {
   OrgWithOwner,
   OrgWithMembers,
   PublisherWithOrgs,
-} from './types'
+} from '@/shared/types'
 import {
   daysUntilDeadline,
   isIssuedToday,
   normalizeBoardSort,
   paginatePublicBoardItems,
   type BoardSort,
-} from './announcements/public-board'
-import { announcementLookupId } from './announcements/urls'
-import { reportServerError } from '@/lib/error-reporting'
+} from '@/modules/announcements/public-board'
+import { announcementLookupId } from '@/modules/announcements/urls'
+import { reportServerError } from '@/shared/errors/error-reporting'
 
 /** Selects announcement fields with category and organization relations (left join). */
 const ANNOUNCEMENT_SELECT = `

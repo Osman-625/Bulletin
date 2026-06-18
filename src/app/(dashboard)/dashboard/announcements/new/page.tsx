@@ -1,16 +1,16 @@
 import { ArrowLeft } from 'lucide-react'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/infrastructure/database/server'
 import { AnnouncementForm } from '@/components/dashboard/AnnouncementForm'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { createAnnouncement, createAndSubmitAnnouncement } from './actions'
-import { getWritableOrganizationId } from '@/lib/announcements/access'
-import { getCurrentAccessContext } from '@/lib/auth/authz'
+import { getWritableOrganizationId } from '@/modules/announcements/access'
+import { getCurrentAccessContext } from '@/modules/auth/authz'
 import {
   DEFAULT_DISPLAY_FONT,
   DEFAULT_DISPLAY_SIZE,
   DEFAULT_URGENCY,
-} from '@/lib/announcements/presentation'
+} from '@/modules/announcements/presentation'
 import type { AnnouncementFormData } from '@/components/dashboard/AnnouncementForm'
 
 export const metadata = { title: 'New Announcement' }

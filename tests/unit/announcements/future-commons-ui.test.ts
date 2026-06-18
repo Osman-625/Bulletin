@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { URGENCY_META } from '@/lib/announcements/presentation'
+import { URGENCY_META } from '@/modules/announcements/presentation'
 
 function source(path: string) {
   return readFileSync(path, 'utf8')
@@ -202,7 +202,7 @@ describe('Future Commons production UI guards', () => {
     const data = source('src/lib/data.ts')
 
     expect(publicBoard).toContain("export const BOARD_SORTS = ['priority', 'issued', 'closing']")
-    expect(publicHome).toContain('@/lib/announcements/public-board')
+    expect(publicHome).toContain('@/modules/announcements/public-board')
     expect(publicHome).toContain('BoardOrderControls')
     expect(boardOrderControls).toContain(
       'buildFeedHref({ category, q: search, sort: option.sort })'

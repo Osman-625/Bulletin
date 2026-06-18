@@ -1,9 +1,9 @@
-import type { PublicAnnouncement } from '@/lib/types'
+import type { PublicAnnouncement } from '@/shared/types'
 import {
   URGENCY_META,
   isAnnouncementPinned,
   normalizeAnnouncementUrgency,
-} from '@/lib/announcements/presentation'
+} from '@/modules/announcements/presentation'
 
 export const CAMPUS_TIME_ZONE = 'Asia/Kuala_Lumpur'
 export const BOARD_SORTS = ['priority', 'issued', 'closing'] as const

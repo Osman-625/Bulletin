@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useRef } from 'react'
 import { KeyRound } from 'lucide-react'
-import { TEMPORARY_PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
+import { TEMPORARY_PASSWORD_MIN_LENGTH } from '@/modules/auth/password-policy'
 import { fulfillPasswordResetRequest, type PasswordResetRequestState } from './actions'
 
 const initialState: PasswordResetRequestState = {}

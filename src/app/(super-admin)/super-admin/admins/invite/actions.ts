@@ -1,15 +1,18 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { logAuditEvent } from '@/lib/audit'
+import { logAuditEvent } from '@/modules/audit'
 import {
   canAccessSuperAdminArea,
   getCurrentAccessContext,
   getDefaultAppPath,
-} from '@/lib/auth/authz'
-import { reportServerError } from '@/lib/error-reporting'
-import { INVITATION_EXPIRY_DAYS, readAdminInvitationFormData } from '@/lib/invitations/validation'
-import { createClient } from '@/lib/supabase/server'
+} from '@/modules/auth/authz'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import {
+  INVITATION_EXPIRY_DAYS,
+  readAdminInvitationFormData,
+} from '@/modules/invitations/validation'
+import { createClient } from '@/infrastructure/database/server'
 
 const INVITE_ADMIN_PATH = '/super-admin/admins/invite'
 const INVITE_CREATE_ERROR = 'Could not create invite. Try again.'

@@ -1,7 +1,7 @@
 import type { User } from '@supabase/supabase-js'
-import { reportServerError } from '@/lib/error-reporting'
-import { createAdminClient } from '@/lib/supabase/admin'
-import type { UserRole } from '@/lib/types'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { createAdminClient } from '@/infrastructure/database/admin'
+import type { UserRole } from '@/shared/types'
 
 const DEFAULT_PROFILE_ROLE = 'publisher' satisfies UserRole
 

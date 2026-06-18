@@ -11,7 +11,7 @@ describe('account settings write error handling source guards', () => {
   it('logs settings write failures without exposing backend messages', () => {
     const actions = source(accountActionsPath)
 
-    expect(actions).toContain("from '@/lib/error-reporting'")
+    expect(actions).toContain("from '@/shared/errors/error-reporting'")
     expect(actions).toContain('reportServerError(')
     expect(actions).toContain('ACCOUNT_PROFILE_ERROR')
     expect(actions).toContain('ACCOUNT_PASSWORD_ERROR')

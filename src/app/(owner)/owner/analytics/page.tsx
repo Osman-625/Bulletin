@@ -1,9 +1,9 @@
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { CountUp } from '@/components/dashboard/CountUp'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
-import { formatCampusCompactDate } from '@/lib/announcements/public-board'
-import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
-import { createServiceClient } from '@/lib/supabase/server'
+import { formatCampusCompactDate } from '@/modules/announcements/public-board'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/modules/categories/display'
+import { createServiceClient } from '@/infrastructure/database/server'
 
 export const metadata = { title: 'Analytics — Bulletin Owner' }
 

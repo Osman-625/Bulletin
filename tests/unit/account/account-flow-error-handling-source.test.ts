@@ -17,7 +17,7 @@ describe('account flow write error handling source guards', () => {
   it.each(accountFlowActions)('%s logs failures without exposing backend messages', (path) => {
     const file = source(path)
 
-    expect(file).toContain("from '@/lib/error-reporting'")
+    expect(file).toContain("from '@/shared/errors/error-reporting'")
     expect(file).toContain('reportServerError(')
     expect(file).not.toContain('encodeURIComponent(error.message)')
     expect(file).not.toContain('encodeURIComponent(createErr?.message')

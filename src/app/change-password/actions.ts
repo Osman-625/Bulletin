@@ -1,11 +1,11 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { logAuditEvent } from '@/lib/audit'
-import { validatePassword } from '@/lib/auth/password-policy'
-import { reportServerError } from '@/lib/error-reporting'
-import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
-import { createClient } from '@/lib/supabase/server'
+import { logAuditEvent } from '@/modules/audit'
+import { validatePassword } from '@/modules/auth/password-policy'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
+import { createClient } from '@/infrastructure/database/server'
 
 const CHANGE_PASSWORD_PATH = '/change-password'
 const PASSWORD_CHANGE_ERROR = 'Could not finish updating your password. Try again.'

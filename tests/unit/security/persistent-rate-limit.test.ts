@@ -1,14 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { reportServerError } from '@/lib/error-reporting'
-import { resetRateLimitForTests } from '@/lib/security/rate-limit'
-import { checkPersistentRateLimit } from '@/lib/security/persistent-rate-limit'
-import { createServiceClient } from '@/lib/supabase/server'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { resetRateLimitForTests } from '@/shared/middleware/rate-limit'
+import { checkPersistentRateLimit } from '@/shared/middleware/persistent-rate-limit'
+import { createServiceClient } from '@/infrastructure/database/server'
 
-vi.mock('@/lib/error-reporting', () => ({
+vi.mock('@/shared/errors/error-reporting', () => ({
   reportServerError: vi.fn(),
 }))
 
-vi.mock('@/lib/supabase/server', () => ({
+vi.mock('@/infrastructure/database/server', () => ({
   createServiceClient: vi.fn(),
 }))
 

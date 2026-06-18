@@ -1,5 +1,5 @@
-import type { PublicAnnouncement } from '../types'
-import type { DbCategory } from '../types'
+import type { PublicAnnouncement } from '@/shared/types'
+import type { DbCategory } from '@/shared/types'
 
 export function matchesSearch(announcement: PublicAnnouncement, query: string): boolean {
   if (!query) return true

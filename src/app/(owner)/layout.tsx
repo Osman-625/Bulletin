@@ -1,12 +1,14 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/infrastructure/database/server'
 import { DashboardShell } from '@/components/dashboard/DashboardShell'
-import { canAccessOwnerArea, getDefaultAppPath, type AppRole } from '@/lib/auth/authz'
-import { getUnreadNotificationCount } from '@/lib/notifications'
+import { canAccessOwnerArea, getDefaultAppPath, type AppRole } from '@/modules/auth/authz'
+import { getUnreadNotificationCount } from '@/modules/notifications'
 
 export default async function OwnerLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const { data: profile } = await supabase

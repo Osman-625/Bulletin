@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { derivePublicTopics, matchesSearch } from '@/lib/announcements/feed'
-import type { AnnouncementWithRelations } from '@/lib/types'
+import { derivePublicTopics, matchesSearch } from '@/modules/announcements/feed'
+import type { AnnouncementWithRelations } from '@/shared/types'
 
 function announcement(
   overrides: Partial<AnnouncementWithRelations> = {}

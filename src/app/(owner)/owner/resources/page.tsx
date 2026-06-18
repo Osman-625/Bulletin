@@ -12,12 +12,12 @@ import {
 import { CountUp } from '@/components/dashboard/CountUp'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
-import { createServiceClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/infrastructure/database/server'
 import {
   type ExternalResourceCard,
   type OwnerResourceOverview,
   getOwnerResourceOverview,
-} from '@/lib/owner/resources'
+} from '@/modules/owner/resources'
 
 export const metadata = { title: 'Resources — Bulletin Owner' }
 

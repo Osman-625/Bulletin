@@ -2,12 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { logAuditEvent } from '@/lib/audit'
-import { getDefaultAppPath } from '@/lib/auth/authz'
-import { validatePassword } from '@/lib/auth/password-policy'
-import { reportServerError } from '@/lib/error-reporting'
-import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
-import { createClient } from '@/lib/supabase/server'
+import { logAuditEvent } from '@/modules/audit'
+import { getDefaultAppPath } from '@/modules/auth/authz'
+import { validatePassword } from '@/modules/auth/password-policy'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
+import { createClient } from '@/infrastructure/database/server'
 
 const ACCOUNT_PROFILE_ERROR = 'Could not update profile. Try again.'
 const ACCOUNT_PASSWORD_ERROR = 'Could not update password. Try again.'

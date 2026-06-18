@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import Link from 'next/link'
 import { ChevronDown, Crown, ExternalLink, LogOut, Settings } from 'lucide-react'
 import { logout } from '@/app/(auth)/login/actions'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/utils'
 import type { DashboardVariant } from './nav-config'
 
 interface UserMenuProps {

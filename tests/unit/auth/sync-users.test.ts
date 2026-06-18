@@ -1,7 +1,7 @@
 import type { User } from '@supabase/supabase-js'
 import { describe, expect, it } from 'vitest'
 
-import { authUserToProfileInsert } from '@/lib/auth/sync-users'
+import { authUserToProfileInsert } from '@/modules/auth/sync-users'
 
 function authUserWithMetadata(
   userMetadata: User['user_metadata'],

@@ -1,7 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/utils'
 
 type BrandMarkSize = 'sm' | 'md' | 'lg' | 'xl' | 'hero'
 

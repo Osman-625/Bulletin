@@ -2,24 +2,24 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { logAuditEvent } from '@/lib/audit'
-import { canManageAnnouncementForOrg } from '@/lib/announcements/access'
+import { logAuditEvent } from '@/modules/audit'
+import { canManageAnnouncementForOrg } from '@/modules/announcements/access'
 import {
   assertAnnouncementReadyForReview,
   readAnnouncementTextFields,
-} from '@/lib/announcements/form'
-import { readAnnouncementMutationFields } from '@/lib/announcements/mutations'
+} from '@/modules/announcements/form'
+import { readAnnouncementMutationFields } from '@/modules/announcements/mutations'
 import {
   normalizeAnnouncementDisplayFont,
   normalizeAnnouncementDisplaySize,
   normalizeAnnouncementUrgency,
-} from '@/lib/announcements/presentation'
-import { canAccessAdminArea, getCurrentAccessContext } from '@/lib/auth/authz'
-import { reportServerError } from '@/lib/error-reporting'
-import { notifyAnnouncementSubmitted } from '@/lib/notifications'
-import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
+} from '@/modules/announcements/presentation'
+import { canAccessAdminArea, getCurrentAccessContext } from '@/modules/auth/authz'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { notifyAnnouncementSubmitted } from '@/modules/notifications'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
+import { createAdminClient } from '@/infrastructure/database/admin'
+import { createClient } from '@/infrastructure/database/server'
 
 const ANNOUNCEMENT_LOAD_ERROR = 'Could not load announcement. Try again.'
 const ANNOUNCEMENT_SAVE_ERROR = 'Could not save announcement. Try again.'

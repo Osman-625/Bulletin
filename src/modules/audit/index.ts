@@ -1,9 +1,9 @@
 import 'server-only'
 
 import { revalidatePath } from 'next/cache'
-import { reportServerError } from '@/lib/error-reporting'
-import type { Json } from './database.types'
-import { createServiceClient } from './supabase/server'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import type { Json } from '@/infrastructure/database/database.types'
+import { createServiceClient } from '@/infrastructure/database/server'
 
 type AuditMetadata = Record<string, Json | undefined>
 

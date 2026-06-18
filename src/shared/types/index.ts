@@ -1,4 +1,4 @@
-import type { Tables, Enums } from './database.types'
+import type { Tables, Enums } from '@/infrastructure/database/database.types'
 
 // ─── Row types ───────────────────────────────────────────────
 

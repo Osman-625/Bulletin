@@ -1,6 +1,10 @@
 import * as Sentry from '@sentry/nextjs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { buildServerErrorLog, reportServerError, reportServerWarning } from '@/lib/error-reporting'
+import {
+  buildServerErrorLog,
+  reportServerError,
+  reportServerWarning,
+} from '@/shared/errors/error-reporting'
 
 vi.mock('@sentry/nextjs', () => ({
   captureException: vi.fn(),

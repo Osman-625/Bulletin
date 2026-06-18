@@ -5,7 +5,7 @@
  * imports so client components can use it.
  */
 
-import type { UserRole } from '../types'
+import type { UserRole } from '@/shared/types'
 
 /** Union of all database roles plus the special `owner` app role. */
 export type AppRole = UserRole | 'owner'

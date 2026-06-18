@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type SyntheticEvent } from 'react'
 import { KeyRound, X } from 'lucide-react'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { TEMPORARY_PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
+import { TEMPORARY_PASSWORD_MIN_LENGTH } from '@/modules/auth/password-policy'
 import { resetUserPassword } from './actions'
 
 type UserInfo = { id: string; display_name: string }

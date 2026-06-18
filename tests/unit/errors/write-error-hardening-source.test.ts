@@ -9,7 +9,7 @@ describe('write route error hardening source guards', () => {
   it('keeps admin organization creation database errors server-side', () => {
     const actions = source('src/app/(admin)/admin/orgs/new/actions.ts')
 
-    expect(actions).toContain("from '@/lib/error-reporting'")
+    expect(actions).toContain("from '@/shared/errors/error-reporting'")
     expect(actions).toContain('ORGANIZATION_CREATE_ERROR')
     expect(actions).toContain('reportServerError(')
     expect(actions).not.toContain('error.message')
@@ -19,7 +19,7 @@ describe('write route error hardening source guards', () => {
     const actions = source('src/app/(admin)/admin/review/[id]/actions.ts')
     const page = source('src/app/(admin)/admin/review/[id]/page.tsx')
 
-    expect(actions).toContain("from '@/lib/error-reporting'")
+    expect(actions).toContain("from '@/shared/errors/error-reporting'")
     expect(actions).toContain('REVIEW_WRITE_ERROR')
     expect(actions).toContain('reportServerError(')
     expect(actions).toContain('review_failed')
@@ -31,7 +31,7 @@ describe('write route error hardening source guards', () => {
   it('handles setup write failures without exposing auth provider messages', () => {
     const route = source('src/app/api/setup/route.ts')
 
-    expect(route).toContain("from '@/lib/error-reporting'")
+    expect(route).toContain("from '@/shared/errors/error-reporting'")
     expect(route).toContain('SETUP_WRITE_ERROR')
     expect(route).toContain('reportServerError(')
     expect(route).toContain('ownerReadError')

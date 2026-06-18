@@ -4,8 +4,8 @@ import { redirect } from 'next/navigation'
 import { UserPlus } from 'lucide-react'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { logAuditEvent } from '@/lib/audit'
-import { formatCampusDateTime, formatCampusShortDate } from '@/lib/announcements/public-board'
+import { logAuditEvent } from '@/modules/audit'
+import { formatCampusDateTime, formatCampusShortDate } from '@/modules/announcements/public-board'
 import {
   canAccessSuperAdminArea,
   canManageUser,
@@ -14,15 +14,15 @@ import {
   getDefaultAppPath,
   type AppRole,
   type ScopedUser,
-} from '@/lib/auth/authz'
+} from '@/modules/auth/authz'
 import {
   TEMPORARY_PASSWORD_MIN_LENGTH,
   validateTemporaryPassword,
-} from '@/lib/auth/password-policy'
-import { syncAuthUsersToProfiles } from '@/lib/auth/sync-users'
-import { reportServerError } from '@/lib/error-reporting'
-import { createServiceClient } from '@/lib/supabase/server'
-import type { DbUser } from '@/lib/types'
+} from '@/modules/auth/password-policy'
+import { syncAuthUsersToProfiles } from '@/modules/auth/sync-users'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { createServiceClient } from '@/infrastructure/database/server'
+import type { DbUser } from '@/shared/types'
 import { PasswordResetRequestButton } from './PasswordResetRequestButton'
 
 export const metadata = { title: 'Users - Bulletin Super Admin' }

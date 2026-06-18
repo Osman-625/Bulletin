@@ -9,7 +9,7 @@ describe('client error reporting source guards', () => {
   it('reports publisher form client-side save, submit, delete, and upload failures', () => {
     const form = source('src/components/dashboard/AnnouncementForm.tsx')
 
-    expect(form).toContain("from '@/lib/client-error-reporting'")
+    expect(form).toContain("from '@/shared/errors/client-error-reporting'")
     expect(form).toContain("reportClientError('announcement_form.save'")
     expect(form).toContain("reportClientError('announcement_form.submit'")
     expect(form).toContain("reportClientError('announcement_form.delete'")
@@ -26,7 +26,7 @@ describe('client error reporting source guards', () => {
     for (const [path, context] of boundaries) {
       const boundary = source(path)
 
-      expect(boundary, path).toContain("from '@/lib/client-error-reporting'")
+      expect(boundary, path).toContain("from '@/shared/errors/client-error-reporting'")
       expect(boundary, path).toContain(`reportClientError('${context}'`)
       expect(boundary, path).toContain('digest: error.digest ?? null')
       expect(boundary, path).not.toContain('console.error')

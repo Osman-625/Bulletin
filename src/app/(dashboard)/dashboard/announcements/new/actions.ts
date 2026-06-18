@@ -2,20 +2,20 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { logAuditEvent } from '@/lib/audit'
-import { getWritableOrganizationId } from '@/lib/announcements/access'
-import { readAnnouncementTextFields } from '@/lib/announcements/form'
-import { readAnnouncementMutationFields } from '@/lib/announcements/mutations'
+import { logAuditEvent } from '@/modules/audit'
+import { getWritableOrganizationId } from '@/modules/announcements/access'
+import { readAnnouncementTextFields } from '@/modules/announcements/form'
+import { readAnnouncementMutationFields } from '@/modules/announcements/mutations'
 import {
   normalizeAnnouncementDisplayFont,
   normalizeAnnouncementDisplaySize,
   normalizeAnnouncementUrgency,
-} from '@/lib/announcements/presentation'
-import { getCurrentAccessContext } from '@/lib/auth/authz'
-import { reportServerError } from '@/lib/error-reporting'
-import { notifyAnnouncementSubmitted } from '@/lib/notifications'
-import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
-import { createClient } from '@/lib/supabase/server'
+} from '@/modules/announcements/presentation'
+import { getCurrentAccessContext } from '@/modules/auth/authz'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { notifyAnnouncementSubmitted } from '@/modules/notifications'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
+import { createClient } from '@/infrastructure/database/server'
 
 const ANNOUNCEMENT_SAVE_ERROR = 'Could not save announcement. Try again.'
 const ANNOUNCEMENT_SUBMIT_ERROR = 'Could not submit announcement. Try again.'

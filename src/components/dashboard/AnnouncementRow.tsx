@@ -3,16 +3,16 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, Clock, Edit2, Eye, FileImage, Pin } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/utils'
 import { GlassCard } from './GlassCard'
 import { StatusBadge } from './StatusBadge'
-import type { PostStatus } from '@/lib/types'
+import type { PostStatus } from '@/shared/types'
 import {
   URGENCY_META,
   normalizeAnnouncementUrgency,
   type AnnouncementUrgency,
-} from '@/lib/announcements/presentation'
-import { dateValue, formatCampusShortDate } from '@/lib/announcements/public-board'
+} from '@/modules/announcements/presentation'
+import { dateValue, formatCampusShortDate } from '@/modules/announcements/public-board'
 
 export type AnnouncementRowData = {
   id: string

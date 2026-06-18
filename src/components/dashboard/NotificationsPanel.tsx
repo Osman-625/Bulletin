@@ -2,10 +2,10 @@ import Link from 'next/link'
 import { Bell, CheckCheck, ExternalLink } from 'lucide-react'
 import { GlassCard } from './GlassCard'
 import { DashboardBoardHeader, DashboardBoardPage } from './DashboardBoard'
-import { getNotificationsForCurrentUser } from '@/lib/notifications'
-import { markAllNotificationsRead, markNotificationRead } from '@/lib/notification-actions'
-import { formatCampusDateTime } from '@/lib/announcements/public-board'
-import type { DbNotification } from '@/lib/types'
+import { getNotificationsForCurrentUser } from '@/modules/notifications'
+import { markAllNotificationsRead, markNotificationRead } from '@/modules/notifications/actions'
+import { formatCampusDateTime } from '@/modules/announcements/public-board'
+import type { DbNotification } from '@/shared/types'
 
 function notificationTone(type: DbNotification['type']) {
   if (type === 'password_reset_requested') {

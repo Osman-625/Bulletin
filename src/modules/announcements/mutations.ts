@@ -5,8 +5,8 @@ import {
   readAnnouncementScheduleFields,
   readOptionalBannerUrl,
   readOptionalHttpUrl,
-} from '@/lib/announcements/form'
-import type { Database } from '@/lib/database.types'
+} from '@/modules/announcements/form'
+import type { Database } from '@/infrastructure/database/database.types'
 
 type BulletinSupabaseClient = SupabaseClient<Database>
 

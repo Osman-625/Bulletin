@@ -8,8 +8,8 @@ import {
   paginatePublicBoardItems,
   selectPublicBoardHighlights,
   sortAnnouncementsForPublicBoard,
-} from '@/lib/announcements/public-board'
-import type { AnnouncementWithRelations } from '@/lib/types'
+} from '@/modules/announcements/public-board'
+import type { AnnouncementWithRelations } from '@/shared/types'
 
 function announcement(
   id: string,

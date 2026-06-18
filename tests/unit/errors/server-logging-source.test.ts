@@ -20,7 +20,7 @@ describe('structured server logging source guards', () => {
     for (const path of structuredServerLogFiles) {
       const file = source(path)
 
-      expect(file, path).toContain("from '@/lib/error-reporting'")
+      expect(file, path).toContain("from '@/shared/errors/error-reporting'")
       expect(file, path).toContain('reportServerError(')
       expect(file, path).not.toContain('console.error')
     }

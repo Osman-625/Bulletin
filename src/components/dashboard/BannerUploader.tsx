@@ -2,7 +2,7 @@
 
 import NextImage from 'next/image'
 import { Upload, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/utils'
 
 interface BannerUploaderProps {
   bannerUrl: string

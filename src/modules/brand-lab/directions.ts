@@ -305,9 +305,7 @@ export const brandDirections: BrandDirection[] = [
   },
 ]
 
-export const selectedBrandDirection = brandDirections.find(
-  (d) => d.slug === 'future-commons'
-)!
+export const selectedBrandDirection = brandDirections.find((d) => d.slug === 'future-commons')!
 
 export const brandLabResearchAnchors: readonly { label: string; url: string; note: string }[] = [
   {
@@ -323,7 +321,7 @@ export const brandLabResearchAnchors: readonly { label: string; url: string; not
   {
     label: 'Student News UX Benchmarks',
     url: 'https://nus.edu.sg/nusbulletin',
-    note: 'NUS, Monash, and Taylor\'s campus bulletin patterns studied for navigation and content density',
+    note: "NUS, Monash, and Taylor's campus bulletin patterns studied for navigation and content density",
   },
   {
     label: 'Accessible Color Contrast',

@@ -1,10 +1,13 @@
-import type { AccessContext } from '@/lib/auth/authz'
-import { canAccessPublisherArea } from '@/lib/auth/authz'
-import type { createClient } from '@/lib/supabase/server'
+import type { AccessContext } from '@/modules/auth/authz'
+import { canAccessPublisherArea } from '@/modules/auth/authz'
+import type { createClient } from '@/infrastructure/database/server'
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 
-export function canManageAnnouncementForOrg(access: AccessContext, organizationId: string): boolean {
+export function canManageAnnouncementForOrg(
+  access: AccessContext,
+  organizationId: string
+): boolean {
   if (access.role === 'owner' || access.role === 'super_admin') return true
   return access.orgIds.includes(organizationId)
 }

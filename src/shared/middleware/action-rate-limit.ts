@@ -1,6 +1,6 @@
 import { headers } from 'next/headers'
-import { checkPersistentRateLimit } from './persistent-rate-limit'
-import { rateLimitKey } from './rate-limit'
+import { checkPersistentRateLimit } from '@/shared/middleware/persistent-rate-limit'
+import { rateLimitKey } from '@/shared/middleware/rate-limit'
 
 const AUTH_LIMIT = 5
 const AUTH_WINDOW_MS = 60_000

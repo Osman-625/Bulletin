@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import type { BrandDirection, BrandDirectionSlug } from '@/lib/brand-lab/directions'
+import type { BrandDirection, BrandDirectionSlug } from '@/modules/brand-lab/directions'
 import styles from './brand-lab.module.css'
 
 type BrandLabViewProps = {

@@ -1,6 +1,6 @@
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
-import { getCurrentAccessContext } from '@/lib/auth/authz'
+import { getCurrentAccessContext } from '@/modules/auth/authz'
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
   const access = await getCurrentAccessContext()

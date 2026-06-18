@@ -1,10 +1,10 @@
 import { cache } from 'react'
-import { createClient, createServiceClient } from './supabase/server'
-import { getCurrentAccessContext } from './auth/authz'
-import { dateValue, formatCampusDateTime } from '@/lib/announcements/public-board'
-import { reportServerError } from '@/lib/error-reporting'
-import type { Database } from './database.types'
-import type { DbNotification } from './types'
+import { createClient, createServiceClient } from '@/infrastructure/database/server'
+import { getCurrentAccessContext } from '@/modules/auth/authz'
+import { dateValue, formatCampusDateTime } from '@/modules/announcements/public-board'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import type { Database } from '@/infrastructure/database/database.types'
+import type { DbNotification } from '@/shared/types'
 
 type NotificationInsert = Database['public']['Tables']['notifications']['Insert']
 

@@ -84,7 +84,7 @@ describe('dashboard board redesign source guards', () => {
     expect(navConfig.indexOf("label: 'Owner'")).toBeLessThan(
       navConfig.indexOf("label: 'Publisher'")
     )
-    expect(navConfig).toContain("from '@/lib/auth/roles'")
+    expect(navConfig).toContain("from '@/modules/auth/roles'")
     expect(navConfig).toContain('canAccessOwnerArea')
     expect(navConfig).toContain('canAccessSuperAdminArea')
     expect(navConfig).toContain('canAccessAdminArea')

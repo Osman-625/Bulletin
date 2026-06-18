@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/infrastructure/database/client'
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000
 const IDLE_WARNING_MS = 30 * 1000

@@ -7,7 +7,7 @@ import { LogOut, X } from 'lucide-react'
 import { logout } from '@/app/(auth)/login/actions'
 import { BrandMark } from '@/components/layout/BrandMark'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/utils'
 import {
   ROLE_TABS,
   canUseRoleTab,

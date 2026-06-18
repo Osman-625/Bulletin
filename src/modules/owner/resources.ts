@@ -1,9 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { unstable_rethrow } from 'next/navigation'
-import { formatCampusDateTime } from '@/lib/announcements/public-board'
-import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
-import { reportServerError, reportServerWarning } from '@/lib/error-reporting'
-import { bannerStoragePath, listBannerStorageFiles } from '@/lib/storage/banner-cleanup'
+import { formatCampusDateTime } from '@/modules/announcements/public-board'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/modules/categories/display'
+import { reportServerError, reportServerWarning } from '@/shared/errors/error-reporting'
+import { bannerStoragePath, listBannerStorageFiles } from '@/infrastructure/storage/banner-cleanup'
 
 type ResourceMetric = {
   label: string

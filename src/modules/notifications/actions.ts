@@ -1,8 +1,8 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClient } from './supabase/server'
-import { getCurrentAccessContext } from './auth/authz'
+import { createClient } from '@/infrastructure/database/server'
+import { getCurrentAccessContext } from '@/modules/auth/authz'
 
 function revalidateNotificationPaths() {
   revalidatePath('/dashboard/notifications')

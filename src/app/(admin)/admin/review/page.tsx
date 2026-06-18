@@ -14,8 +14,8 @@ import {
   DashboardBoardPanel,
 } from '@/components/dashboard/DashboardBoard'
 import { StatusBadge } from '@/components/dashboard/StatusBadge'
-import { formatCampusShortDate } from '@/lib/announcements/public-board'
-import { getSubmittedAnnouncements } from '@/lib/data'
+import { formatCampusShortDate } from '@/modules/announcements/public-board'
+import { getSubmittedAnnouncements } from '@/infrastructure/database/data'
 
 export const metadata = { title: 'Review Queue' }
 

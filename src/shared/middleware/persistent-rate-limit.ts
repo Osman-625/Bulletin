@@ -1,9 +1,13 @@
 import 'server-only'
 
 import { createHash } from 'node:crypto'
-import { reportServerError } from '@/lib/error-reporting'
-import { createServiceClient } from '@/lib/supabase/server'
-import { checkRateLimit, type RateLimitOptions, type RateLimitResult } from './rate-limit'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { createServiceClient } from '@/infrastructure/database/server'
+import {
+  checkRateLimit,
+  type RateLimitOptions,
+  type RateLimitResult,
+} from '@/shared/middleware/rate-limit'
 
 function fallbackRateLimit(key: string, options: RateLimitOptions) {
   return checkRateLimit(key, options)

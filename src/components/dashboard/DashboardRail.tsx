@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LogOut } from 'lucide-react'
 import { logout } from '@/app/(auth)/login/actions'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/utils'
 import {
   ROLE_TABS,
   canUseRoleTab,

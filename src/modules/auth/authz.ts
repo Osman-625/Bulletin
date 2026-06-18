@@ -14,16 +14,16 @@
 
 import { cache } from 'react'
 import { redirect } from 'next/navigation'
-import { createClient } from '../supabase/server'
-import type { AppRole } from './roles'
+import { createClient } from '@/infrastructure/database/server'
+import type { AppRole } from '@/modules/auth/roles'
 
 export {
   canAccessAdminArea,
   canAccessOwnerArea,
   canAccessPublisherArea,
   canAccessSuperAdminArea,
-} from './roles'
-export type { AppRole } from './roles'
+} from '@/modules/auth/roles'
+export type { AppRole } from '@/modules/auth/roles'
 
 /**
  * Full access context for the currently authenticated user.

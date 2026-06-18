@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { readOrganizationFormData } from '@/lib/organizations/validation'
+import { readOrganizationFormData } from '@/modules/organizations/validation'
 
 function source(path: string) {
   return readFileSync(path, 'utf8')

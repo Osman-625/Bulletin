@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { BrandMark } from '@/components/layout/BrandMark'
-import { reportClientError } from '@/lib/client-error-reporting'
+import { reportClientError } from '@/shared/errors/client-error-reporting'
 
 export default function PublicError({
   error,

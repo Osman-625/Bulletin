@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import type { CSSProperties } from 'react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/utils'
 import {
   CARD_TITLE_SIZES,
   FEATURED_TITLE_SIZES,
@@ -11,15 +11,15 @@ import {
   normalizeAnnouncementDisplayFont,
   normalizeAnnouncementDisplaySize,
   normalizeAnnouncementUrgency,
-} from '@/lib/announcements/presentation'
+} from '@/modules/announcements/presentation'
 import {
   daysUntilDeadline,
   deadlineLabel,
   formatCampusShortDate,
-} from '@/lib/announcements/public-board'
-import { announcementPath, toSafeHttpUrl, toSafeImageUrl } from '@/lib/announcements/urls'
-import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
-import type { PublicAnnouncement } from '@/lib/types'
+} from '@/modules/announcements/public-board'
+import { announcementPath, toSafeHttpUrl, toSafeImageUrl } from '@/modules/announcements/urls'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/modules/categories/display'
+import type { PublicAnnouncement } from '@/shared/types'
 
 export type AnnouncementCardVisual = 'poster' | 'letterbox' | 'stamp' | 'ribbon'
 

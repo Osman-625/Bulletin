@@ -3,9 +3,9 @@
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useFeedNavigation } from '@/components/public/FeedNavigation'
-import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
-import { captureProductEvent } from '@/lib/product-analytics'
-import type { DbCategory } from '@/lib/types'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/modules/categories/display'
+import { captureProductEvent } from '@/shared/constants/product-analytics'
+import type { DbCategory } from '@/shared/types'
 
 type CategoryFilterProps = { categories: DbCategory[] }
 

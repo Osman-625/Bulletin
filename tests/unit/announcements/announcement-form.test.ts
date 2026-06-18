@@ -8,8 +8,8 @@ import {
   readOptionalBannerUrl,
   readOptionalHttpUrl,
   readAnnouncementScheduleFields,
-} from '@/lib/announcements/form'
-import { toSafeHttpUrl } from '@/lib/announcements/urls'
+} from '@/modules/announcements/form'
+import { toSafeHttpUrl } from '@/modules/announcements/urls'
 
 function formData(key: string, value: string): FormData {
   const form = new FormData()

@@ -2,8 +2,8 @@ import { notFound, permanentRedirect } from 'next/navigation'
 import Image from 'next/image'
 import ReactMarkdown from 'react-markdown'
 import type { CSSProperties } from 'react'
-import { getAnnouncementById } from '@/lib/data'
-import { cn } from '@/lib/utils'
+import { getAnnouncementById } from '@/infrastructure/database/data'
+import { cn } from '@/shared/utils'
 import {
   DETAIL_BODY_SIZES,
   DETAIL_TITLE_SIZES,
@@ -12,10 +12,14 @@ import {
   normalizeAnnouncementDisplayFont,
   normalizeAnnouncementDisplaySize,
   normalizeAnnouncementUrgency,
-} from '@/lib/announcements/presentation'
-import { announcementPath, announcementPathSegment, toSafeHttpUrl } from '@/lib/announcements/urls'
-import { formatCampusLongDate } from '@/lib/announcements/public-board'
-import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
+} from '@/modules/announcements/presentation'
+import {
+  announcementPath,
+  announcementPathSegment,
+  toSafeHttpUrl,
+} from '@/modules/announcements/urls'
+import { formatCampusLongDate } from '@/modules/announcements/public-board'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/modules/categories/display'
 import type { Metadata } from 'next'
 import BackButton from '@/components/announcements/BackButton'
 import { RegistrationLink } from '@/components/announcements/RegistrationLink'

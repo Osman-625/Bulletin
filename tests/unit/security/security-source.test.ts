@@ -76,8 +76,8 @@ describe('security source guards', () => {
     const insertIndex = actions.indexOf(".from('organizations')")
     const membershipInsertIndex = actions.indexOf(".from('organization_members')")
 
-    expect(actions).toContain("from '@/lib/auth/authz'")
-    expect(actions).toContain("from '@/lib/organizations/validation'")
+    expect(actions).toContain("from '@/modules/auth/authz'")
+    expect(actions).toContain("from '@/modules/organizations/validation'")
     expect(accessCheckIndex).toBeGreaterThan(-1)
     expect(roleCheckIndex).toBeGreaterThan(-1)
     expect(validationIndex).toBeGreaterThan(-1)
@@ -250,12 +250,12 @@ describe('security source guards', () => {
     const resetButton = source('src/app/(super-admin)/super-admin/users/_ResetButton.tsx')
 
     for (const file of [adminUsers, ownerUsers, superAdminUsers, superAdminActions]) {
-      expect(file).toContain("from '@/lib/auth/password-policy'")
+      expect(file).toContain("from '@/modules/auth/password-policy'")
       expect(file).toContain('validateTemporaryPassword')
     }
 
     for (const file of [adminUsers, ownerUsers, superAdminUsers, resetRequestButton, resetButton]) {
-      expect(file).toContain("from '@/lib/auth/password-policy'")
+      expect(file).toContain("from '@/modules/auth/password-policy'")
       expect(file).toContain('TEMPORARY_PASSWORD_MIN_LENGTH')
     }
 
@@ -275,7 +275,7 @@ describe('security source guards', () => {
     const accountSettings = source('src/components/account/AccountSettingsPage.tsx')
 
     for (const file of [registerAction, changePasswordAction, accountActions]) {
-      expect(file).toContain("from '@/lib/auth/password-policy'")
+      expect(file).toContain("from '@/modules/auth/password-policy'")
       expect(file).toContain('validatePassword')
       expect(file).not.toContain('password.length < 8')
       expect(file).not.toContain('newPassword.length < 8')
@@ -283,7 +283,7 @@ describe('security source guards', () => {
     }
 
     for (const file of [registerPage, changePasswordPage, accountSettings]) {
-      expect(file).toContain("from '@/lib/auth/password-policy'")
+      expect(file).toContain("from '@/modules/auth/password-policy'")
       expect(file).toContain('PASSWORD_MIN_LENGTH')
       expect(file).not.toContain('minLength={8}')
       expect(file).not.toContain('At least 8 characters')
@@ -358,7 +358,7 @@ describe('security source guards', () => {
     const orgActions = source('src/app/(admin)/admin/orgs/new/actions.ts')
 
     for (const file of [newActions, editActions, reviewActions, orgActions]) {
-      expect(file).toContain("from '@/lib/security/action-rate-limit'")
+      expect(file).toContain("from '@/shared/middleware/action-rate-limit'")
       expect(file).toContain('checkActionRateLimit(')
       expect(file).toContain('rateLimit.limited')
     }

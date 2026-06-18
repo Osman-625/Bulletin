@@ -6,7 +6,7 @@ import {
   TEMPORARY_PASSWORD_REQUIREMENT,
   validatePassword,
   validateTemporaryPassword,
-} from '@/lib/auth/password-policy'
+} from '@/modules/auth/password-policy'
 
 describe('temporary password policy', () => {
   it('requires all application passwords to be at least 12 characters', () => {
