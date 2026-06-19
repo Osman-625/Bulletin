@@ -72,7 +72,7 @@ describe('readOrganizationFormData', () => {
   })
 
   it('renders organization type options from the shared validation config', () => {
-    const validationSource = source('src/lib/organizations/validation.ts')
+    const validationSource = source('src/modules/organizations/validation.ts')
     const newOrgPage = source('src/app/(admin)/admin/orgs/new/page.tsx')
 
     expect(validationSource).toContain('export const ORGANIZATION_TYPE_OPTIONS')

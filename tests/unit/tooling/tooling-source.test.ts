@@ -18,8 +18,10 @@ describe('tooling source guards', () => {
   it('checks generated Supabase types against the committed type file', () => {
     const workflow = source('.github/workflows/test.yml')
 
-    expect(workflow).toContain('diff src/lib/database.types.ts /tmp/database.types.generated.ts')
-    expect(workflow).toContain('> src/lib/database.types.ts')
+    expect(workflow).toContain(
+      'diff src/infrastructure/database/database.types.ts /tmp/database.types.generated.ts'
+    )
+    expect(workflow).toContain('> src/infrastructure/database/database.types.ts')
   })
 
   it('runs a production build in CI before browser smoke tests', () => {
@@ -166,8 +168,8 @@ describe('tooling source guards', () => {
     const serverConfig = source('src/sentry.server.config.ts')
     const edgeConfig = source('src/sentry.edge.config.ts')
     const globalError = source('src/app/global-error.tsx')
-    const serverReporter = source('src/lib/error-reporting.ts')
-    const clientReporter = source('src/lib/client-error-reporting.ts')
+    const serverReporter = source('src/shared/errors/error-reporting.ts')
+    const clientReporter = source('src/shared/errors/client-error-reporting.ts')
 
     expect(pkg.dependencies?.['@sentry/nextjs']).toBeDefined()
     expect(nextConfig).toContain("import { withSentryConfig } from '@sentry/nextjs'")
@@ -205,7 +207,7 @@ describe('tooling source guards', () => {
     const proxy = source('src/proxy.ts')
     const envExample = source('.env.example')
     const clientInstrumentation = source('src/instrumentation-client.ts')
-    const analytics = source('src/lib/product-analytics.ts')
+    const analytics = source('src/shared/constants/product-analytics.ts')
     const feed = source('src/app/(public)/page.tsx')
     const feedAnalytics = source('src/components/analytics/PublicFeedAnalytics.tsx')
     const categoryFilter = source('src/components/announcements/CategoryFilter.tsx')

@@ -71,7 +71,7 @@ describe('public feed responsive adaptation source guards', () => {
     expect(boardOrderControls).toContain('Showing:')
     expect(boardOrderControls).toContain('FeedPendingStatus')
     expect(feedPendingStatus).toContain('role="status"')
-    expect(feedPendingStatus).toContain('Updating notices...')
+    expect(feedPendingStatus).toContain('Updating notices…')
     expect(publicHome).not.toContain('public-page-reveal future-bento-cell hidden gap-4')
     expect(boardOrderControls).toContain('lg:grid-cols-[auto_minmax(0,1fr)]')
     expect(boardOrderControls).toContain('grid-cols-3')
@@ -84,18 +84,14 @@ describe('public feed responsive adaptation source guards', () => {
   it('keeps route loading skeleton in the same order as the rendered public feed', () => {
     const loading = source('src/app/(public)/loading.tsx')
 
-    expect(loading.indexOf('Section 2 — Search + filter')).toBeGreaterThan(
-      loading.indexOf('Section 1 — Hero')
+    expect(loading.indexOf('Search + category filters')).toBeGreaterThan(loading.indexOf('Hero'))
+    expect(loading.indexOf('Sort / order controls')).toBeGreaterThan(
+      loading.indexOf('Search + category filters')
     )
-    expect(loading.indexOf('Section 3 — Sort controls')).toBeGreaterThan(
-      loading.indexOf('Section 2 — Search + filter')
+    expect(loading.indexOf('Featured + pinned notices')).toBeGreaterThan(
+      loading.indexOf('Sort / order controls')
     )
-    expect(loading.indexOf('Section 4 — Featured + side notices')).toBeGreaterThan(
-      loading.indexOf('Section 3 — Sort controls')
-    )
-    expect(loading.indexOf('Section 5 — Feed')).toBeGreaterThan(
-      loading.indexOf('Section 4 — Featured + side notices')
-    )
+    expect(loading.indexOf('Feed')).toBeGreaterThan(loading.indexOf('Featured + pinned notices'))
   })
 
   it('uses clear copy for filtered views where every matching notice is featured above the feed', () => {
@@ -107,7 +103,7 @@ describe('public feed responsive adaptation source guards', () => {
 
   it('renders a distinct public feed load error instead of presenting query failures as empty boards', () => {
     const publicHome = source('src/app/(public)/page.tsx')
-    const data = source('src/lib/data.ts')
+    const data = source('src/infrastructure/database/data.ts')
 
     expect(data).toContain('error: string | null')
     expect(data).toContain("error: 'public_announcements_query_failed'")

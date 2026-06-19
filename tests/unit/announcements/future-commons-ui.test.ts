@@ -196,10 +196,10 @@ describe('Future Commons production UI guards', () => {
   it('adds board-order sorting without replacing category filters', () => {
     const publicHome = source('src/app/(public)/page.tsx')
     const boardOrderControls = source('src/components/public/BoardOrderControls.tsx')
-    const publicBoard = source('src/lib/announcements/public-board.ts')
+    const publicBoard = source('src/modules/announcements/public-board.ts')
     const categoryFilter = source('src/components/announcements/CategoryFilter.tsx')
     const card = source('src/components/announcements/AnnouncementCard.tsx')
-    const data = source('src/lib/data.ts')
+    const data = source('src/infrastructure/database/data.ts')
 
     expect(publicBoard).toContain("export const BOARD_SORTS = ['priority', 'issued', 'closing']")
     expect(publicHome).toContain('@/modules/announcements/public-board')
@@ -394,7 +394,7 @@ describe('Future Commons production UI guards', () => {
       source('src/app/(admin)/admin/review/[id]/page.tsx'),
       source('src/app/(admin)/admin/analytics/page.tsx'),
       source('src/app/(owner)/owner/analytics/page.tsx'),
-      source('src/lib/owner/resources.ts'),
+      source('src/modules/owner/resources.ts'),
     ]
 
     for (const file of displaySurfaces) {
@@ -462,11 +462,11 @@ describe('Future Commons production UI guards', () => {
 
     expect(ownerHome).toContain('DashboardBoardPage')
     expect(ownerHome).toContain('DashboardBoardMetrics')
-    expect(ownerHome).toContain('DashboardBoardBoard')
     expect(ownerHome).toContain('getOwnerResourceOverview')
-    expect(ownerHome).toContain('Owner workspaces')
+    expect(ownerHome).toContain('WorkspaceCard')
+    expect(ownerHome).toContain('Workspaces')
     expect(ownerHome).toContain('Needs attention')
-    expect(ownerHome).toContain('Owner resources')
+    expect(ownerHome).toContain("href: '/owner/resources'")
     expect(ownerHome).toContain('Super board')
     expect(ownerHome).toContain('Publisher board')
     expect(ownerResources).toContain('No tracked announcement views yet')

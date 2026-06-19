@@ -139,7 +139,6 @@ export function CommandPalette({ items, placeholder = 'Search or jump to…' }: 
                   onKeyDown={onInputKeyDown}
                   placeholder={placeholder}
                   aria-label="Search destinations"
-                  aria-activedescendant={results[activeIndex] ? `cmd-${activeIndex}` : undefined}
                   className="min-h-14 flex-1 bg-transparent text-base text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
                 />
                 <kbd className="hidden items-center rounded-md border border-[var(--color-border)] px-1.5 py-0.5 font-mono text-[0.65rem] text-[var(--color-text-muted)] sm:inline-flex">
@@ -147,11 +146,7 @@ export function CommandPalette({ items, placeholder = 'Search or jump to…' }: 
                 </kbd>
               </div>
 
-              <ul
-                role="listbox"
-                aria-label="Destinations"
-                className="max-h-[min(60vh,24rem)] overflow-y-auto p-2"
-              >
+              <ul aria-label="Destinations" className="max-h-[min(60vh,24rem)] overflow-y-auto p-2">
                 {results.length === 0 ? (
                   <li className="px-3 py-6 text-center text-sm text-[var(--color-text-muted)]">
                     No matches for “{query}”
@@ -161,11 +156,12 @@ export function CommandPalette({ items, placeholder = 'Search or jump to…' }: 
                     const Icon = item.icon
                     const active = index === activeIndex
                     return (
-                      <li key={item.href} id={`cmd-${index}`} role="option" aria-selected={active}>
+                      <li key={item.href}>
                         <button
                           type="button"
                           onClick={() => navigate(item)}
                           onMouseMove={() => setActiveIndex(index)}
+                          aria-current={active ? 'true' : undefined}
                           className={cn(
                             'flex w-full items-center gap-3 rounded-[var(--radius-lg)] px-3 py-2.5 text-left text-sm font-medium transition-colors',
                             active

@@ -110,7 +110,7 @@ describe('owner resource overview', () => {
   })
 
   it('pages owner announcement resource reads instead of truncating at 1000 rows', () => {
-    const resources = source('src/lib/owner/resources.ts')
+    const resources = source('src/modules/owner/resources.ts')
 
     expect(resources).toContain('OWNER_RESOURCE_ANNOUNCEMENTS_PAGE_SIZE')
     expect(resources).toContain(

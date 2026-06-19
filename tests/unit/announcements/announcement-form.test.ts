@@ -168,7 +168,7 @@ describe('announcement form validation helpers', () => {
   })
 
   it('keeps banner upload limits in shared announcement form config', () => {
-    const helperSource = source('src/lib/announcements/form.ts')
+    const helperSource = source('src/modules/announcements/form.ts')
     const formSource = source('src/components/dashboard/AnnouncementForm.tsx')
 
     expect(helperSource).toContain('BANNER_MAX_FILE_SIZE_MB = 5')

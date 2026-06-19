@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-const accountActionsPath = 'src/lib/account/actions.ts'
+const accountActionsPath = 'src/modules/users/actions.ts'
 
 function source(path: string) {
   return readFileSync(path, 'utf8')

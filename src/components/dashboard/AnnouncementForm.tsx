@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useTransition } from 'react'
+import { useReducer, useEffect, useRef, useCallback, useTransition } from 'react'
 import { unstable_rethrow } from 'next/navigation'
 import NextImage from 'next/image'
-import { AlertTriangle, Calendar, Clock, Link2, Pin, Trash2, Type, Upload, X } from 'lucide-react'
+import { AlertTriangle, Calendar, Clock, Link2, Pin, Type, Upload, X } from 'lucide-react'
 import { cn } from '@/shared/utils'
-import { BackNavButton } from '@/components/navigation/BackNavButton'
 import { ActionBar } from './ActionBar'
-import { GlassCard } from './GlassCard'
 import type { AutosaveStatus } from './AutosaveIndicator'
+import { AnnouncementFormTopBar } from './AnnouncementFormTopBar'
+import { AnnouncementLivePreview } from './AnnouncementLivePreview'
+import { PublishingReadinessChecklist } from './PublishingReadinessChecklist'
 import type { PostStatus } from '@/shared/types'
 import { createClient } from '@/infrastructure/database/client'
 import {
@@ -23,8 +24,6 @@ import {
   ANNOUNCEMENT_DISPLAY_FONTS,
   ANNOUNCEMENT_DISPLAY_SIZES,
   ANNOUNCEMENT_URGENCIES,
-  CARD_TITLE_SIZES,
-  DETAIL_BODY_SIZES,
   DISPLAY_FONT_LABELS,
   DISPLAY_SIZE_LABELS,
   URGENCY_META,
@@ -74,6 +73,35 @@ interface AnnouncementFormProps {
   backHref?: string
 }
 
+type AnnouncementFormState = {
+  title: string
+  body: string
+  categoryId: string
+  bannerUrl: string
+  registrationLink: string
+  expiresAt: string
+  scheduledPublishAt: string
+  pinnedUntil: string
+  status: PostStatus
+  urgency: AnnouncementUrgency
+  displayFont: AnnouncementDisplayFont
+  displaySize: AnnouncementDisplaySize
+  saveState: AutosaveStatus
+  isSaving: boolean
+  isPublishing: boolean
+  urlError: string
+  isDragOver: boolean
+  isUploading: boolean
+  bannerSizeError: boolean
+  bannerUploadError: string
+  formError: string
+}
+
+type AnnouncementFormAction = {
+  type: 'patch'
+  values: Partial<AnnouncementFormState>
+}
+
 // ─── Helpers ─────────────────────────────────────────────────
 
 function isValidUrl(str: string): boolean {
@@ -98,6 +126,42 @@ function toDateTimeLocalInputValue(iso: string | null | undefined): string {
   return local.toISOString().slice(0, 16)
 }
 
+function createAnnouncementFormState(initialData: AnnouncementFormData): AnnouncementFormState {
+  return {
+    title: initialData.title,
+    body: initialData.body,
+    categoryId: initialData.category_id ?? '',
+    bannerUrl: initialData.banner_url ?? '',
+    registrationLink: initialData.registration_link ?? '',
+    expiresAt: toDateInputValue(initialData.expires_at),
+    scheduledPublishAt: toDateTimeLocalInputValue(initialData.scheduled_publish_at),
+    pinnedUntil: toDateTimeLocalInputValue(initialData.pinned_until),
+    status: initialData.status,
+    urgency: initialData.urgency,
+    displayFont: initialData.display_font,
+    displaySize: initialData.display_size,
+    saveState: 'idle',
+    isSaving: false,
+    isPublishing: false,
+    urlError: '',
+    isDragOver: false,
+    isUploading: false,
+    bannerSizeError: false,
+    bannerUploadError: '',
+    formError: '',
+  }
+}
+
+function announcementFormReducer(
+  state: AnnouncementFormState,
+  action: AnnouncementFormAction
+): AnnouncementFormState {
+  switch (action.type) {
+    case 'patch':
+      return { ...state, ...action.values }
+  }
+}
+
 function isFutureDateTime(value: string): boolean {
   if (!value) return false
   const date = new Date(value)
@@ -109,256 +173,9 @@ function futureDateTimeError(value: string, label: string): string {
   return isFutureDateTime(value) ? '' : `${label} must be in the future or left blank.`
 }
 
-const READINESS_ITEMS = [
-  'Title and body explain what students need to know.',
-  'Date, venue, contact, and registration details are current.',
-  'Banner image and urgency level still make sense on mobile.',
-] as const
-
-type DeleteAnnouncementHandler = (closeAfterError: () => void) => void
-
-function DeleteAnnouncementControl({
-  isPending,
-  onDelete,
-}: {
-  isPending: boolean
-  onDelete: DeleteAnnouncementHandler
-}) {
-  const deleteDialogRef = useRef<HTMLDialogElement | null>(null)
-  const deleteCancelRef = useRef<HTMLButtonElement | null>(null)
-  const deleteTriggerRef = useRef<HTMLButtonElement | null>(null)
-
-  function openDeleteDialog() {
-    const dialog = deleteDialogRef.current
-    if (!dialog || dialog.open) return
-
-    dialog.showModal()
-    window.setTimeout(() => {
-      deleteCancelRef.current?.focus()
-    }, 0)
-  }
-
-  function closeDeleteDialog() {
-    const dialog = deleteDialogRef.current
-    if (dialog?.open) {
-      dialog.close()
-    }
-
-    window.setTimeout(() => {
-      deleteTriggerRef.current?.focus()
-    }, 0)
-  }
-
-  function handleDeleteDialogCancel(event: React.SyntheticEvent<HTMLDialogElement>) {
-    event.preventDefault()
-    closeDeleteDialog()
-  }
-
-  return (
-    <div className="relative">
-      <button
-        ref={deleteTriggerRef}
-        type="button"
-        onClick={openDeleteDialog}
-        className="flex min-h-11 items-center gap-1.5 rounded-lg text-xs text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-destructive)]"
-      >
-        <Trash2 size={14} aria-hidden="true" />
-        Delete
-      </button>
-      <dialog
-        ref={deleteDialogRef}
-        aria-labelledby="delete-announcement-title"
-        aria-describedby="delete-announcement-description"
-        onCancel={handleDeleteDialogCancel}
-        className="m-0 rounded-xl border border-[var(--color-destructive)]/30 bg-[var(--color-surface)] p-2 text-[var(--color-text-primary)] shadow-[var(--shadow-soft)] backdrop:bg-[color-mix(in_oklab,var(--color-text-primary)_30%,transparent)]"
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          <span
-            id="delete-announcement-title"
-            className="text-xs font-semibold text-[var(--color-destructive)]"
-          >
-            Delete this?
-          </span>
-          <span id="delete-announcement-description" className="sr-only">
-            This permanently deletes the announcement and cannot be undone.
-          </span>
-          <button
-            type="button"
-            onClick={() => onDelete(closeDeleteDialog)}
-            disabled={isPending}
-            className="min-h-11 rounded-lg bg-[var(--color-destructive)] px-3 text-xs font-medium text-[var(--color-surface)] transition-opacity hover:opacity-90 disabled:opacity-50"
-          >
-            {isPending ? 'Deleting...' : 'Confirm'}
-          </button>
-          <button
-            ref={deleteCancelRef}
-            type="button"
-            onClick={closeDeleteDialog}
-            className="min-h-11 rounded-lg border border-[var(--color-glass-border)] px-3 text-xs font-medium text-[var(--color-text-secondary)] transition-colors hover:bg-[var(--color-surface-elevated)]"
-          >
-            Cancel
-          </button>
-        </div>
-      </dialog>
-    </div>
-  )
-}
-
-function AnnouncementFormTopBar({
-  backHref,
-  isPending,
-  onDelete,
-}: {
-  backHref: string
-  isPending: boolean
-  onDelete?: DeleteAnnouncementHandler
-}) {
-  return (
-    <div className="mx-auto flex w-full max-w-[82rem] items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-      <BackNavButton
-        fallbackHref={backHref}
-        className="min-w-0 rounded-lg border-transparent bg-transparent px-0 text-sm text-[var(--color-text-secondary)] shadow-none hover:border-transparent hover:bg-transparent hover:text-[var(--color-text-primary)] hover:shadow-none"
-      >
-        Back to announcements
-      </BackNavButton>
-
-      {onDelete && <DeleteAnnouncementControl isPending={isPending} onDelete={onDelete} />}
-    </div>
-  )
-}
-
-function PublishingReadinessChecklist() {
-  return (
-    <section className="announcement-section-card p-5 sm:p-6">
-      <p className="future-kicker">Publishing readiness</p>
-      <h2 className="font-display mt-3 text-2xl leading-tight font-extrabold text-[var(--color-text-primary)]">
-        Check before sending
-      </h2>
-      <div className="announcement-readiness-list mt-5">
-        {READINESS_ITEMS.map((item, index) => (
-          <div key={item} className="announcement-readiness-item">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-[0.75rem] bg-[var(--color-accent-surface)] font-mono text-xs font-bold text-[var(--color-accent)]">
-              {String(index + 1).padStart(2, '0')}
-            </span>
-            <p className="text-sm leading-6 text-[var(--color-text-secondary)]">{item}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function AnnouncementLivePreview({
-  bannerUrl,
-  urgency,
-  isScheduled,
-  isPinned,
-  displayFont,
-  displaySize,
-  selectedCategory,
-  title,
-  body,
-  registrationLink,
-  urlError,
-}: {
-  bannerUrl: string
-  urgency: AnnouncementUrgency
-  isScheduled: boolean
-  isPinned: boolean
-  displayFont: AnnouncementDisplayFont
-  displaySize: AnnouncementDisplaySize
-  selectedCategory: CategoryOption | undefined
-  title: string
-  body: string
-  registrationLink: string
-  urlError: string
-}) {
-  const selectedUrgency = URGENCY_META[urgency]
-  const titleFontClass = getAnnouncementTitleFontClass(displayFont)
-
-  return (
-    <section className="announcement-preview-panel">
-      <p className="mb-3 text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase">
-        Preview
-      </p>
-      <GlassCard hover={false} className="overflow-hidden">
-        {bannerUrl && (
-          <NextImage
-            src={bannerUrl}
-            alt="Preview banner"
-            width={600}
-            height={144}
-            className="h-36 w-full object-contain"
-            unoptimized
-          />
-        )}
-        <div className="space-y-2 p-5">
-          <div className="flex flex-wrap items-center gap-2">
-            {urgency !== 'normal' && (
-              <span
-                className="rounded-md px-2.5 py-1 text-[15px] font-semibold"
-                style={{
-                  color: selectedUrgency.tone,
-                  background: selectedUrgency.background,
-                }}
-              >
-                {selectedUrgency.label}
-              </span>
-            )}
-            {isScheduled && (
-              <span className="rounded-md bg-[var(--color-accent-surface)] px-2.5 py-1 text-[15px] font-semibold text-[var(--color-accent-inti)]">
-                Scheduled
-              </span>
-            )}
-            {isPinned && (
-              <span className="rounded-md bg-[var(--color-status-published-bg)] px-2.5 py-1 text-[15px] font-semibold text-[var(--color-status-published-text)]">
-                Pinned
-              </span>
-            )}
-            <span className="rounded-md bg-[var(--color-surface-elevated)] px-2.5 py-1 text-[15px] font-medium text-[var(--color-text-muted)]">
-              {DISPLAY_FONT_LABELS[displayFont]} · {DISPLAY_SIZE_LABELS[displaySize]}
-            </span>
-          </div>
-          {selectedCategory && (
-            <div className="flex items-center gap-2">
-              <span
-                className="size-2 rounded-full"
-                style={{ backgroundColor: selectedCategory.color ?? 'var(--color-accent)' }}
-              />
-              <span className="text-[13.5px] font-medium tracking-[0.2em] text-[var(--color-text-muted)] uppercase">
-                {selectedCategory.name}
-              </span>
-            </div>
-          )}
-          <h3
-            className={cn(
-              titleFontClass,
-              'leading-tight font-semibold text-[var(--color-text-primary)]'
-            )}
-            style={{ fontSize: CARD_TITLE_SIZES[displaySize] }}
-          >
-            {title || 'Untitled Announcement'}
-          </h3>
-          <p
-            className="line-clamp-3 leading-relaxed text-[var(--color-text-secondary)]"
-            style={{ fontSize: DETAIL_BODY_SIZES[displaySize] }}
-          >
-            {body || 'Announcement body will appear here...'}
-          </p>
-          {registrationLink && !urlError && (
-            <span className="inline-block text-[15px] font-medium tracking-wider text-[var(--color-accent)] uppercase">
-              Register Here →
-            </span>
-          )}
-        </div>
-      </GlassCard>
-    </section>
-  )
-}
-
 // ─── Component ───────────────────────────────────────────────
 
-export function AnnouncementForm({
+function useAnnouncementFormController({
   initialData,
   categories,
   organizationId,
@@ -371,39 +188,122 @@ export function AnnouncementForm({
   backHref = '/dashboard/announcements',
 }: AnnouncementFormProps) {
   const [isPending, startTransition] = useTransition()
+  const [state, dispatch] = useReducer(
+    announcementFormReducer,
+    initialData,
+    createAnnouncementFormState
+  )
+  const {
+    title,
+    body,
+    categoryId,
+    bannerUrl,
+    registrationLink,
+    expiresAt,
+    scheduledPublishAt,
+    pinnedUntil,
+    status,
+    urgency,
+    displayFont,
+    displaySize,
+    saveState,
+    isSaving,
+    isPublishing,
+    urlError,
+    isDragOver,
+    isUploading,
+    bannerSizeError,
+    bannerUploadError,
+    formError,
+  } = state
 
-  // Form state
-  const [title, setTitle] = useState(() => initialData.title)
-  const [body, setBody] = useState(() => initialData.body)
-  const [categoryId, setCategoryId] = useState(initialData.category_id ?? '')
-  const [bannerUrl, setBannerUrl] = useState(initialData.banner_url ?? '')
-  const [registrationLink, setRegistrationLink] = useState(initialData.registration_link ?? '')
-  const [expiresAt, setExpiresAt] = useState(() => toDateInputValue(initialData.expires_at))
-  const [scheduledPublishAt, setScheduledPublishAt] = useState(() =>
-    toDateTimeLocalInputValue(initialData.scheduled_publish_at)
-  )
-  const [pinnedUntil, setPinnedUntil] = useState(() =>
-    toDateTimeLocalInputValue(initialData.pinned_until)
-  )
-  const [status, setStatus] = useState<PostStatus>(() => initialData.status)
-  const [urgency, setUrgency] = useState<AnnouncementUrgency>(() => initialData.urgency)
-  const [displayFont, setDisplayFont] = useState<AnnouncementDisplayFont>(
-    () => initialData.display_font
-  )
-  const [displaySize, setDisplaySize] = useState<AnnouncementDisplaySize>(
-    () => initialData.display_size
-  )
+  function patchState(values: Partial<AnnouncementFormState>) {
+    dispatch({ type: 'patch', values })
+  }
 
-  // UI state
-  const [saveState, setSaveState] = useState<AutosaveStatus>('idle')
-  const [isSaving, setIsSaving] = useState(false)
-  const [isPublishing, setIsPublishing] = useState(false)
-  const [urlError, setUrlError] = useState('')
-  const [isDragOver, setIsDragOver] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
-  const [bannerSizeError, setBannerSizeError] = useState(false)
-  const [bannerUploadError, setBannerUploadError] = useState('')
-  const [formError, setFormError] = useState('')
+  function setTitle(value: string) {
+    patchState({ title: value })
+  }
+
+  function setBody(value: string) {
+    patchState({ body: value })
+  }
+
+  function setCategoryId(value: string) {
+    patchState({ categoryId: value })
+  }
+
+  function setBannerUrl(value: string) {
+    patchState({ bannerUrl: value })
+  }
+
+  function setRegistrationLink(value: string) {
+    patchState({ registrationLink: value })
+  }
+
+  function setExpiresAt(value: string) {
+    patchState({ expiresAt: value })
+  }
+
+  function setScheduledPublishAt(value: string) {
+    patchState({ scheduledPublishAt: value })
+  }
+
+  function setPinnedUntil(value: string) {
+    patchState({ pinnedUntil: value })
+  }
+
+  function setStatus(value: PostStatus) {
+    patchState({ status: value })
+  }
+
+  function setUrgency(value: AnnouncementUrgency) {
+    patchState({ urgency: value })
+  }
+
+  function setDisplayFont(value: AnnouncementDisplayFont) {
+    patchState({ displayFont: value })
+  }
+
+  function setDisplaySize(value: AnnouncementDisplaySize) {
+    patchState({ displaySize: value })
+  }
+
+  function setSaveState(value: AutosaveStatus) {
+    patchState({ saveState: value })
+  }
+
+  function setIsSaving(value: boolean) {
+    patchState({ isSaving: value })
+  }
+
+  function setIsPublishing(value: boolean) {
+    patchState({ isPublishing: value })
+  }
+
+  function setUrlError(value: string) {
+    patchState({ urlError: value })
+  }
+
+  function setIsDragOver(value: boolean) {
+    patchState({ isDragOver: value })
+  }
+
+  function setIsUploading(value: boolean) {
+    patchState({ isUploading: value })
+  }
+
+  function setBannerSizeError(value: boolean) {
+    patchState({ bannerSizeError: value })
+  }
+
+  function setBannerUploadError(value: string) {
+    patchState({ bannerUploadError: value })
+  }
+
+  function setFormError(value: string) {
+    patchState({ formError: value })
+  }
 
   const bodyRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -523,7 +423,7 @@ export function AnnouncementForm({
   // ─── Handlers ────────────────────────────────────────────────
 
   function clearFormErrorOnEdit() {
-    setFormError((current) => (current ? '' : current))
+    if (formError) setFormError('')
   }
 
   async function handleSave() {
@@ -759,6 +659,118 @@ export function AnnouncementForm({
     />
   )
 
+  return {
+    actionBar,
+    backHref,
+    bannerSizeError,
+    bannerUploadError,
+    bannerUrl,
+    body,
+    bodyRef,
+    categories,
+    categoryId,
+    clearFormErrorOnEdit,
+    displayFont,
+    displaySize,
+    expiresAt,
+    expiresAtError,
+    fileInputRef,
+    formError,
+    handleDelete,
+    handleDragOver,
+    handleDrop,
+    handleFileChange,
+    handleUrlBlur,
+    initialData,
+    isDragOver,
+    isNew,
+    isPending,
+    isPinned,
+    isScheduled,
+    isUploading,
+    onDelete,
+    pinnedUntil,
+    pinnedUntilError,
+    registrationLink,
+    removeBanner,
+    scheduledPublishAt,
+    scheduledPublishError,
+    selectedCategory,
+    setBody,
+    setCategoryId,
+    setDisplayFont,
+    setDisplaySize,
+    setExpiresAt,
+    setIsDragOver,
+    setPinnedUntil,
+    setRegistrationLink,
+    setScheduledPublishAt,
+    setTitle,
+    setUrgency,
+    setUrlError,
+    status,
+    title,
+    urgency,
+    urlError,
+  }
+}
+
+type AnnouncementFormViewProps = ReturnType<typeof useAnnouncementFormController>
+
+function renderAnnouncementFormView({
+  actionBar,
+  backHref,
+  bannerSizeError,
+  bannerUploadError,
+  bannerUrl,
+  body,
+  bodyRef,
+  categories,
+  categoryId,
+  clearFormErrorOnEdit,
+  displayFont,
+  displaySize,
+  expiresAt,
+  expiresAtError,
+  fileInputRef,
+  formError,
+  handleDelete,
+  handleDragOver,
+  handleDrop,
+  handleFileChange,
+  handleUrlBlur,
+  initialData,
+  isDragOver,
+  isNew,
+  isPending,
+  isPinned,
+  isScheduled,
+  isUploading,
+  onDelete,
+  pinnedUntil,
+  pinnedUntilError,
+  registrationLink,
+  removeBanner,
+  scheduledPublishAt,
+  scheduledPublishError,
+  selectedCategory,
+  setBody,
+  setCategoryId,
+  setDisplayFont,
+  setDisplaySize,
+  setExpiresAt,
+  setIsDragOver,
+  setPinnedUntil,
+  setRegistrationLink,
+  setScheduledPublishAt,
+  setTitle,
+  setUrgency,
+  setUrlError,
+  status,
+  title,
+  urgency,
+  urlError,
+}: AnnouncementFormViewProps) {
   return (
     <div className="announcement-form-shell">
       {/* Top bar with back button + delete */}
@@ -1372,4 +1384,8 @@ export function AnnouncementForm({
       )}
     </div>
   )
+}
+
+export function AnnouncementForm(props: AnnouncementFormProps) {
+  return renderAnnouncementFormView(useAnnouncementFormController(props))
 }

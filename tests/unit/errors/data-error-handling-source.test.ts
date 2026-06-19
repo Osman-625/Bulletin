@@ -7,7 +7,7 @@ function source(path: string) {
 
 describe('data helper error handling source guards', () => {
   it('logs Supabase read failures for admin and platform data helpers', () => {
-    const data = source('src/lib/data.ts')
+    const data = source('src/infrastructure/database/data.ts')
 
     expect(data).toContain("from '@/shared/errors/error-reporting'")
     expect(data).toContain('submittedAnnouncementsError')
@@ -29,7 +29,7 @@ describe('data helper error handling source guards', () => {
   })
 
   it('checks admin stats query errors before returning dashboard numbers', () => {
-    const data = source('src/lib/data.ts')
+    const data = source('src/infrastructure/database/data.ts')
 
     expect(data).toContain('pendingReviewError')
     expect(data).toContain('publishedThisMonthError')

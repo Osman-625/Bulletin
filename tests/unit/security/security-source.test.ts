@@ -14,8 +14,8 @@ function loggedAuditActions(path: string) {
 
 describe('security source guards', () => {
   it('marks Supabase service-role modules as server-only', () => {
-    expect(source('src/lib/supabase/admin.ts')).toContain("import 'server-only'")
-    expect(source('src/lib/supabase/server.ts')).toContain("import 'server-only'")
+    expect(source('src/infrastructure/database/admin.ts')).toContain("import 'server-only'")
+    expect(source('src/infrastructure/database/server.ts')).toContain("import 'server-only'")
   })
 
   it('records announcement edit events in the audit log', () => {
@@ -46,7 +46,7 @@ describe('security source guards', () => {
       'src/app/(super-admin)/super-admin/categories/page.tsx',
       'src/app/(owner)/owner/users/page.tsx',
       'src/app/(owner)/owner/categories/page.tsx',
-      'src/lib/account/actions.ts',
+      'src/modules/users/actions.ts',
     ]
 
     const actions = Array.from(new Set(actionSources.flatMap(loggedAuditActions))).sort()
@@ -181,14 +181,14 @@ describe('security source guards', () => {
   })
 
   it('uses a Supabase-backed server rate limiter for auth and setup throttles', () => {
-    const persistentLimiter = source('src/lib/security/persistent-rate-limit.ts')
-    const actionLimiter = source('src/lib/security/action-rate-limit.ts')
+    const persistentLimiter = source('src/shared/middleware/persistent-rate-limit.ts')
+    const actionLimiter = source('src/shared/middleware/action-rate-limit.ts')
     const setupRoute = source('src/app/api/setup/route.ts')
     const migration = source('supabase/migrations/20260521000019_rate_limit_buckets.sql')
     const remediation = source(
       'supabase/migrations/20260606031448_security_advisor_remediation.sql'
     )
-    const databaseTypes = source('src/lib/database.types.ts')
+    const databaseTypes = source('src/infrastructure/database/database.types.ts')
 
     expect(persistentLimiter).toContain("import 'server-only'")
     expect(persistentLimiter).toContain("rpc('hit_rate_limit'")
@@ -271,7 +271,7 @@ describe('security source guards', () => {
     const registerPage = source('src/app/register/page.tsx')
     const changePasswordAction = source('src/app/change-password/actions.ts')
     const changePasswordPage = source('src/app/change-password/page.tsx')
-    const accountActions = source('src/lib/account/actions.ts')
+    const accountActions = source('src/modules/users/actions.ts')
     const accountSettings = source('src/components/account/AccountSettingsPage.tsx')
 
     for (const file of [registerAction, changePasswordAction, accountActions]) {
@@ -402,7 +402,7 @@ describe('security source guards', () => {
   })
 
   it('adds application-layer guards to sensitive platform data helpers', () => {
-    const data = source('src/lib/data.ts')
+    const data = source('src/infrastructure/database/data.ts')
     const allAdminsStart = data.indexOf('export async function getAllAdmins')
     const platformStatsStart = data.indexOf('export async function getPlatformStats')
     const visibleUsersStart = data.indexOf('export async function getVisibleUsersForAdminPage')
@@ -438,6 +438,20 @@ describe('security source guards', () => {
     expect(actions).toContain('canAccessAdminArea')
     expect(publish).toContain('if (!canAccessAdminArea(announcement.actorRole))')
     expect(publish.indexOf('canAccessAdminArea')).toBeLessThan(publish.indexOf('.update({'))
+  })
+
+  it('routes submitted-announcement notifications only to admin-review-capable roles', () => {
+    const notifications = source('src/modules/notifications/index.ts')
+    const submittedStart = notifications.indexOf(
+      'export async function notifyAnnouncementSubmitted'
+    )
+    const reviewedStart = notifications.indexOf('export async function notifyAnnouncementReviewed')
+    const submitted = notifications.slice(submittedStart, reviewedStart)
+
+    expect(submitted).toContain(".eq('member_role', 'admin')")
+    expect(submitted).toContain(".eq('role', 'owner')")
+    expect(submitted).not.toContain("'super_admin'")
+    expect(submitted).toContain('href: `/admin/review/${announcementId}`')
   })
 
   it('ships an RLS policy migration that includes owner in users admin reads', () => {
@@ -520,7 +534,7 @@ describe('security source guards', () => {
   it('uses parameterized SQL for owner audit search instead of raw PostgREST OR filters', () => {
     const auditPage = source('src/app/(owner)/owner/audit/page.tsx')
     const migration = source('supabase/migrations/20260521000020_parameterized_audit_search.sql')
-    const databaseTypes = source('src/lib/database.types.ts')
+    const databaseTypes = source('src/infrastructure/database/database.types.ts')
 
     expect(auditPage).toContain("rpc('search_audit_log'")
     expect(auditPage).not.toContain('entriesQuery.or(')

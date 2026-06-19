@@ -66,8 +66,13 @@ describe('dashboard board redesign source guards', () => {
 
       expect(page).toContain('DashboardBoardHeader')
       expect(page).toContain('DashboardBoardMetrics')
-      expect(page).toContain('DashboardBoardPanel')
-      expect(page).toContain('DashboardBoardRow')
+      if (file.includes('(owner)')) {
+        expect(page).toContain('WorkspaceCard')
+        expect(page).toContain('AttentionCard')
+      } else {
+        expect(page).toContain('DashboardBoardPanel')
+        expect(page).toContain('DashboardBoardRow')
+      }
     }
   })
 

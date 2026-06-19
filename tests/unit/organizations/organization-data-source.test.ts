@@ -7,9 +7,9 @@ function source(path: string) {
 
 describe('organization data source guards', () => {
   it('disambiguates organization owner profiles from approver profiles', () => {
-    const data = source('src/lib/data.ts')
+    const data = source('src/infrastructure/database/data.ts')
     const orgsPage = source('src/app/(admin)/admin/orgs/page.tsx')
-    const types = source('src/lib/types.ts')
+    const types = source('src/shared/types/index.ts')
 
     expect(data).toContain('owner:users!organizations_owner_id_fkey ( display_name, email )')
     expect(data).not.toContain("select('*, users ( display_name, email )')")

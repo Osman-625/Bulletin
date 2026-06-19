@@ -107,18 +107,18 @@ export async function notifyAnnouncementSubmitted({
   actorId,
 }: SubmittedNotificationInput) {
   const supabase = await createServiceClient()
-  const [{ data: orgAdmins }, { data: platformAdmins }] = await Promise.all([
+  const [{ data: orgAdmins }, { data: platformReviewers }] = await Promise.all([
     supabase
       .from('organization_members')
       .select('user_id')
       .eq('organization_id', organizationId)
       .eq('member_role', 'admin'),
-    supabase.from('users').select('id').in('role', ['owner', 'super_admin']),
+    supabase.from('users').select('id').eq('role', 'owner'),
   ])
 
   const recipients = compactUnique([
     ...(orgAdmins ?? []).map((member) => member.user_id),
-    ...(platformAdmins ?? []).map((user) => user.id),
+    ...(platformReviewers ?? []).map((user) => user.id),
   ]).filter((recipientId) => recipientId !== actorId)
 
   await createNotificationsForUsers(recipients, {

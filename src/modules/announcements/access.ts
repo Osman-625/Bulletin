@@ -8,7 +8,8 @@ export function canManageAnnouncementForOrg(
   access: AccessContext,
   organizationId: string
 ): boolean {
-  if (access.role === 'owner' || access.role === 'super_admin') return true
+  if (!canAccessPublisherArea(access.role)) return false
+  if (access.role === 'owner') return true
   return access.orgIds.includes(organizationId)
 }
 
