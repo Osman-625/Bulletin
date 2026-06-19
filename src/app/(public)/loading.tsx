@@ -1,7 +1,9 @@
 import type { CSSProperties } from 'react'
 
 function Bone({ className = '', style }: { className?: string; style?: CSSProperties }) {
-  return <div className={`skeleton-shimmer rounded ${className}`} style={style} />
+  return (
+    <div aria-hidden="true" className={`skeleton-shimmer rounded ${className}`} style={style} />
+  )
 }
 
 function LoadingAnnouncementCard({ poster = false }: { poster?: boolean }) {

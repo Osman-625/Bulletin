@@ -16,8 +16,10 @@ export async function createOrganization(formData: FormData) {
   if (!access) redirect('/login')
   if (!canAccessAdminArea(access.role)) redirect('/dashboard')
 
-  const supabase = await createClient()
-  const rateLimit = await checkActionRateLimit('organization-create', access.userId)
+  const [supabase, rateLimit] = await Promise.all([
+    createClient(),
+    checkActionRateLimit('organization-create', access.userId),
+  ])
   if (rateLimit.limited) {
     redirect(`/admin/orgs/new?error=${encodeURIComponent('Too many attempts. Try again shortly.')}`)
   }

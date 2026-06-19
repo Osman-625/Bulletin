@@ -48,9 +48,7 @@ type DashboardAnnouncement = DashboardIndexAnnouncement & {
 }
 
 export default async function DashboardPage() {
-  const access = await requireUsableAccessContext()
-
-  const supabase = await createClient()
+  const [access, supabase] = await Promise.all([requireUsableAccessContext(), createClient()])
 
   let live = 0
   let inDraft = 0
