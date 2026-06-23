@@ -34,7 +34,7 @@ jobs:
       PROJECT_ID: ${{ secrets['STAGING_PROJECT_ID'] }}
       SUPABASE_DB_PASSWORD: ${{ secrets['STAGING_DB_PASSWORD'] }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: supabase/setup-cli@v2
         with:
           version: 2.101.0
@@ -64,7 +64,7 @@ jobs:
       PROJECT_ID: ${{ inputs.target == 'production' && secrets['PRODUCTION_PROJECT_ID'] || secrets['STAGING_PROJECT_ID'] }}
       SUPABASE_DB_PASSWORD: ${{ inputs.target == 'production' && secrets['PRODUCTION_DB_PASSWORD'] || secrets['STAGING_DB_PASSWORD'] }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: supabase/setup-cli@v2
         with:
           version: 2.101.0
