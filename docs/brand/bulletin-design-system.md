@@ -64,36 +64,36 @@ Use motifs sparingly. The announcement remains the product.
 
 ### Light Mode
 
-| Token | Value | Role |
-| --- | --- | --- |
-| `--color-canvas` | `#F8F2DF` | Page canvas |
-| `--color-surface` | `#FFFAF0` | Main card and panel surface |
-| `--color-surface-elevated` | `#F2EAD8` | Poster mats, raised cells |
-| `--color-surface-high` | `#E7DDC9` | Skeletons and active neutral areas |
-| `--color-border` | `#E2D3BD` | Default border |
-| `--color-text-primary` | `#241815` | Main text |
-| `--color-text-secondary` | `#4A3933` | Secondary text |
-| `--color-text-muted` | `#705F52` | Metadata |
-| `--color-accent-inti` | `#C8102E` | Primary action, urgency, authority |
-| `--color-accent-hover` | `#A80D24` | Primary hover |
-| `--color-accent-surface` | `rgba(200, 16, 46, 0.08)` | Red-tinted surface |
-| `--color-navy` | `#143A5F` | Institutional support |
-| `--color-gold` | `#D4941F` | Dates, deadlines, issue metadata |
+| Token                      | Value                     | Role                               |
+| -------------------------- | ------------------------- | ---------------------------------- |
+| `--color-canvas`           | `#F8F2DF`                 | Page canvas                        |
+| `--color-surface`          | `#FFFAF0`                 | Main card and panel surface        |
+| `--color-surface-elevated` | `#F2EAD8`                 | Poster mats, raised cells          |
+| `--color-surface-high`     | `#E7DDC9`                 | Skeletons and active neutral areas |
+| `--color-border`           | `#E2D3BD`                 | Default border                     |
+| `--color-text-primary`     | `#241815`                 | Main text                          |
+| `--color-text-secondary`   | `#4A3933`                 | Secondary text                     |
+| `--color-text-muted`       | `#705F52`                 | Metadata                           |
+| `--color-accent-inti`      | `#C8102E`                 | Primary action, urgency, authority |
+| `--color-accent-hover`     | `#A80D24`                 | Primary hover                      |
+| `--color-accent-surface`   | `rgba(200, 16, 46, 0.08)` | Red-tinted surface                 |
+| `--color-navy`             | `#143A5F`                 | Institutional support              |
+| `--color-gold`             | `#D4941F`                 | Dates, deadlines, issue metadata   |
 
 ### Dark Mode
 
-| Token | Value | Role |
-| --- | --- | --- |
-| `--color-canvas` | `#15110F` | Page canvas |
-| `--color-surface` | `#211A17` | Main card and panel surface |
-| `--color-surface-elevated` | `#2C241F` | Raised cells |
-| `--color-border` | `#40352D` | Default border |
-| `--color-text-primary` | `#EDE8E3` | Main text |
-| `--color-text-secondary` | `#BFB3AC` | Secondary text |
-| `--color-text-muted` | `#978A83` | Metadata |
-| `--color-accent-inti` | `#E8203A` | Dark-mode red signal |
-| `--color-gold` | `#F5A623` | Dates and deadlines |
-| `--color-navy` | `#7FB2E7` | Dark-mode support accent |
+| Token                      | Value     | Role                        |
+| -------------------------- | --------- | --------------------------- |
+| `--color-canvas`           | `#15110F` | Page canvas                 |
+| `--color-surface`          | `#211A17` | Main card and panel surface |
+| `--color-surface-elevated` | `#2C241F` | Raised cells                |
+| `--color-border`           | `#40352D` | Default border              |
+| `--color-text-primary`     | `#EDE8E3` | Main text                   |
+| `--color-text-secondary`   | `#BFB3AC` | Secondary text              |
+| `--color-text-muted`       | `#978A83` | Metadata                    |
+| `--color-accent-inti`      | `#E8203A` | Dark-mode red signal        |
+| `--color-gold`             | `#F5A623` | Dates and deadlines         |
+| `--color-navy`             | `#7FB2E7` | Dark-mode support accent    |
 
 Color rules:
 
@@ -121,14 +121,14 @@ Rules:
 
 Suggested scale:
 
-| Role | Size |
-| --- | --- |
-| Hero display | `clamp(3rem, 7vw, 6.75rem)` |
-| Page title | `clamp(2.4rem, 5vw, 4.5rem)` |
-| Section title | `1.75rem` to `2.25rem` |
-| Card title | `1.25rem` to `2rem` |
-| Body | `1rem` |
-| Metadata | `0.75rem` to `0.875rem` |
+| Role          | Size                         |
+| ------------- | ---------------------------- |
+| Hero display  | `clamp(3rem, 7vw, 6.75rem)`  |
+| Page title    | `clamp(2.4rem, 5vw, 4.5rem)` |
+| Section title | `1.75rem` to `2.25rem`       |
+| Card title    | `1.25rem` to `2rem`          |
+| Body          | `1rem`                       |
+| Metadata      | `0.75rem` to `0.875rem`      |
 
 ## Layout System
 

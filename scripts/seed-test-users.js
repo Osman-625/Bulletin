@@ -23,14 +23,16 @@ function loadEnv(file) {
         process.env[m[1]] = m[2].trim().replace(/^['"]|['"]$/g, '')
       }
     }
-  } catch { /* file may not exist */ }
+  } catch {
+    /* file may not exist */
+  }
 }
 
 loadEnv(path.join(__dirname, '../.env.local'))
 loadEnv(path.join(__dirname, '../.env.test.local'))
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const SETUP_SECRET =
   process.env.SETUP_SECRET && process.env.SETUP_SECRET !== 'replace-with-test-setup-secret'
     ? process.env.SETUP_SECRET
@@ -69,44 +71,44 @@ async function findAuthUserByEmail(email) {
 // Each entry maps to exactly one pair of env vars written to .env.test.local.
 const TEST_ACCOUNTS = [
   {
-    email:               'osman_owner@bulletin.internal',
-    display_name:        'osman_owner',
-    role:                'owner',
+    email: 'osman_owner@bulletin.internal',
+    display_name: 'osman_owner',
+    role: 'owner',
     force_password_change: false,
-    envEmail:            'TEST_OWNER_EMAIL',
-    envPassword:         'TEST_OWNER_PASSWORD',
+    envEmail: 'TEST_OWNER_EMAIL',
+    envPassword: 'TEST_OWNER_PASSWORD',
   },
   {
-    email:               'test_superadmin@bulletin.internal',
-    display_name:        'test_superadmin',
-    role:                'super_admin',
+    email: 'test_superadmin@bulletin.internal',
+    display_name: 'test_superadmin',
+    role: 'super_admin',
     force_password_change: false,
-    envEmail:            'TEST_SUPER_ADMIN_EMAIL',
-    envPassword:         'TEST_SUPER_ADMIN_PASSWORD',
+    envEmail: 'TEST_SUPER_ADMIN_EMAIL',
+    envPassword: 'TEST_SUPER_ADMIN_PASSWORD',
   },
   {
-    email:               'test_admin@bulletin.internal',
-    display_name:        'test_admin',
-    role:                'admin',
+    email: 'test_admin@bulletin.internal',
+    display_name: 'test_admin',
+    role: 'admin',
     force_password_change: false,
-    envEmail:            'TEST_ADMIN_EMAIL',
-    envPassword:         'TEST_ADMIN_PASSWORD',
+    envEmail: 'TEST_ADMIN_EMAIL',
+    envPassword: 'TEST_ADMIN_PASSWORD',
   },
   {
-    email:               'test_publisher@bulletin.internal',
-    display_name:        'test_publisher',
-    role:                'publisher',
+    email: 'test_publisher@bulletin.internal',
+    display_name: 'test_publisher',
+    role: 'publisher',
     force_password_change: false,
-    envEmail:            'TEST_PUBLISHER_EMAIL',
-    envPassword:         'TEST_PUBLISHER_PASSWORD',
+    envEmail: 'TEST_PUBLISHER_EMAIL',
+    envPassword: 'TEST_PUBLISHER_PASSWORD',
   },
   {
-    email:               'test_forcechange@bulletin.internal',
-    display_name:        'test_forcechange',
-    role:                'admin',
+    email: 'test_forcechange@bulletin.internal',
+    display_name: 'test_forcechange',
+    role: 'admin',
     force_password_change: true,
-    envEmail:            'TEST_FORCE_CHANGE_EMAIL',
-    envPassword:         'TEST_FORCE_CHANGE_PASSWORD',
+    envEmail: 'TEST_FORCE_CHANGE_EMAIL',
+    envPassword: 'TEST_FORCE_CHANGE_PASSWORD',
   },
 ]
 
@@ -227,7 +229,12 @@ async function ensureTestOrg(ownerUserId) {
 
   const { data, error } = await supabase
     .from('organizations')
-    .insert({ name: 'Test Organization', slug: 'test-org', status: 'approved', owner_id: ownerUserId })
+    .insert({
+      name: 'Test Organization',
+      slug: 'test-org',
+      status: 'approved',
+      owner_id: ownerUserId,
+    })
     .select('id')
     .single()
 
@@ -249,30 +256,30 @@ async function ensureSampleAnnouncements(orgId, authorId) {
     const categoryId = categoryBySlug.get(sample.categorySlug)
     if (!categoryId) continue
 
-    const publishedAt = new Date(now - sample.publishedOffsetDays * 24 * 60 * 60 * 1000).toISOString()
+    const publishedAt = new Date(
+      now - sample.publishedOffsetDays * 24 * 60 * 60 * 1000
+    ).toISOString()
     const expiresAt = new Date(now + sample.expiresInDays * 24 * 60 * 60 * 1000).toISOString()
-    const { error } = await supabase
-      .from('announcements')
-      .upsert(
-        {
-          id: sample.id,
-          title: sample.title,
-          body: sample.body,
-          status: 'published',
-          category_id: categoryId,
-          organization_id: orgId,
-          author_id: authorId,
-          urgency: sample.urgency,
-          display_font: sample.display_font,
-          display_size: sample.display_size,
-          banner_url: sample.banner_url,
-          registration_link: sample.registration_link,
-          published_at: publishedAt,
-          expires_at: expiresAt,
-          updated_at: publishedAt,
-        },
-        { onConflict: 'id' }
-      )
+    const { error } = await supabase.from('announcements').upsert(
+      {
+        id: sample.id,
+        title: sample.title,
+        body: sample.body,
+        status: 'published',
+        category_id: categoryId,
+        organization_id: orgId,
+        author_id: authorId,
+        urgency: sample.urgency,
+        display_font: sample.display_font,
+        display_size: sample.display_size,
+        banner_url: sample.banner_url,
+        registration_link: sample.registration_link,
+        published_at: publishedAt,
+        expires_at: expiresAt,
+        updated_at: publishedAt,
+      },
+      { onConflict: 'id' }
+    )
     assertNoError(error, `Could not upsert sample announcement ${sample.title}`)
   }
 }
@@ -330,16 +337,14 @@ async function upsertAccount(account, orgId) {
   }
 
   if (['admin', 'publisher'].includes(role)) {
-    const { error: membershipError } = await supabase
-      .from('organization_members')
-      .upsert(
-        {
-          user_id: userId,
-          organization_id: orgId,
-          member_role: role === 'admin' ? 'admin' : 'publisher',
-        },
-        { onConflict: 'organization_id,user_id' }
-      )
+    const { error: membershipError } = await supabase.from('organization_members').upsert(
+      {
+        user_id: userId,
+        organization_id: orgId,
+        member_role: role === 'admin' ? 'admin' : 'publisher',
+      },
+      { onConflict: 'organization_id,user_id' }
+    )
     assertNoError(membershipError, `Could not upsert org membership for ${email}`)
   }
 
@@ -389,4 +394,7 @@ async function main() {
   console.log('Run: npm run test:e2e')
 }
 
-main().catch((err) => { console.error(err.message); process.exit(1) })
+main().catch((err) => {
+  console.error(err.message)
+  process.exit(1)
+})

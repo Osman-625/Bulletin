@@ -77,8 +77,9 @@ function requireCredential(role, key, value) {
 }
 
 async function preparePage(page) {
-  await page.addStyleTag({
-    content: `
+  await page
+    .addStyleTag({
+      content: `
       nextjs-portal,
       [data-nextjs-toast],
       [data-nextjs-dialog-overlay],
@@ -87,7 +88,8 @@ async function preparePage(page) {
         display: none !important;
       }
     `,
-  }).catch(() => {})
+    })
+    .catch(() => {})
 }
 
 async function capture(page, filename, pathname, options = {}) {

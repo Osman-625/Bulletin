@@ -71,6 +71,7 @@ End with one short sentence: accurate or inaccurate, complete or incomplete.
 **Verbose**:
 
 For each finding:
+
 - **File:Line**: exact location.
 - **Issue**: be specific ("README says `createUser(name)` takes one arg, but source shows `createUser(name, options)` with required `options.email`").
 - **Fix**: concrete rewrite or addition.
