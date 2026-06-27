@@ -15,6 +15,7 @@
 import { cache } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/infrastructure/database/server'
+import { canAccessOwnerArea as canAccessOwnerAreaForGuard } from '@/modules/auth/roles'
 import type { AppRole } from '@/modules/auth/roles'
 
 export {
@@ -158,5 +159,11 @@ export async function requireUsableAccessContext(): Promise<AccessContext> {
   const access = await getCurrentAccessContext()
   if (!access) redirect('/login')
   if (access.forcePasswordChange) redirect('/change-password')
+  return access
+}
+
+export async function requireOwnerAccessContext(): Promise<AccessContext> {
+  const access = await requireUsableAccessContext()
+  if (!canAccessOwnerAreaForGuard(access.role)) redirect(getDefaultAppPath(access.role))
   return access
 }

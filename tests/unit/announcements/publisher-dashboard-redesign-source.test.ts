@@ -127,6 +127,8 @@ describe('dashboard board redesign source guards', () => {
   it('gives the new announcement page a dedicated editor workflow', () => {
     const page = source('src/app/(dashboard)/dashboard/announcements/new/page.tsx')
     const form = source('src/components/dashboard/AnnouncementForm.tsx')
+    const preview = source('src/components/dashboard/AnnouncementLivePreview.tsx')
+    const readiness = source('src/components/dashboard/PublishingReadinessChecklist.tsx')
     const css = source('src/app/globals.css')
 
     expect(page).toContain('new-announcement-page')
@@ -140,11 +142,11 @@ describe('dashboard board redesign source guards', () => {
     expect(form).toContain('announcement-editor-main')
     expect(form).toContain('announcement-editor-aside')
     expect(form).toContain('announcement-section-card')
-    expect(form).toContain('announcement-preview-panel')
+    expect(preview).toContain('announcement-preview-panel')
     expect(form).toContain('announcement-publishing-panel')
     expect(form).toContain('announcement-static-actionbar')
     expect(form).toContain('sticky={!isNew}')
-    expect(form).toContain('Publishing readiness')
+    expect(readiness).toContain('Publishing readiness')
 
     expect(css).toContain('.new-announcement-page')
     expect(css).toContain('.announcement-editor-layout')

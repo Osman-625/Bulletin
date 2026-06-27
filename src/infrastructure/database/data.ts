@@ -79,6 +79,7 @@ const PUBLIC_ANNOUNCEMENT_SELECT_WITH_CATEGORY_FILTER = `
 ` as const
 
 const PUBLIC_FEED_PAGE_SIZE = 24
+const PUBLIC_FEED_SAFE_IN_MEMORY_LIMIT = 500
 const USER_MANAGEMENT_PAGE_SIZE = 24
 
 /** Paginated result for the public announcement feed. */
@@ -237,6 +238,14 @@ export async function getPublicAnnouncements(
   const publicAnnouncements = normalizePublicAnnouncementRows(
     (data ?? []) as unknown as PublicAnnouncementQueryRow[]
   )
+
+  if (publicAnnouncements.length > PUBLIC_FEED_SAFE_IN_MEMORY_LIMIT) {
+    // TODO: Move public-board ordering into a DB view/RPC before allowing larger result sets.
+    throw new Error(
+      `public feed exceeds safe in-memory pagination limit - DB-level pagination required before exceeding ${PUBLIC_FEED_SAFE_IN_MEMORY_LIMIT} announcements`
+    )
+  }
+
   const pageResult = paginatePublicBoardItems(publicAnnouncements, {
     sort: activeSort,
     page,
@@ -400,7 +409,7 @@ export async function getAnnouncementForReview(id: string): Promise<Announcement
  * Returns all organizations with their owner user details.
  *
  * `admin` callers receive only organizations they are members of;
- * `super_admin` callers receive all organizations platform-wide.
+ * `owner` callers receive all organizations platform-wide.
  * Ordered newest-first.
  *
  * @returns Array of organizations with nested user relations, or empty array on error.
@@ -436,10 +445,17 @@ export async function getAllOrganizations(): Promise<OrgWithOwner[]> {
 /**
  * Fetches a single organization along with its full member roster.
  *
+ * Access enforcement: `admin` callers can only access organizations they belong to;
+ * `owner` callers can access any organization.
+ *
  * @param orgId - The organization UUID.
  * @returns The organization with all members and their user profiles, or `null` if not found.
  */
 export async function getOrgWithMembers(orgId: string): Promise<OrgWithMembers | null> {
+  const access = await getCurrentAccessContext()
+  if (!access || !canAccessAdminArea(access.role)) return null
+  if (access.role === 'admin' && !access.orgIds.includes(orgId)) return null
+
   const supabase = await createClient()
   const { data, error: orgWithMembersError } = await supabase
     .from('organizations')
@@ -464,7 +480,7 @@ export async function getOrgWithMembers(orgId: string): Promise<OrgWithMembers |
  *
  * `admin` callers receive only publishers who belong to at least one of the caller's
  * organizations, with memberships filtered to those organizations only.
- * `super_admin` callers receive all publishers platform-wide.
+ * `owner` callers receive all publishers platform-wide.
  *
  * @returns Array of publishers with nested organization relations, or empty array on error.
  */
@@ -550,7 +566,7 @@ export async function getAllPublishers(): Promise<PublisherWithOrgs[]> {
  * count, approved org count, publisher list) and aggregates the results.
  *
  * `admin` callers see stats scoped to their assigned organizations.
- * `super_admin` callers see platform-wide figures.
+ * `owner` callers see platform-wide figures.
  *
  * @returns `{ pendingReview, publishedThisMonth, totalOrgs, totalPublishers }`.
  *          All values default to 0 on partial query failure.

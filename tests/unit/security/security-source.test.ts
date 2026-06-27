@@ -351,6 +351,82 @@ describe('security source guards', () => {
     )
   })
 
+  it('ships RLS hardening that scopes admin database access to assigned organizations', () => {
+    const migrationPath = 'supabase/migrations/20260619000000_scope_admin_rls.sql'
+
+    expect(existsSync(migrationPath)).toBe(true)
+
+    const migration = source(migrationPath)
+    expect(migration).toContain('create or replace function public.current_user_admin_org_ids()')
+    expect(migration).toContain("member_role = 'admin'")
+    expect(migration).toContain(
+      'revoke execute on function public.current_user_admin_org_ids() from public, anon'
+    )
+    expect(migration).toContain(
+      'grant execute on function public.current_user_admin_org_ids() to authenticated, service_role'
+    )
+    expect(migration).toContain('drop policy if exists "users: admins read all"')
+    expect(migration).toContain('create policy "users: platform read all"')
+    expect(migration).toContain('create policy "users: admin read assigned"')
+    expect(migration).toContain('target_membership.user_id = users.id')
+    expect(migration).toContain('drop policy if exists "announcements: admin full"')
+    expect(migration).toContain('create policy "announcements: admin manage assigned orgs"')
+    expect(migration).toContain('organization_id in (select public.current_user_admin_org_ids())')
+    expect(migration).toContain('drop policy if exists "orgs: admin full"')
+    expect(migration).toContain('create policy "orgs: admin manage assigned"')
+    expect(migration).toContain('id in (select public.current_user_admin_org_ids())')
+    expect(migration).toContain('drop policy if exists "invitations: admin manage"')
+    expect(migration).toContain(
+      'create policy "invitations: admin manage assigned publisher invites"'
+    )
+    expect(migration).toContain('org_ids <@ array(select public.current_user_admin_org_ids())')
+    expect(migration).toContain('drop policy if exists "reviews: admin full"')
+    expect(migration).toContain('create policy "reviews: admin manage assigned orgs"')
+    expect(migration).toContain('drop policy if exists "org_cat_perms: admin manage"')
+    expect(migration).toContain('create policy "org_cat_perms: admin manage assigned"')
+    expect(migration).toContain('drop policy if exists "audit_log: admin read"')
+    expect(migration).toContain('create policy "audit_log: platform read"')
+    expect(migration).toContain('drop policy if exists "banners: admin delete"')
+    expect(migration).toContain('drop policy if exists "banners: publisher upload"')
+    expect(migration).toContain('create policy "banners: publisher upload"')
+    expect(migration).toContain('create policy "banners: privileged delete"')
+    expect(migration).toContain(
+      '(storage.foldername(name))[2] in (select organization_id::text from public.current_user_admin_org_ids() as admin_orgs(organization_id))'
+    )
+    expect(migration.match(/cardinality\(org_ids\) > 0/g)?.length).toBe(2)
+    expect(migration).not.toContain(
+      "public.current_user_role() in ('admin', 'super_admin', 'owner')"
+    )
+
+    const policyDefinitions = migration.match(/create policy[\s\S]*?;/gi) ?? []
+    expect(policyDefinitions.length).toBeGreaterThan(0)
+    for (const policy of policyDefinitions) {
+      expect(policy).toContain('to authenticated')
+    }
+  })
+
+  it('repairs previously applied admin-scope policies without granting the helper to anon', () => {
+    const migrationPath = 'supabase/migrations/20260620000000_finalize_admin_rls_scope.sql'
+
+    expect(existsSync(migrationPath)).toBe(true)
+
+    const migration = source(migrationPath)
+    expect(migration).toContain(
+      'alter policy "announcements: admin manage assigned orgs" on public.announcements to authenticated'
+    )
+    expect(migration).toContain(
+      'alter policy "users: admin read assigned" on public.users to authenticated'
+    )
+    expect(migration).toContain('drop policy if exists "audit_log: admin read"')
+    expect(migration).toContain('create policy "audit_log: platform read"')
+    expect(migration).toContain('drop policy if exists "banners: admin delete"')
+    expect(migration).toContain('create policy "banners: privileged delete"')
+    expect(migration).toContain('cardinality(org_ids) > 0')
+    expect(migration).not.toContain(
+      'grant execute on function public.current_user_admin_org_ids() to anon'
+    )
+  })
+
   it('rate-limits privileged announcement, review, and organization mutation actions', () => {
     const newActions = source('src/app/(dashboard)/dashboard/announcements/new/actions.ts')
     const editActions = source('src/app/(dashboard)/dashboard/announcements/[id]/edit/actions.ts')
@@ -403,15 +479,24 @@ describe('security source guards', () => {
 
   it('adds application-layer guards to sensitive platform data helpers', () => {
     const data = source('src/infrastructure/database/data.ts')
+    const orgWithMembersStart = data.indexOf('export async function getOrgWithMembers')
+    const allPublishersStart = data.indexOf('export async function getAllPublishers')
     const allAdminsStart = data.indexOf('export async function getAllAdmins')
     const platformStatsStart = data.indexOf('export async function getPlatformStats')
     const visibleUsersStart = data.indexOf('export async function getVisibleUsersForAdminPage')
 
+    const orgWithMembers = data.slice(orgWithMembersStart, allPublishersStart)
     const visibleUsers = data.slice(visibleUsersStart, allAdminsStart)
     const allAdmins = data.slice(allAdminsStart, platformStatsStart)
     const platformStats = data.slice(platformStatsStart)
 
     expect(data).toContain('canAccessSuperAdminArea')
+    expect(orgWithMembers).toContain('const access = await getCurrentAccessContext()')
+    expect(orgWithMembers).toContain('if (!access || !canAccessAdminArea(access.role)) return null')
+    expect(orgWithMembers).toContain("access.role === 'admin' && !access.orgIds.includes(orgId)")
+    expect(orgWithMembers.indexOf('getCurrentAccessContext')).toBeLessThan(
+      orgWithMembers.indexOf(".from('organizations')")
+    )
     expect(visibleUsers).toContain(
       "access.role === 'owner' ? await createServiceClient() : await createClient()"
     )
@@ -427,6 +512,40 @@ describe('security source guards', () => {
     expect(platformStats.indexOf('getCurrentAccessContext')).toBeLessThan(
       platformStats.indexOf(".from('announcements')")
     )
+  })
+
+  it('guards owner service-role pages before platform-wide reads', () => {
+    const ownerPages = [
+      'src/app/(owner)/owner/page.tsx',
+      'src/app/(owner)/owner/analytics/page.tsx',
+      'src/app/(owner)/owner/audit/page.tsx',
+      'src/app/(owner)/owner/resources/page.tsx',
+    ]
+
+    for (const path of ownerPages) {
+      const page = source(path)
+
+      expect(page).toContain('requireOwnerAccessContext')
+      expect(page.indexOf('requireOwnerAccessContext')).toBeLessThan(
+        page.indexOf('createServiceClient')
+      )
+    }
+  })
+
+  it('guards category service-role page reads before creating privileged clients', () => {
+    const categoryPages = [
+      ['src/app/(admin)/admin/categories/page.tsx', 'requireAdminAccess'],
+      ['src/app/(super-admin)/super-admin/categories/page.tsx', 'requireSuperAdminAccess'],
+      ['src/app/(owner)/owner/categories/page.tsx', 'requireOwnerAccess'],
+    ] as const
+
+    for (const [path, guard] of categoryPages) {
+      const file = source(path)
+      const page = file.slice(file.indexOf('export default async function'))
+
+      expect(page).toContain(guard)
+      expect(page.indexOf(guard)).toBeLessThan(page.indexOf('createServiceClient'))
+    }
   })
 
   it('keeps direct publish action admin-only before any status update', () => {

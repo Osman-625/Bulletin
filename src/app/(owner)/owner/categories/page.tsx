@@ -194,7 +194,10 @@ export default async function OwnerCategoriesPage({
 }: {
   searchParams: Promise<{ error?: string; edit?: string }>
 }) {
-  const [{ error, edit }, supabase] = await Promise.all([searchParams, createServiceClient()])
+  const [{ error, edit }, supabase] = await Promise.all([
+    searchParams,
+    requireOwnerAccess().then(() => createServiceClient()),
+  ])
   const { data: categories } = await supabase.from('categories').select('*').order('name')
   const hasCategories = (categories?.length ?? 0) > 0
   const categoryIds = (categories ?? []).map((category) => category.id)

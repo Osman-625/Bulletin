@@ -13,6 +13,7 @@ import {
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { dateValue, formatCampusDateTime } from '@/modules/announcements/public-board'
 import type { Database, Json, Tables } from '@/infrastructure/database/database.types'
+import { requireOwnerAccessContext } from '@/modules/auth/authz'
 import { reportServerError } from '@/shared/errors/error-reporting'
 import { createServiceClient } from '@/infrastructure/database/server'
 
@@ -660,6 +661,7 @@ export default async function AuditLogPage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
+  await requireOwnerAccessContext()
   const { page, q, target, actor } = await searchParams
   const currentPage = Math.max(1, parseInt(page ?? '1', 10) || 1)
   const targetFilter = target || 'all'

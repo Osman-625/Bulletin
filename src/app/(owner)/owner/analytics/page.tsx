@@ -3,6 +3,7 @@ import { CountUp } from '@/components/dashboard/CountUp'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { formatCampusCompactDate } from '@/modules/announcements/public-board'
 import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/modules/categories/display'
+import { requireOwnerAccessContext } from '@/modules/auth/authz'
 import { createServiceClient } from '@/infrastructure/database/server'
 
 export const metadata = { title: 'Analytics — Bulletin Owner' }
@@ -262,6 +263,7 @@ function RecentUsersPanel({ users }: { users: RecentUser[] }) {
 }
 
 export default async function OwnerAnalyticsPage() {
+  await requireOwnerAccessContext()
   const supabase = await createServiceClient()
 
   const now = new Date()

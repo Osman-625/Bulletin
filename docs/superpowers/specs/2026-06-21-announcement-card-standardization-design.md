@@ -1,77 +1,316 @@
 # Announcement Card Standardization Design
 
-**Date:** 2026-06-21  
-**Status:** Approved for implementation
+**Date:** 2026-06-21
+**Status:** Ready for implementation
 
 ## Objective
 
-Refactor every public announcement card to use the same ordered, reusable slot components. Content length and optional values must not change slot positions or card height. Image and no-image cards may use different fixed height contracts, but cards of the same type must be identical in structure and size.
+Refactor every public announcement card into a standardized slot-based component structure.
+
+Content length, optional values, badge count, missing metadata, and image availability must not change internal slot positions or card height. Image cards and no-image cards may use different fixed height contracts, but cards of the same type must be identical in structure, spacing, and size.
 
 ## Scope
 
-This change is limited to `src/components/announcements/AnnouncementCard.tsx`, its announcement-card rules in `src/app/globals.css`, loading-card parity where required, and focused tests. It preserves announcement queries, public/private visibility, filtering, sorting, pagination, urgency calculations, URLs, image URL validation, date formatting, and the three-column public board.
+This change is limited to:
+
+- `src/components/announcements/AnnouncementCard.tsx`
+- Announcement-card CSS rules in `src/app/globals.css`
+- Loading-card parity where required
+- Focused source/component tests and layout tests
+
+This refactor must preserve:
+
+- Announcement queries
+- Public/private visibility rules
+- Filtering, sorting, and pagination
+- Urgency and deadline calculations
+- URL handling
+- Image URL validation
+- Date formatting
+- Current public board ordering
+- Current three-column public board structure
+
+No data-access logic or public-board selection logic should change.
 
 ## Current Failure
 
-- **File / component:** `src/components/announcements/AnnouncementCard.tsx`, `StandardCard` and `FeaturedCard`.
-- **Cause:** Both variants duplicate their body markup and conditionally omit the badge row and metadata boxes. Title, description, metadata, and footer spacing also vary between variants and according to content.
-- **Visible failure:** Cards shift internally when badges, dates, deadlines, descriptions, or images differ. Image and featured cards do not share the same body rhythm as no-image cards.
-- **Exact fix:** Replace the duplicated bodies with one ordered slot pipeline composed from `CardImage`, `StatusBadge`, `CardTitle`, `CardDescription`, `CardMetaInfo`, and `CardFooter`. Give each slot an explicit CSS grid row and reserved block size.
-- **Test step:** Render or inspect cards with long/short titles, long/missing descriptions, missing deadlines, multiple badges, and image/no-image data. Confirm equal slot coordinates within each card type and unchanged board ordering.
+- **File / component:** `src/components/announcements/AnnouncementCard.tsx`, specifically `StandardCard` and `FeaturedCard`.
+- **Cause:** Both variants duplicate their body markup and conditionally omit badge rows, metadata boxes, and spacing blocks. Title, description, metadata, and footer spacing also vary by content length, image availability, and variant type.
+- **Visible failure:** Cards shift internally when badges, dates, deadlines, descriptions, or images differ. Image cards, no-image cards, and featured cards do not share the same body rhythm.
+- **Exact fix:** Replace duplicated card bodies with one ordered slot pipeline built from reusable components:
+  - `CardImage`
+  - `StatusBadge`
+  - `CardTitle`
+  - `CardDescription`
+  - `CardMetaInfo`
+  - `CardFooter`
+
+Each slot must have an explicit CSS grid row and reserved block size.
 
 ## Component Architecture
 
-`AnnouncementCard` remains the public entry point. It derives the existing presentation values once, determines whether an image exists, and applies the type contract `image` or `text`. The `featured` prop may alter outer emphasis and image treatment, but it must not create a separate content-body implementation.
+`AnnouncementCard` remains the public entry point.
 
-Every card renders the following ordered slots:
+It should derive the existing presentation values once, determine whether a safe image exists, and apply one of two card type contracts:
 
-1. `CardImage` — rendered only when a safe image URL exists. It owns one fixed media slot, crop, frame, radius, and object-fit contract.
-2. `StatusBadge` — always rendered. It preserves current urgency, pinned, category, registration, expiration, and feature labels. When empty, it remains present and hidden from assistive technology while reserving the same space.
-3. `CardTitle` — always rendered in a fixed two-line slot with one standardized size, weight, and line height. Overflow is clamped. The stored publisher display-size preference remains unchanged in data but no longer changes public-card geometry.
-4. `CardDescription` — always rendered in a fixed-height slot. Existing fallback copy is preserved for missing body content. Image and text cards may use different fixed clamp counts, but all cards of the same type use the same count and height.
-5. `CardMetaInfo` — always renders equal-width `Posted` and `Deadline` boxes. Missing values use a stable display fallback rather than removing a box.
-6. `CardFooter` — always renders the publisher/source at left and `Read details` at right in the final fixed row.
+- `image`
+- `text`
 
-The full-card link remains an overlay with the existing accessible title association and focus ring. Slot content stays above the overlay, and no new interactive elements are introduced inside it.
+The `featured` prop may change outer emphasis, feature badge content, and image decoration. It must not create a separate content-body implementation.
+
+Every card renders the same shared body slots. Image cards additionally render `CardImage` above the shared body.
+
+### 1. `CardImage`
+
+Rendered only when a safe image URL exists.
+
+Responsibilities:
+
+- Own the fixed media slot
+- Apply the image crop
+- Apply the frame
+- Apply the radius
+- Apply the `object-fit` contract
+
+All image cards must use the same image slot dimensions at each supported breakpoint.
+
+### 2. `StatusBadge`
+
+Always rendered.
+
+Responsibilities:
+
+- Render urgency, pinned, category, registration, expiration, and feature labels inside one reserved status row
+- Keep the status row at a fixed height
+- Prevent badges from wrapping into extra rows
+- Apply the existing badge priority order when multiple badges exist
+- Cap visible badges or truncate overflow safely when needed
+- Reserve the same space when no badge exists
+
+When empty, the slot remains present but should be hidden from assistive technology so it does not announce meaningless content.
+
+### 3. `CardTitle`
+
+Always rendered.
+
+Responsibilities:
+
+- Render the announcement title in a fixed-height title slot
+- Use a fixed line count per card type
+- Clamp overflow
+- Keep the same font size, weight, and line height for cards of the same type
+
+Text cards and image cards may define different title clamp counts, but cards of the same type must use the same count and height.
+
+The stored `display_size` value must not change public-card geometry. If it is still visually applied, it must stay within the fixed title slot and must not alter row height, line count, or card size. If that cannot be done safely, public cards should use the standardized title size while preserving `display_size` in data.
+
+### 4. `CardDescription`
+
+Always rendered.
+
+Responsibilities:
+
+- Render the announcement description in a fixed-height description slot
+- Preserve the existing fallback copy for missing body content
+- Clamp overflow
+- Keep a consistent line count and height for cards of the same type
+
+Image cards and text cards may use different description clamp counts, but all cards of the same type must use the same count and height.
+
+### 5. `CardMetaInfo`
+
+Always rendered.
+
+Responsibilities:
+
+- Render equal-width `Posted` and `Deadline` boxes
+- Keep both boxes visible
+- Keep both boxes the same height
+- Align both boxes to the same edges
+- Use stable display fallbacks for missing values
+
+Missing metadata must not remove a metadata box. Use concise visible fallback text such as `No deadline`.
+
+### 6. `CardFooter`
+
+Always rendered.
+
+Responsibilities:
+
+- Render publisher/source text on the left
+- Render `Read details` text on the right
+- Stay in the final fixed row
+- Truncate long publisher or action text if needed
+
+The footer must not use `margin-top: auto` or any content-sensitive spacing behavior.
+
+## Link Behavior
+
+The full-card link remains an overlay with the existing accessible title association and focus ring.
+
+Rules:
+
+- Do not create nested anchor elements.
+- If the full-card overlay remains the only link, `Read details` is visual text inside the card, not a second link.
+- Slot content stays above the overlay visually.
+- No new interactive elements should be introduced inside the card.
 
 ## Layout Contract
 
-The card body uses CSS Grid rather than flexible distribution. Its template has explicit rows for status, title, description, metadata, and footer, with fixed gaps from shared announcement-card custom properties. No slot uses content-driven expansion.
+The shared card body uses CSS Grid.
 
-The public board keeps its current fixed grid row spans and dense/ordered flow behavior. The card itself does not use masonry or content-dependent sizing. Existing image-card and text-card board spans remain the external height contract; matching CSS variables define their internal slot dimensions at supported breakpoints.
+The grid template must define explicit rows for:
 
-The two metadata boxes use a two-column grid at every card width, identical height, and aligned edges. Text truncates instead of resizing a box. The footer occupies the last row without `margin-top: auto` or content-sensitive flex behavior.
+1. Status
+2. Title
+3. Description
+4. Metadata
+5. Footer
+
+Spacing must come from shared announcement-card custom properties. No slot may expand because of content height.
+
+The public board keeps its current fixed grid row spans and current dense or ordered flow behavior. The card itself must not use masonry behavior or content-dependent sizing.
+
+Existing image-card and text-card board spans remain the external height contract. Matching CSS variables should define internal slot dimensions at supported breakpoints.
+
+The metadata section uses a two-column grid at every card width. Both boxes must keep identical height and aligned edges. Text truncates inside the boxes instead of resizing them.
+
+## Overflow Rules
+
+- Badge row: fixed height, no wrapping into additional rows.
+- Title: fixed line count, clamp overflow.
+- Description: fixed line count, clamp overflow.
+- Metadata: fixed height, text truncates inside boxes.
+- Footer: fixed height, publisher and action text truncate if needed.
+- No slot may use content height to expand the card.
 
 ## Variants
 
-- **Image card:** Adds the fixed `CardImage` row. All image cards use the same media height and body slot structure.
-- **No-image card:** Omits only the image row. It keeps the same body slot order and alignment and uses the standardized text-card height.
-- **Featured card:** Uses the same slot components and body grid. Feature styling is limited to outer chrome, feature status content, and image decoration; it cannot fork title, description, metadata, or footer markup.
+### Image Card
+
+Adds the fixed `CardImage` row above the shared body.
+
+All image cards must use:
+
+- The same media height
+- The same body slot order
+- The same body grid
+- The same internal spacing
+- The same card height contract
+
+### No-Image Card
+
+Omits only the image row.
+
+All no-image cards must use:
+
+- The same body slot order
+- The same body grid
+- The same internal spacing
+- The same text-card height contract
+
+### Featured Card
+
+Uses the same slot components and shared body grid.
+
+Feature styling may affect:
+
+- Outer card chrome
+- Feature-related status content
+- Image decoration
+
+Feature styling must not fork the title, description, metadata, or footer markup.
 
 ## Data and Behavior
 
-No data-access function or public-board selection logic changes. Existing helpers remain authoritative for Malaysia time, deadline labels, urgency, safe links, safe image URLs, display-font normalization, and announcement paths. The stored `display_size` value is not mutated; the standardized public card title intentionally stops using it because variable title sizing conflicts with the fixed-slot requirement. The refactor only maps existing data into reusable presentational slots.
+No data-access function or public-board selection logic changes.
+
+Existing helpers remain the source of truth for:
+
+- Malaysia time
+- Deadline labels
+- Urgency calculations
+- Safe links
+- Safe image URLs
+- Display-font normalization
+- Announcement paths
+
+The stored `display_size` value is not mutated. Public card geometry must remain standardized regardless of this value.
+
+This refactor only maps existing announcement data into reusable presentational slots.
 
 ## Accessibility
 
-- Preserve `article`, `aria-labelledby`, and the full-card link's screen-reader label.
+Preserve the existing accessibility behavior:
+
+- Keep `article`
+- Keep `aria-labelledby`
+- Keep the full-card link screen-reader label
+- Keep the current focus indication
+- Keep minimum usable pointer target behavior
+
+Additional rules:
+
 - Empty reserved slots must not announce meaningless placeholders.
-- Visible missing metadata uses concise labels such as `No deadline`; it is not represented by an unlabeled blank box.
+- Missing metadata should use concise visible fallback text, such as `No deadline`.
 - Title and description clamping must not change the accessible source text.
-- Focus indication and minimum usable pointer target remain unchanged.
+- The visual `Read details` text must not create a nested link.
 
 ## Testing Strategy
 
-1. Add a failing source/component contract test that requires every named slot component and verifies their order in the shared card body.
-2. Require unconditional rendering of status and metadata slots, including both metadata boxes.
-3. Require fixed CSS grid rows, title and description clamps, equal metadata columns, and type-specific card/media sizing.
-4. Update existing public-feed source guards only where old duplicated markup is intentionally removed.
-5. Run focused Vitest tests, TypeScript, lint, the production build, and React Doctor's diff scan.
-6. Verify the rendered public page at mobile and desktop widths when the browser surface is available, comparing image and no-image slot positions without changing the three-column board.
+1. Add a failing source/component contract test that requires every named slot component.
+2. Verify the slot order in the shared card body.
+3. Require unconditional rendering of the status slot and metadata slot.
+4. Require both metadata boxes to render in every card.
+5. Require fixed CSS grid rows for the shared body.
+6. Require title and description clamps.
+7. Require equal metadata columns.
+8. Require type-specific card sizing and media sizing.
+9. Update existing public-feed source guards only where old duplicated markup is intentionally removed.
+10. Run focused Vitest tests.
+11. Run TypeScript.
+12. Run lint.
+13. Run the production build.
+14. Run React Doctor's diff scan.
+15. When browser rendering is available, verify the public page at mobile and desktop widths.
+16. Compare image and no-image slot positions without changing the three-column board.
+
+## Verification Cases
+
+Test or inspect cards with:
+
+- Long titles
+- Short titles
+- Long descriptions
+- Missing descriptions
+- Missing deadlines
+- Multiple badges
+- No badges
+- Image data
+- No-image data
+- Featured cards
+- Standard cards
+
+Expected result:
+
+- Cards of the same type have equal internal slot coordinates.
+- Cards of the same type have equal height.
+- Missing optional data does not shift layout.
+- Long content is clamped or truncated.
+- Board ordering remains unchanged.
+- The public board remains a three-column announcement board.
 
 ## Non-Goals
 
-- No changes to announcement content or publisher fields.
-- No changes to data fetching, RLS, authentication, filtering, sorting, pagination, or featured selection.
-- No redesign of the public page or pinned-notice side panel.
-- No new card interaction, animation, or dependency.
+- No changes to announcement content.
+- No changes to publisher fields.
+- No changes to data fetching.
+- No changes to RLS.
+- No changes to authentication.
+- No changes to filtering, sorting, or pagination.
+- No changes to featured selection.
+- No redesign of the public page.
+- No redesign of the pinned-notice side panel.
+- No new card interaction.
+- No new animation.
+- No new dependency.

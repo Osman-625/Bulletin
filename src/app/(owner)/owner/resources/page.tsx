@@ -12,6 +12,7 @@ import {
 import { CountUp } from '@/components/dashboard/CountUp'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
+import { requireOwnerAccessContext } from '@/modules/auth/authz'
 import { createServiceClient } from '@/infrastructure/database/server'
 import {
   type ExternalResourceCard,
@@ -37,6 +38,7 @@ const resourceStatusStyles: Record<ExternalResourceCard['status'], string> = {
 }
 
 export default async function OwnerResourcesPage() {
+  await requireOwnerAccessContext()
   const supabase = await createServiceClient()
   const overview = await getOwnerResourceOverview(supabase)
 

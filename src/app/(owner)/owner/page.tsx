@@ -16,9 +16,9 @@ import {
   DashboardBoardMetrics,
   DashboardBoardPage,
 } from '@/components/dashboard/DashboardBoard'
+import { requireOwnerAccessContext } from '@/modules/auth/authz'
 import { getOwnerResourceOverview } from '@/modules/owner/resources'
 import { createServiceClient } from '@/infrastructure/database/server'
-import { requireUsableAccessContext } from '@/modules/auth/authz'
 
 export const metadata = { title: 'Owner Board' }
 
@@ -147,7 +147,7 @@ function AttentionCard({
 }
 
 export default async function OwnerPage() {
-  await requireUsableAccessContext()
+  await requireOwnerAccessContext()
   const supabase = await createServiceClient()
 
   const [
