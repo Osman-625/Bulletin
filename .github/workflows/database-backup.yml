@@ -41,7 +41,7 @@ jobs:
           sha256sum "$backup_file" > "$backup_file.sha256"
 
       - name: Upload encrypted-at-rest backup artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bulletin-database-backup-${{ github.run_id }}
           path: |
