@@ -23,7 +23,7 @@ import {
   canAccessPublisherArea,
   canAccessSuperAdminArea,
   type AppRole,
-} from '@/lib/auth/roles'
+} from '@/modules/auth/roles'
 
 export type DashboardVariant = 'publisher' | 'admin' | 'super_admin' | 'owner'
 

@@ -13,7 +13,7 @@ import {
   brandLabResearchAnchors,
   isBrandDirectionSlug,
   selectedBrandDirection,
-} from '@/lib/brand-lab/directions'
+} from '@/modules/brand-lab/directions'
 
 const pressDisplay = Literata({
   variable: '--font-brand-press-display',

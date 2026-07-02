@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { resetRateLimitForTests } from '@/lib/security/rate-limit'
+import { resetRateLimitForTests } from '@/shared/middleware/rate-limit'
 import { POST } from '@/app/api/setup/route'
-import { createServiceClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/infrastructure/database/server'
 
-vi.mock('@/lib/supabase/server', () => ({
+vi.mock('@/infrastructure/database/server', () => ({
   createServiceClient: vi.fn(),
 }))
 

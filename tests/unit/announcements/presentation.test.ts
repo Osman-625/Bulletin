@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { isAnnouncementPinned, sortAnnouncementsForFeed } from '@/lib/announcements/presentation'
+import {
+  isAnnouncementPinned,
+  sortAnnouncementsForFeed,
+} from '@/modules/announcements/presentation'
 
 describe('announcement presentation helpers', () => {
   it('treats pinned announcements as active only before pinned_until', () => {

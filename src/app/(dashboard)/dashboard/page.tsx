@@ -1,5 +1,5 @@
 import { Eye, FileEdit, Megaphone, Plus, Send } from 'lucide-react'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/infrastructure/database/server'
 import type { DashboardIndexAnnouncement } from '@/components/dashboard/DashboardContentsIndex'
 import {
   DashboardBoardBoard,
@@ -10,9 +10,9 @@ import {
   DashboardBoardPanel,
   DashboardBoardRow,
 } from '@/components/dashboard/DashboardBoard'
-import { requireUsableAccessContext } from '@/lib/auth/authz'
-import { shouldScopeAnnouncementsToMembership } from '@/lib/announcements/access'
-import { formatCampusCompactDate } from '@/lib/announcements/public-board'
+import { requireUsableAccessContext } from '@/modules/auth/authz'
+import { shouldScopeAnnouncementsToMembership } from '@/modules/announcements/access'
+import { formatCampusCompactDate } from '@/modules/announcements/public-board'
 
 export const metadata = { title: 'Publisher Board' }
 
@@ -48,9 +48,7 @@ type DashboardAnnouncement = DashboardIndexAnnouncement & {
 }
 
 export default async function DashboardPage() {
-  const access = await requireUsableAccessContext()
-
-  const supabase = await createClient()
+  const [access, supabase] = await Promise.all([requireUsableAccessContext(), createClient()])
 
   let live = 0
   let inDraft = 0

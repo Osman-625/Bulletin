@@ -1,4 +1,4 @@
-import type { BoardSort } from '@/lib/announcements/public-board'
+import type { BoardSort } from '@/modules/announcements/public-board'
 
 export function buildFeedHref({
   category,

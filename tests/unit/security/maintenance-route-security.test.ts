@@ -1,14 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { GET } from '@/app/api/maintenance/cleanup-orphan-banners/route'
-import { createServiceClient } from '@/lib/supabase/server'
-import { cleanupOrphanBannerImages } from '@/lib/storage/banner-cleanup'
+import { createServiceClient } from '@/infrastructure/database/server'
+import { cleanupOrphanBannerImages } from '@/infrastructure/storage/banner-cleanup'
 
-vi.mock('@/lib/supabase/server', () => ({
+vi.mock('@/infrastructure/database/server', () => ({
   createServiceClient: vi.fn(),
 }))
 
-vi.mock('@/lib/storage/banner-cleanup', () => ({
+vi.mock('@/infrastructure/storage/banner-cleanup', () => ({
   cleanupOrphanBannerImages: vi.fn(),
 }))
 

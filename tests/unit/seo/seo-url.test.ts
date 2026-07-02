@@ -3,8 +3,8 @@ import {
   announcementLookupId,
   announcementPath,
   announcementPathSegment,
-} from '@/lib/announcements/urls'
-import { getCanonicalSiteUrl } from '@/lib/site'
+} from '@/modules/announcements/urls'
+import { getCanonicalSiteUrl } from '@/shared/constants/site'
 
 const uuid = '123e4567-e89b-12d3-a456-426614174000'
 

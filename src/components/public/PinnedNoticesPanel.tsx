@@ -1,9 +1,9 @@
 import Link from 'next/link'
 
-import { announcementPath } from '@/lib/announcements/urls'
-import { deadlineLabel, daysUntilDeadline } from '@/lib/announcements/public-board'
+import { announcementPath } from '@/modules/announcements/urls'
+import { deadlineLabel, daysUntilDeadline } from '@/modules/announcements/public-board'
 
-import type { PublicAnnouncement } from '@/lib/types'
+import type { PublicAnnouncement } from '@/shared/types'
 
 const PIN_DOT_TONES = [
   'bg-[var(--color-accent-inti)]',

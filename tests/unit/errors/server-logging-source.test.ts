@@ -2,11 +2,11 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 const structuredServerLogFiles = [
-  'src/lib/audit.ts',
-  'src/lib/data.ts',
-  'src/lib/notifications.ts',
-  'src/lib/auth/sync-users.ts',
-  'src/lib/owner/resources.ts',
+  'src/modules/audit/index.ts',
+  'src/infrastructure/database/data.ts',
+  'src/modules/notifications/index.ts',
+  'src/modules/auth/sync-users.ts',
+  'src/modules/owner/resources.ts',
   'src/app/sitemap.ts',
   'src/app/(public)/announcements/[id]/actions.ts',
 ] as const
@@ -20,14 +20,14 @@ describe('structured server logging source guards', () => {
     for (const path of structuredServerLogFiles) {
       const file = source(path)
 
-      expect(file, path).toContain("from '@/lib/error-reporting'")
+      expect(file, path).toContain("from '@/shared/errors/error-reporting'")
       expect(file, path).toContain('reportServerError(')
       expect(file, path).not.toContain('console.error')
     }
   })
 
   it('logs failed audit writes without swallowing the diagnostic shape', () => {
-    const audit = source('src/lib/audit.ts')
+    const audit = source('src/modules/audit/index.ts')
 
     expect(audit).toContain('audit.write_failed')
     expect(audit).toContain('audit.write_unhandled')
@@ -37,7 +37,7 @@ describe('structured server logging source guards', () => {
   })
 
   it('logs owner external resource API failures without exposing bearer tokens', () => {
-    const resources = source('src/lib/owner/resources.ts')
+    const resources = source('src/modules/owner/resources.ts')
 
     expect(resources).toContain('owner.resources.announcements_query_failed')
     expect(resources).toContain('owner.resources.password_resets_count_failed')
@@ -52,7 +52,7 @@ describe('structured server logging source guards', () => {
   })
 
   it('uses valid external health endpoints and labels owner resource API failures', () => {
-    const resources = source('src/lib/owner/resources.ts')
+    const resources = source('src/modules/owner/resources.ts')
 
     expect(resources).toContain("['auth', 'db', 'rest', 'realtime', 'storage']")
     expect(resources).not.toContain("'postgres'")

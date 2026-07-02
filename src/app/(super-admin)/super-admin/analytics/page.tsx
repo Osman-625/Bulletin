@@ -1,9 +1,9 @@
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { CountUp } from '@/components/dashboard/CountUp'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
-import { formatCampusCompactDate } from '@/lib/announcements/public-board'
-import { getPlatformStats } from '@/lib/data'
-import { createClient } from '@/lib/supabase/server'
+import { formatCampusCompactDate } from '@/modules/announcements/public-board'
+import { getPlatformStats } from '@/infrastructure/database/data'
+import { createClient } from '@/infrastructure/database/server'
 
 export const metadata = { title: 'Analytics — Bulletin Super Admin' }
 

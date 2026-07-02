@@ -14,8 +14,8 @@ function loggedAuditActions(path: string) {
 
 describe('security source guards', () => {
   it('marks Supabase service-role modules as server-only', () => {
-    expect(source('src/lib/supabase/admin.ts')).toContain("import 'server-only'")
-    expect(source('src/lib/supabase/server.ts')).toContain("import 'server-only'")
+    expect(source('src/infrastructure/database/admin.ts')).toContain("import 'server-only'")
+    expect(source('src/infrastructure/database/server.ts')).toContain("import 'server-only'")
   })
 
   it('records announcement edit events in the audit log', () => {
@@ -46,7 +46,7 @@ describe('security source guards', () => {
       'src/app/(super-admin)/super-admin/categories/page.tsx',
       'src/app/(owner)/owner/users/page.tsx',
       'src/app/(owner)/owner/categories/page.tsx',
-      'src/lib/account/actions.ts',
+      'src/modules/users/actions.ts',
     ]
 
     const actions = Array.from(new Set(actionSources.flatMap(loggedAuditActions))).sort()
@@ -76,8 +76,8 @@ describe('security source guards', () => {
     const insertIndex = actions.indexOf(".from('organizations')")
     const membershipInsertIndex = actions.indexOf(".from('organization_members')")
 
-    expect(actions).toContain("from '@/lib/auth/authz'")
-    expect(actions).toContain("from '@/lib/organizations/validation'")
+    expect(actions).toContain("from '@/modules/auth/authz'")
+    expect(actions).toContain("from '@/modules/organizations/validation'")
     expect(accessCheckIndex).toBeGreaterThan(-1)
     expect(roleCheckIndex).toBeGreaterThan(-1)
     expect(validationIndex).toBeGreaterThan(-1)
@@ -181,14 +181,14 @@ describe('security source guards', () => {
   })
 
   it('uses a Supabase-backed server rate limiter for auth and setup throttles', () => {
-    const persistentLimiter = source('src/lib/security/persistent-rate-limit.ts')
-    const actionLimiter = source('src/lib/security/action-rate-limit.ts')
+    const persistentLimiter = source('src/shared/middleware/persistent-rate-limit.ts')
+    const actionLimiter = source('src/shared/middleware/action-rate-limit.ts')
     const setupRoute = source('src/app/api/setup/route.ts')
     const migration = source('supabase/migrations/20260521000019_rate_limit_buckets.sql')
     const remediation = source(
       'supabase/migrations/20260606031448_security_advisor_remediation.sql'
     )
-    const databaseTypes = source('src/lib/database.types.ts')
+    const databaseTypes = source('src/infrastructure/database/database.types.ts')
 
     expect(persistentLimiter).toContain("import 'server-only'")
     expect(persistentLimiter).toContain("rpc('hit_rate_limit'")
@@ -250,12 +250,12 @@ describe('security source guards', () => {
     const resetButton = source('src/app/(super-admin)/super-admin/users/_ResetButton.tsx')
 
     for (const file of [adminUsers, ownerUsers, superAdminUsers, superAdminActions]) {
-      expect(file).toContain("from '@/lib/auth/password-policy'")
+      expect(file).toContain("from '@/modules/auth/password-policy'")
       expect(file).toContain('validateTemporaryPassword')
     }
 
     for (const file of [adminUsers, ownerUsers, superAdminUsers, resetRequestButton, resetButton]) {
-      expect(file).toContain("from '@/lib/auth/password-policy'")
+      expect(file).toContain("from '@/modules/auth/password-policy'")
       expect(file).toContain('TEMPORARY_PASSWORD_MIN_LENGTH')
     }
 
@@ -271,11 +271,11 @@ describe('security source guards', () => {
     const registerPage = source('src/app/register/page.tsx')
     const changePasswordAction = source('src/app/change-password/actions.ts')
     const changePasswordPage = source('src/app/change-password/page.tsx')
-    const accountActions = source('src/lib/account/actions.ts')
+    const accountActions = source('src/modules/users/actions.ts')
     const accountSettings = source('src/components/account/AccountSettingsPage.tsx')
 
     for (const file of [registerAction, changePasswordAction, accountActions]) {
-      expect(file).toContain("from '@/lib/auth/password-policy'")
+      expect(file).toContain("from '@/modules/auth/password-policy'")
       expect(file).toContain('validatePassword')
       expect(file).not.toContain('password.length < 8')
       expect(file).not.toContain('newPassword.length < 8')
@@ -283,7 +283,7 @@ describe('security source guards', () => {
     }
 
     for (const file of [registerPage, changePasswordPage, accountSettings]) {
-      expect(file).toContain("from '@/lib/auth/password-policy'")
+      expect(file).toContain("from '@/modules/auth/password-policy'")
       expect(file).toContain('PASSWORD_MIN_LENGTH')
       expect(file).not.toContain('minLength={8}')
       expect(file).not.toContain('At least 8 characters')
@@ -351,6 +351,82 @@ describe('security source guards', () => {
     )
   })
 
+  it('ships RLS hardening that scopes admin database access to assigned organizations', () => {
+    const migrationPath = 'supabase/migrations/20260619000000_scope_admin_rls.sql'
+
+    expect(existsSync(migrationPath)).toBe(true)
+
+    const migration = source(migrationPath)
+    expect(migration).toContain('create or replace function public.current_user_admin_org_ids()')
+    expect(migration).toContain("member_role = 'admin'")
+    expect(migration).toContain(
+      'revoke execute on function public.current_user_admin_org_ids() from public, anon'
+    )
+    expect(migration).toContain(
+      'grant execute on function public.current_user_admin_org_ids() to authenticated, service_role'
+    )
+    expect(migration).toContain('drop policy if exists "users: admins read all"')
+    expect(migration).toContain('create policy "users: platform read all"')
+    expect(migration).toContain('create policy "users: admin read assigned"')
+    expect(migration).toContain('target_membership.user_id = users.id')
+    expect(migration).toContain('drop policy if exists "announcements: admin full"')
+    expect(migration).toContain('create policy "announcements: admin manage assigned orgs"')
+    expect(migration).toContain('organization_id in (select public.current_user_admin_org_ids())')
+    expect(migration).toContain('drop policy if exists "orgs: admin full"')
+    expect(migration).toContain('create policy "orgs: admin manage assigned"')
+    expect(migration).toContain('id in (select public.current_user_admin_org_ids())')
+    expect(migration).toContain('drop policy if exists "invitations: admin manage"')
+    expect(migration).toContain(
+      'create policy "invitations: admin manage assigned publisher invites"'
+    )
+    expect(migration).toContain('org_ids <@ array(select public.current_user_admin_org_ids())')
+    expect(migration).toContain('drop policy if exists "reviews: admin full"')
+    expect(migration).toContain('create policy "reviews: admin manage assigned orgs"')
+    expect(migration).toContain('drop policy if exists "org_cat_perms: admin manage"')
+    expect(migration).toContain('create policy "org_cat_perms: admin manage assigned"')
+    expect(migration).toContain('drop policy if exists "audit_log: admin read"')
+    expect(migration).toContain('create policy "audit_log: platform read"')
+    expect(migration).toContain('drop policy if exists "banners: admin delete"')
+    expect(migration).toContain('drop policy if exists "banners: publisher upload"')
+    expect(migration).toContain('create policy "banners: publisher upload"')
+    expect(migration).toContain('create policy "banners: privileged delete"')
+    expect(migration).toContain(
+      '(storage.foldername(name))[2] in (select organization_id::text from public.current_user_admin_org_ids() as admin_orgs(organization_id))'
+    )
+    expect(migration.match(/cardinality\(org_ids\) > 0/g)?.length).toBe(2)
+    expect(migration).not.toContain(
+      "public.current_user_role() in ('admin', 'super_admin', 'owner')"
+    )
+
+    const policyDefinitions = migration.match(/create policy[\s\S]*?;/gi) ?? []
+    expect(policyDefinitions.length).toBeGreaterThan(0)
+    for (const policy of policyDefinitions) {
+      expect(policy).toContain('to authenticated')
+    }
+  })
+
+  it('repairs previously applied admin-scope policies without granting the helper to anon', () => {
+    const migrationPath = 'supabase/migrations/20260620000000_finalize_admin_rls_scope.sql'
+
+    expect(existsSync(migrationPath)).toBe(true)
+
+    const migration = source(migrationPath)
+    expect(migration).toContain(
+      'alter policy "announcements: admin manage assigned orgs" on public.announcements to authenticated'
+    )
+    expect(migration).toContain(
+      'alter policy "users: admin read assigned" on public.users to authenticated'
+    )
+    expect(migration).toContain('drop policy if exists "audit_log: admin read"')
+    expect(migration).toContain('create policy "audit_log: platform read"')
+    expect(migration).toContain('drop policy if exists "banners: admin delete"')
+    expect(migration).toContain('create policy "banners: privileged delete"')
+    expect(migration).toContain('cardinality(org_ids) > 0')
+    expect(migration).not.toContain(
+      'grant execute on function public.current_user_admin_org_ids() to anon'
+    )
+  })
+
   it('rate-limits privileged announcement, review, and organization mutation actions', () => {
     const newActions = source('src/app/(dashboard)/dashboard/announcements/new/actions.ts')
     const editActions = source('src/app/(dashboard)/dashboard/announcements/[id]/edit/actions.ts')
@@ -358,7 +434,7 @@ describe('security source guards', () => {
     const orgActions = source('src/app/(admin)/admin/orgs/new/actions.ts')
 
     for (const file of [newActions, editActions, reviewActions, orgActions]) {
-      expect(file).toContain("from '@/lib/security/action-rate-limit'")
+      expect(file).toContain("from '@/shared/middleware/action-rate-limit'")
       expect(file).toContain('checkActionRateLimit(')
       expect(file).toContain('rateLimit.limited')
     }
@@ -402,16 +478,25 @@ describe('security source guards', () => {
   })
 
   it('adds application-layer guards to sensitive platform data helpers', () => {
-    const data = source('src/lib/data.ts')
+    const data = source('src/infrastructure/database/data.ts')
+    const orgWithMembersStart = data.indexOf('export async function getOrgWithMembers')
+    const allPublishersStart = data.indexOf('export async function getAllPublishers')
     const allAdminsStart = data.indexOf('export async function getAllAdmins')
     const platformStatsStart = data.indexOf('export async function getPlatformStats')
     const visibleUsersStart = data.indexOf('export async function getVisibleUsersForAdminPage')
 
+    const orgWithMembers = data.slice(orgWithMembersStart, allPublishersStart)
     const visibleUsers = data.slice(visibleUsersStart, allAdminsStart)
     const allAdmins = data.slice(allAdminsStart, platformStatsStart)
     const platformStats = data.slice(platformStatsStart)
 
     expect(data).toContain('canAccessSuperAdminArea')
+    expect(orgWithMembers).toContain('const access = await getCurrentAccessContext()')
+    expect(orgWithMembers).toContain('if (!access || !canAccessAdminArea(access.role)) return null')
+    expect(orgWithMembers).toContain("access.role === 'admin' && !access.orgIds.includes(orgId)")
+    expect(orgWithMembers.indexOf('getCurrentAccessContext')).toBeLessThan(
+      orgWithMembers.indexOf(".from('organizations')")
+    )
     expect(visibleUsers).toContain(
       "access.role === 'owner' ? await createServiceClient() : await createClient()"
     )
@@ -429,6 +514,40 @@ describe('security source guards', () => {
     )
   })
 
+  it('guards owner service-role pages before platform-wide reads', () => {
+    const ownerPages = [
+      'src/app/(owner)/owner/page.tsx',
+      'src/app/(owner)/owner/analytics/page.tsx',
+      'src/app/(owner)/owner/audit/page.tsx',
+      'src/app/(owner)/owner/resources/page.tsx',
+    ]
+
+    for (const path of ownerPages) {
+      const page = source(path)
+
+      expect(page).toContain('requireOwnerAccessContext')
+      expect(page.indexOf('requireOwnerAccessContext')).toBeLessThan(
+        page.indexOf('createServiceClient')
+      )
+    }
+  })
+
+  it('guards category service-role page reads before creating privileged clients', () => {
+    const categoryPages = [
+      ['src/app/(admin)/admin/categories/page.tsx', 'requireAdminAccess'],
+      ['src/app/(super-admin)/super-admin/categories/page.tsx', 'requireSuperAdminAccess'],
+      ['src/app/(owner)/owner/categories/page.tsx', 'requireOwnerAccess'],
+    ] as const
+
+    for (const [path, guard] of categoryPages) {
+      const file = source(path)
+      const page = file.slice(file.indexOf('export default async function'))
+
+      expect(page).toContain(guard)
+      expect(page.indexOf(guard)).toBeLessThan(page.indexOf('createServiceClient'))
+    }
+  })
+
   it('keeps direct publish action admin-only before any status update', () => {
     const actions = source('src/app/(dashboard)/dashboard/announcements/[id]/edit/actions.ts')
     const publishStart = actions.indexOf('export async function publishAnnouncement')
@@ -438,6 +557,20 @@ describe('security source guards', () => {
     expect(actions).toContain('canAccessAdminArea')
     expect(publish).toContain('if (!canAccessAdminArea(announcement.actorRole))')
     expect(publish.indexOf('canAccessAdminArea')).toBeLessThan(publish.indexOf('.update({'))
+  })
+
+  it('routes submitted-announcement notifications only to admin-review-capable roles', () => {
+    const notifications = source('src/modules/notifications/index.ts')
+    const submittedStart = notifications.indexOf(
+      'export async function notifyAnnouncementSubmitted'
+    )
+    const reviewedStart = notifications.indexOf('export async function notifyAnnouncementReviewed')
+    const submitted = notifications.slice(submittedStart, reviewedStart)
+
+    expect(submitted).toContain(".eq('member_role', 'admin')")
+    expect(submitted).toContain(".eq('role', 'owner')")
+    expect(submitted).not.toContain("'super_admin'")
+    expect(submitted).toContain('href: `/admin/review/${announcementId}`')
   })
 
   it('ships an RLS policy migration that includes owner in users admin reads', () => {
@@ -520,7 +653,7 @@ describe('security source guards', () => {
   it('uses parameterized SQL for owner audit search instead of raw PostgREST OR filters', () => {
     const auditPage = source('src/app/(owner)/owner/audit/page.tsx')
     const migration = source('supabase/migrations/20260521000020_parameterized_audit_search.sql')
-    const databaseTypes = source('src/lib/database.types.ts')
+    const databaseTypes = source('src/infrastructure/database/database.types.ts')
 
     expect(auditPage).toContain("rpc('search_audit_log'")
     expect(auditPage).not.toContain('entriesQuery.or(')

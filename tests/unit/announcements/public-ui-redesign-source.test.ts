@@ -49,8 +49,9 @@ describe('optimized public UI redesign source guards', () => {
     const globals = source('src/app/globals.css')
 
     expect(publicHome).toContain('featureLabel={featuredIsPinned ?')
-    expect(card).toContain('featured-announcement-badge')
-    expect(globals).toContain('.featured-announcement-badge')
+    expect(card).toContain("featureLabel: featured ? (featureLabel ?? 'Featured') : undefined")
+    expect(card).toContain("data-featured={featured ? 'true' : undefined}")
+    expect(globals).toContain('.hero-poster-card')
     expect(feedPagination).toContain('pagination-progress')
     expect(feedPagination).toContain('aria-label="Pagination progress"')
     expect(feedPagination).toContain('Next page')

@@ -8,9 +8,9 @@ import {
   DashboardBoardPanel,
   DashboardBoardRow,
 } from '@/components/dashboard/DashboardBoard'
-import { formatCampusCompactDate } from '@/lib/announcements/public-board'
-import { getAdminStats, getSubmittedAnnouncements } from '@/lib/data'
-import { requireUsableAccessContext } from '@/lib/auth/authz'
+import { formatCampusCompactDate } from '@/modules/announcements/public-board'
+import { getAdminStats, getSubmittedAnnouncements } from '@/infrastructure/database/data'
+import { requireUsableAccessContext } from '@/modules/auth/authz'
 
 export const metadata = { title: 'Admin Overview' }
 

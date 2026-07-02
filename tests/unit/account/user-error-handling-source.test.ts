@@ -16,7 +16,7 @@ describe('user write error handling source guards', () => {
   it.each(userWriteFiles)('%s logs write failures and keeps backend errors private', (path) => {
     const file = source(path)
 
-    expect(file).toContain("from '@/lib/error-reporting'")
+    expect(file).toContain("from '@/shared/errors/error-reporting'")
     expect(file).toContain('reportServerError(')
     expect(file).not.toContain('encodeURIComponent(error?.message')
     expect(file).not.toContain('encodeURIComponent(authError.message')

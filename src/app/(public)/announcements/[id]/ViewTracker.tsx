@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { captureProductEvent } from '@/lib/product-analytics'
+import { captureProductEvent } from '@/shared/constants/product-analytics'
 import { recordAnnouncementView } from './actions'
 
 export function ViewTracker({

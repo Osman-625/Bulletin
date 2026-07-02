@@ -9,7 +9,7 @@ describe('login action error handling source guards', () => {
   it('logs Supabase login failures without exposing backend messages', () => {
     const actions = source('src/app/(auth)/login/actions.ts')
 
-    expect(actions).toContain("from '@/lib/error-reporting'")
+    expect(actions).toContain("from '@/shared/errors/error-reporting'")
     expect(actions).toContain('reportServerError(')
     expect(actions).toContain('usernameLookupError')
     expect(actions).toContain('signInError')

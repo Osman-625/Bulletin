@@ -8,8 +8,8 @@ import {
   readOptionalBannerUrl,
   readOptionalHttpUrl,
   readAnnouncementScheduleFields,
-} from '@/lib/announcements/form'
-import { toSafeHttpUrl } from '@/lib/announcements/urls'
+} from '@/modules/announcements/form'
+import { toSafeHttpUrl } from '@/modules/announcements/urls'
 
 function formData(key: string, value: string): FormData {
   const form = new FormData()
@@ -168,7 +168,7 @@ describe('announcement form validation helpers', () => {
   })
 
   it('keeps banner upload limits in shared announcement form config', () => {
-    const helperSource = source('src/lib/announcements/form.ts')
+    const helperSource = source('src/modules/announcements/form.ts')
     const formSource = source('src/components/dashboard/AnnouncementForm.tsx')
 
     expect(helperSource).toContain('BANNER_MAX_FILE_SIZE_MB = 5')

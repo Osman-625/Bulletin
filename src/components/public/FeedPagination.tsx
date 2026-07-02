@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import type { BoardSort } from '@/lib/announcements/public-board'
+import type { BoardSort } from '@/modules/announcements/public-board'
 import { buildFeedHref } from './FeedHref'
 import { useFeedNavigation } from './FeedNavigation'
 

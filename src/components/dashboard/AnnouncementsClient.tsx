@@ -5,7 +5,7 @@ import { type ComponentType } from 'react'
 import { Archive, CheckCircle2, FileText, PenLine, Search } from 'lucide-react'
 import { AnnouncementRow } from '@/components/dashboard/AnnouncementRow'
 import type { AnnouncementRowData } from '@/components/dashboard/AnnouncementRow'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/utils'
 
 export type AnnouncementTab = 'all' | 'published' | 'drafts' | 'pending' | 'archived'
 export type AnnouncementTabCounts = Record<AnnouncementTab, number>

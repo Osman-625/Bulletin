@@ -2,7 +2,7 @@
 
 import * as Sentry from '@sentry/nextjs'
 import { useEffect } from 'react'
-import { reportClientError } from '@/lib/client-error-reporting'
+import { reportClientError } from '@/shared/errors/client-error-reporting'
 
 export default function GlobalError({
   error,

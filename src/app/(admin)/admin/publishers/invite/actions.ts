@@ -1,14 +1,18 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { logAuditEvent } from '@/lib/audit'
-import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
-import { reportServerError } from '@/lib/error-reporting'
+import { logAuditEvent } from '@/modules/audit'
+import {
+  canAccessAdminArea,
+  getCurrentAccessContext,
+  getDefaultAppPath,
+} from '@/modules/auth/authz'
+import { reportServerError } from '@/shared/errors/error-reporting'
 import {
   INVITATION_EXPIRY_DAYS,
   readPublisherInvitationFormData,
-} from '@/lib/invitations/validation'
-import { createClient } from '@/lib/supabase/server'
+} from '@/modules/invitations/validation'
+import { createClient } from '@/infrastructure/database/server'
 
 const INVITE_PUBLISHER_PATH = '/admin/publishers/invite'
 const INVITE_CREATE_ERROR = 'Could not create invite. Try again.'

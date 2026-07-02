@@ -1,6 +1,6 @@
 import { Archive, CheckCircle2, Clock3, FileText, Plus } from 'lucide-react'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/infrastructure/database/server'
 import {
   AnnouncementsClient,
   type AnnouncementTab,
@@ -12,11 +12,11 @@ import {
   DashboardBoardPage,
   DashboardBoardPanel,
 } from '@/components/dashboard/DashboardBoard'
-import { getCurrentAccessContext } from '@/lib/auth/authz'
-import { shouldScopeAnnouncementsToMembership } from '@/lib/announcements/access'
-import { reportServerError } from '@/lib/error-reporting'
+import { getCurrentAccessContext } from '@/modules/auth/authz'
+import { shouldScopeAnnouncementsToMembership } from '@/modules/announcements/access'
+import { reportServerError } from '@/shared/errors/error-reporting'
 import type { AnnouncementRowData } from '@/components/dashboard/AnnouncementRow'
-import type { DbAnnouncement } from '@/lib/types'
+import type { DbAnnouncement } from '@/shared/types'
 
 export const metadata = { title: 'Announcements' }
 

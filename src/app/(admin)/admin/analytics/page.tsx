@@ -1,10 +1,14 @@
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { CountUp } from '@/components/dashboard/CountUp'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
-import { createClient } from '@/lib/supabase/server'
-import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
-import { formatCampusCompactDate } from '@/lib/announcements/public-board'
-import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/lib/categories/display'
+import { createClient } from '@/infrastructure/database/server'
+import {
+  canAccessAdminArea,
+  getCurrentAccessContext,
+  getDefaultAppPath,
+} from '@/modules/auth/authz'
+import { formatCampusCompactDate } from '@/modules/announcements/public-board'
+import { DEFAULT_CATEGORY_DISPLAY_COLOR } from '@/modules/categories/display'
 import { redirect } from 'next/navigation'
 
 export const metadata = { title: 'Analytics — Bulletin Admin' }

@@ -16,7 +16,7 @@ export function FeedPendingStatus() {
         className="size-2 animate-pulse rounded-full bg-[var(--color-accent-inti)]"
         aria-hidden="true"
       />
-      Updating notices...
+      Updating notices…
     </p>
   )
 }

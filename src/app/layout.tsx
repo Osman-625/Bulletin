@@ -4,7 +4,7 @@ import { Analytics } from '@vercel/analytics/next'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { headers } from 'next/headers'
 import { Providers } from './providers'
-import { getCanonicalSiteUrl } from '@/lib/site'
+import { getCanonicalSiteUrl } from '@/shared/constants/site'
 import './globals.css'
 
 const atkinsonHyperlegible = Atkinson_Hyperlegible({

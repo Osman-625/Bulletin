@@ -1,8 +1,8 @@
 import type { MetadataRoute } from 'next'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-import { announcementPath } from '@/lib/announcements/urls'
-import { reportServerError } from '@/lib/error-reporting'
-import { getCanonicalSiteUrl } from '@/lib/site'
+import { announcementPath } from '@/modules/announcements/urls'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { getCanonicalSiteUrl } from '@/shared/constants/site'
 
 type SitemapAnnouncement = {
   id: string

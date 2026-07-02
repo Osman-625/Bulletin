@@ -3,7 +3,7 @@ import {
   INVITATION_EXPIRY_DAYS,
   readAdminInvitationFormData,
   readPublisherInvitationFormData,
-} from '@/lib/invitations/validation'
+} from '@/modules/invitations/validation'
 
 function formData(entries: Record<string, string | string[]>) {
   const data = new FormData()

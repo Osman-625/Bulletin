@@ -2608,7 +2608,7 @@
     --public-board-row: 3.625rem;
     --public-board-image-span: 8;
     --public-board-text-span: 5;
-    --public-card-media-height: 16rem;
+    --public-card-media-height: 14.375rem;
   }
 
   .dense-bento-item {
@@ -2665,6 +2665,18 @@
   }
 
   .announcement-card {
+    --public-card-media-height: 14.375rem;
+    --announcement-card-body-height: 21.5rem;
+    --announcement-card-status-row-height: 1.75rem;
+    --announcement-card-badge-height: 1.5rem;
+    --announcement-card-badge-gap: 0.45rem;
+    --announcement-card-badge-padding-x: 0.75rem;
+    --announcement-card-status-slot: var(--announcement-card-status-row-height);
+    --announcement-card-title-slot: 3rem;
+    --announcement-card-description-slot: 4.125rem;
+    --announcement-card-meta-slot: 3.5rem;
+    --announcement-card-footer-slot: 2.5rem;
+    --announcement-card-slot-gap: 1.03125rem;
     display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     height: 100%;
@@ -2685,7 +2697,7 @@
   }
 
   /* Image panels keep one poster-sized crop inside image cards. */
-  .uniform-card-board [data-card-media] {
+  .announcement-card-media {
     inline-size: 100%;
     block-size: var(--public-card-media-height);
     flex: 0 0 auto;
@@ -2694,7 +2706,7 @@
     aspect-ratio: auto;
   }
 
-  .uniform-card-board .announcement-card.card-without-image::before {
+  .announcement-card.card-without-image::before {
     display: block;
     block-size: 0.5rem;
     border-bottom: 1px solid color-mix(in oklab, var(--color-border-subtle) 78%, transparent);
@@ -2718,66 +2730,76 @@
     object-position: center;
   }
 
-  /* Uniform content rhythm inside fixed board rows. */
-  .uniform-card-board .announcement-card-body {
+  /* Every card uses the same fixed content slots. The single remainder row is
+     content-independent and keeps the footer anchored to the card bottom. */
+  .announcement-card-body {
     display: grid;
-    grid-template-rows: minmax(0, 1fr) auto;
-    gap: 0.75rem;
-    flex: 1 1 0%;
+    grid-template-rows:
+      var(--announcement-card-status-slot) var(--announcement-card-title-slot)
+      var(--announcement-card-description-slot) var(--announcement-card-meta-slot)
+      var(--announcement-card-footer-slot);
+    block-size: var(--announcement-card-body-height);
+    gap: var(--announcement-card-slot-gap);
     min-height: 0;
-    overflow: visible;
+    overflow: hidden;
     padding: 20px;
   }
 
-  /* Clampable zone — takes all remaining space above the footer. */
-  .uniform-card-board .announcement-card-main {
+  .announcement-card-status {
     display: flex;
-    flex-direction: column;
-    min-height: 0;
+    flex-wrap: nowrap;
+    align-items: center;
+    block-size: var(--announcement-card-status-slot);
+    min-block-size: var(--announcement-card-status-slot);
+    gap: var(--announcement-card-badge-gap);
     overflow: hidden;
   }
 
-  .uniform-card-board .announcement-card-badges {
-    max-height: 4rem;
-    overflow: hidden;
+  .announcement-card-status[data-slot-empty='true'] {
+    visibility: hidden;
   }
 
-  .uniform-card-board .announcement-card-title {
+  .announcement-card-title {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+    block-size: var(--announcement-card-title-slot);
+    min-height: var(--announcement-card-title-slot);
     overflow: hidden;
-    line-height: 1.18;
-    min-height: 2.36em;
+    line-height: 1.16;
+    text-wrap: balance;
   }
 
-  .uniform-card-board .announcement-card-summary {
-    display: -webkit-box;
+  .announcement-card-summary {
+    display: -webkit-box !important;
     -webkit-box-orient: vertical;
-    flex: 0 0 auto;
+    -webkit-line-clamp: 3;
+    block-size: var(--announcement-card-description-slot);
+    min-height: var(--announcement-card-description-slot);
     overflow: hidden;
-    margin-top: 0.65rem;
     line-height: 1.5;
+    text-wrap: pretty;
   }
 
-  .uniform-card-board .card-with-image .announcement-card-summary {
-    -webkit-line-clamp: 2;
-    min-height: 3em;
+  .announcement-card-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    block-size: var(--announcement-card-meta-slot);
+    min-height: var(--announcement-card-meta-slot);
   }
 
-  .uniform-card-board .card-without-image .announcement-card-summary {
-    -webkit-line-clamp: 4;
-    min-height: 6em;
+  .announcement-card-meta-box {
+    display: block;
+    block-size: 100%;
+    min-width: 0;
+    overflow: hidden;
   }
 
-  .uniform-card-board .announcement-card-meta {
-    flex: 0 0 auto;
-  }
-
-  /* Footer is always fully visible — never clipped by overflowing card content. */
-  .uniform-card-board .announcement-card-footer {
-    flex: 0 0 auto;
-    padding-top: 0.75rem;
+  .announcement-card-footer {
+    grid-row: 5;
+    block-size: var(--announcement-card-footer-slot);
+    min-height: var(--announcement-card-footer-slot);
+    padding-top: 0.5rem;
   }
 
   .urgent-bento-item [data-testid='announcement-card'] {
@@ -2828,19 +2850,6 @@
     pointer-events: none;
   }
 
-  .featured-announcement-badge {
-    color: var(--color-canvas);
-    background: color-mix(in oklab, var(--color-text-primary) 88%, transparent);
-    border-color: color-mix(in oklab, var(--color-canvas) 30%, transparent);
-    box-shadow: 0 10px 24px rgba(36, 24, 21, 0.18);
-    backdrop-filter: blur(10px);
-  }
-
-  .announcement-card-folio-strip {
-    border-bottom: 1px solid color-mix(in oklab, var(--color-border-subtle) 78%, transparent);
-    box-shadow: inset 0 -1px 0 color-mix(in oklab, var(--color-surface) 70%, transparent);
-  }
-
   .hero-poster-card [data-testid='announcement-card'] {
     border-color: color-mix(in oklab, var(--color-accent-inti) 28%, var(--color-border)) !important;
     box-shadow:
@@ -2848,79 +2857,13 @@
       var(--shadow-soft) !important;
   }
 
-  .hero-poster-card .featured-announcement-badge {
-    color: var(--color-on-accent);
-    background: var(--color-accent-inti);
-    border-color: color-mix(in oklab, var(--color-on-accent) 42%, transparent);
-  }
-
   .public-featured-compact {
-    height: 100%;
+    height: auto;
   }
 
   .public-featured-compact [data-testid='announcement-card'] {
-    height: 100%;
+    height: auto;
     min-height: 0;
-  }
-
-  .public-featured-compact [data-card-media] {
-    block-size: clamp(10.5rem, 48vw, 13rem);
-    max-height: 13rem;
-    aspect-ratio: auto;
-  }
-
-  .public-featured-compact [data-card-media] .announcement-card-image {
-    object-position: center 40%;
-  }
-
-  .featured-announcement-media-frame {
-    box-shadow:
-      inset 0 0 0 1px color-mix(in oklab, var(--color-surface) 62%, transparent),
-      var(--shadow-soft);
-  }
-
-  .featured-announcement-image-window {
-    box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-border) 74%, transparent);
-  }
-
-  .featured-announcement-corner {
-    position: absolute;
-    inset-block-start: -1px;
-    inset-inline-end: -1px;
-    z-index: 2;
-    inline-size: 1.65rem;
-    block-size: 1.65rem;
-    border-start-end-radius: 0.95rem;
-    background: var(--color-accent-inti);
-    clip-path: polygon(100% 0, 100% 100%, 0 0);
-    box-shadow: -0.2rem 0.2rem 0 color-mix(in oklab, var(--color-navy) 16%, transparent);
-  }
-
-  .public-featured-compact .announcement-card-body {
-    gap: 0.55rem;
-    padding: 0.875rem;
-  }
-
-  .public-featured-compact .announcement-card-badges {
-    margin-bottom: 0.5rem;
-  }
-
-  .public-featured-compact .announcement-card-summary {
-    margin-top: 0.5rem;
-  }
-
-  .public-featured-compact .announcement-card-meta-grid {
-    gap: 0.5rem;
-    margin-top: 0.65rem;
-  }
-
-  .public-featured-compact .announcement-card-meta-grid > * {
-    border-radius: 0.55rem;
-    padding: 0.5rem 0.65rem;
-  }
-
-  .public-featured-compact .announcement-card-footer {
-    padding-top: 0.65rem;
   }
 
   .public-board-pins {
@@ -2970,65 +2913,20 @@
     -webkit-box-orient: vertical;
   }
 
-  .announcement-card-summary {
-    overflow: visible;
-    text-wrap: pretty;
-  }
-
-  .announcement-card-title {
-    text-wrap: balance;
-  }
-
   .announcement-card-chip {
+    box-sizing: border-box;
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    block-size: var(--announcement-card-badge-height);
+    min-block-size: var(--announcement-card-badge-height);
+    max-inline-size: 9rem;
+    overflow: hidden;
     line-height: 1;
+    padding-block: 0;
+    padding-inline: var(--announcement-card-badge-padding-x);
     white-space: nowrap;
-  }
-
-  /* Image cards: give the badge row a touch more breathing room so chips don't feel cramped under the poster. */
-  .announcement-card-badges--media .announcement-card-chip {
-    height: 1.5rem;
-    max-width: 9rem;
-    padding-inline: 0.5625rem;
-  }
-
-  .announcement-card-summary-clamp-2 {
-    -webkit-line-clamp: 2;
-  }
-
-  .announcement-card-summary-clamp-3 {
-    -webkit-line-clamp: 3;
-  }
-
-  .announcement-card-summary-clamp-4 {
-    -webkit-line-clamp: 4;
-  }
-
-  .announcement-card-summary-clamp-5 {
-    -webkit-line-clamp: 5;
-  }
-
-  .announcement-card-summary-clamp-6 {
-    -webkit-line-clamp: 6;
-  }
-
-  /* Featured card: scrim gradient over the bottom of the image panel so text
-     overlaid on the image remains readable. */
-  .featured-card-gradient-scrim {
-    height: 4rem;
-    background: linear-gradient(
-      to top,
-      color-mix(in oklab, var(--color-surface) 48%, transparent),
-      transparent
-    );
-    pointer-events: none;
-  }
-
-  /* Featured card: no-image variant header strip */
-  .featured-card-no-image-header {
-    min-height: 3.5rem;
-    border-radius: 1.35rem 1.35rem 0 0;
   }
 
   .campus-logo-halo {
@@ -3136,9 +3034,9 @@
 
   .dense-bento-board,
   .priority-lane-board {
-    --public-board-gap: 0.875rem;
-    --public-board-row: 4.5rem;
-    --public-card-media-height: 16rem;
+    --public-board-gap: 1rem;
+    --public-board-row: 3.625rem;
+    --public-card-media-height: 14.375rem;
   }
 }
 
@@ -3154,12 +3052,6 @@
   .public-featured-compact [data-testid='announcement-card'][data-has-image='true'] {
     min-height: 0;
   }
-
-  .public-featured-compact [data-card-media] {
-    block-size: clamp(10.5rem, 18vw, 12.5rem);
-    max-height: 12.5rem;
-    aspect-ratio: auto;
-  }
 }
 
 @media (min-width: 1024px) {
@@ -3172,9 +3064,9 @@
   .public-feed-card-board,
   .dense-bento-board,
   .priority-lane-board {
-    --public-board-row: 3.7rem;
+    --public-board-row: 3.625rem;
     --public-board-image-span: 8;
-    --public-card-media-height: 16rem;
+    --public-card-media-height: 14.375rem;
   }
 }
 
@@ -3208,52 +3100,6 @@
 
   .priority-lane-board.uniform-card-board .dense-bento-item {
     grid-column: auto;
-  }
-
-  .dense-bento-board .announcement-card-body,
-  .priority-lane-board .announcement-card-body {
-    min-height: 0;
-    overflow: visible;
-    padding: 20px;
-  }
-
-  /* Title uses a reserved two-line rhythm so every description starts level. */
-  .dense-bento-board .announcement-card-title,
-  .priority-lane-board .announcement-card-title {
-    display: -webkit-box !important;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-height: 1.18;
-    min-height: 2.36em;
-  }
-
-  /* Summaries remain intentionally clamped inside the fixed card box. */
-  .dense-bento-board .announcement-card-summary,
-  .priority-lane-board .announcement-card-summary {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    margin-top: 0.65rem;
-    line-height: 1.5;
-    overflow: hidden;
-  }
-
-  .dense-bento-board .card-with-image .announcement-card-summary,
-  .priority-lane-board .card-with-image .announcement-card-summary {
-    -webkit-line-clamp: 2;
-    min-height: 3em;
-  }
-
-  .dense-bento-board .card-without-image .announcement-card-summary,
-  .priority-lane-board .card-without-image .announcement-card-summary {
-    -webkit-line-clamp: 4;
-    min-height: 6em;
-  }
-
-  .dense-bento-board .announcement-card-footer,
-  .priority-lane-board .announcement-card-footer {
-    flex: 0 0 auto;
-    padding-top: 0.95rem;
   }
 
   /* Image panel keeps one crop height within the fixed image-card span. */

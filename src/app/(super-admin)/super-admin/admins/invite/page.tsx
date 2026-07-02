@@ -2,8 +2,8 @@ import Link from 'next/link'
 import { ArrowLeft, Check, ShieldCheck } from 'lucide-react'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { getCurrentAccessContext } from '@/lib/auth/authz'
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentAccessContext } from '@/modules/auth/authz'
+import { createClient } from '@/infrastructure/database/server'
 import { inviteAdmin } from './actions'
 
 export const metadata = { title: 'Invite Admin, Bulletin Super Admin' }

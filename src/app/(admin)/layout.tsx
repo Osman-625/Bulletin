@@ -1,13 +1,13 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/infrastructure/database/server'
 import { DashboardShell } from '@/components/dashboard/DashboardShell'
 import {
   canAccessAdminArea,
   getCurrentAccessContext,
   getDefaultAppPath,
   type AppRole,
-} from '@/lib/auth/authz'
-import { getUnreadNotificationCount } from '@/lib/notifications'
+} from '@/modules/auth/authz'
+import { getUnreadNotificationCount } from '@/modules/notifications'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const access = await getCurrentAccessContext()

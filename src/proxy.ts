@@ -7,7 +7,7 @@ import {
   canAccessSuperAdminArea,
   getDefaultAppPath,
   type AppRole,
-} from '@/lib/auth/authz'
+} from '@/modules/auth/authz'
 
 const PUBLIC_FILE = /\.[^/]+$/
 

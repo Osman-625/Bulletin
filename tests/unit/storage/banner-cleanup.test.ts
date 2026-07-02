@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { bannerStoragePath, cleanupOrphanBannerImages } from '@/lib/storage/banner-cleanup'
+import {
+  bannerStoragePath,
+  cleanupOrphanBannerImages,
+} from '@/infrastructure/storage/banner-cleanup'
 
 function storageClient({
   referencedUrls = [],

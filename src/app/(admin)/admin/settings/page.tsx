@@ -1,6 +1,10 @@
 import { redirect } from 'next/navigation'
 import { AccountSettingsPage } from '@/components/account/AccountSettingsPage'
-import { canAccessAdminArea, getCurrentAccessContext, getDefaultAppPath } from '@/lib/auth/authz'
+import {
+  canAccessAdminArea,
+  getCurrentAccessContext,
+  getDefaultAppPath,
+} from '@/modules/auth/authz'
 
 export const metadata = { title: 'Settings - Bulletin Admin' }
 

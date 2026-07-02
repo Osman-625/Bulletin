@@ -2,12 +2,12 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { logAuditEvent } from '@/lib/audit'
-import { canAccessAdminArea, getCurrentAccessContext } from '@/lib/auth/authz'
-import { reportServerError } from '@/lib/error-reporting'
-import { readOrganizationFormData } from '@/lib/organizations/validation'
-import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
-import { createClient } from '@/lib/supabase/server'
+import { logAuditEvent } from '@/modules/audit'
+import { canAccessAdminArea, getCurrentAccessContext } from '@/modules/auth/authz'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { readOrganizationFormData } from '@/modules/organizations/validation'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
+import { createClient } from '@/infrastructure/database/server'
 
 const ORGANIZATION_CREATE_ERROR = 'Could not create organization. Try again.'
 
@@ -16,8 +16,10 @@ export async function createOrganization(formData: FormData) {
   if (!access) redirect('/login')
   if (!canAccessAdminArea(access.role)) redirect('/dashboard')
 
-  const supabase = await createClient()
-  const rateLimit = await checkActionRateLimit('organization-create', access.userId)
+  const [supabase, rateLimit] = await Promise.all([
+    createClient(),
+    checkActionRateLimit('organization-create', access.userId),
+  ])
   if (rateLimit.limited) {
     redirect(`/admin/orgs/new?error=${encodeURIComponent('Too many attempts. Try again shortly.')}`)
   }

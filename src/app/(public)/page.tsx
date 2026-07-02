@@ -1,20 +1,20 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
-import { getPublicAnnouncements, getActiveCategories } from '@/lib/data'
-import { derivePublicTopics } from '@/lib/announcements/feed'
+import { getPublicAnnouncements, getActiveCategories } from '@/infrastructure/database/data'
+import { derivePublicTopics } from '@/modules/announcements/feed'
 import AnnouncementCard from '@/components/announcements/AnnouncementCard'
 import type { AnnouncementCardVisual } from '@/components/announcements/AnnouncementCard'
 import CategoryFilter from '@/components/announcements/CategoryFilter'
 import { PublicFeedAnalytics } from '@/components/analytics/PublicFeedAnalytics'
-import { announcementPath } from '@/lib/announcements/urls'
+import { announcementPath } from '@/modules/announcements/urls'
 import {
   buildAnnouncementSections,
   daysUntilDeadline,
   normalizeBoardSort,
   selectPublicBoardHighlights,
-} from '@/lib/announcements/public-board'
-import { URGENCY_META, normalizeAnnouncementUrgency } from '@/lib/announcements/presentation'
-import type { PublicAnnouncement } from '@/lib/types'
+} from '@/modules/announcements/public-board'
+import { URGENCY_META, normalizeAnnouncementUrgency } from '@/modules/announcements/presentation'
+import type { PublicAnnouncement } from '@/shared/types'
 import { CampusMetric } from '@/components/public/CampusMetric'
 import { FilterSkeleton } from '@/components/public/FilterSkeleton'
 import { PublicEmptyState } from '@/components/public/PublicEmptyState'

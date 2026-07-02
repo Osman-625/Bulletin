@@ -1,7 +1,9 @@
 import type { CSSProperties } from 'react'
 
 function Bone({ className = '', style }: { className?: string; style?: CSSProperties }) {
-  return <div className={`skeleton-shimmer rounded ${className}`} style={style} />
+  return (
+    <div aria-hidden="true" className={`skeleton-shimmer rounded ${className}`} style={style} />
+  )
 }
 
 function LoadingAnnouncementCard({ poster = false }: { poster?: boolean }) {
@@ -59,9 +61,9 @@ export default function PublicLoading() {
             <div className="public-board-hero public-board-main-column public-board-hero--compact future-bento-cell min-w-0 rounded-[1.15rem] p-3.5 sm:p-4 lg:min-h-[13.5rem]">
               {/* Kicker row */}
               <div className="mb-3 flex flex-wrap items-center gap-2.5">
-                <Bone className="h-[1em] w-32 rounded-sm" style={{ fontSize: '0.68rem' }} />
-                <Bone className="size-1.5 rounded-full" />
-                <Bone className="h-[1em] w-20 rounded-sm" style={{ fontSize: '0.7rem' }} />
+                <Bone className="h-[1em] w-32 rounded-sm" style={{ fontSize: '0.75rem' }} />
+                <Bone className="size-3 rounded-full" />
+                <Bone className="h-[1em] w-20 rounded-sm" style={{ fontSize: '0.75rem' }} />
               </div>
               {/* h1 "Campus Bulletin" — text-4xl sm:text-5xl lg:text-[3.35rem], line-height 0.95 */}
               <Bone
@@ -82,7 +84,7 @@ export default function PublicLoading() {
                     <Bone className="h-[1em] w-10 rounded-md" style={{ fontSize: '1.5rem' }} />
                     <Bone
                       className="mt-1.5 h-[1em] w-16 rounded-sm"
-                      style={{ fontSize: '0.62rem' }}
+                      style={{ fontSize: '0.75rem' }}
                     />
                   </div>
                 ))}
@@ -93,7 +95,7 @@ export default function PublicLoading() {
             <aside className="public-board-live-panel public-board-side-column future-bento-cell hidden min-w-0 rounded-[1.15rem] p-3.5 sm:p-4 lg:block">
               <div className="flex min-h-[10.25rem] flex-col justify-between">
                 <div>
-                  <Bone className="h-[1em] w-20 rounded-sm" style={{ fontSize: '0.68rem' }} />
+                  <Bone className="h-[1em] w-20 rounded-sm" style={{ fontSize: '0.75rem' }} />
                   <Bone className="mt-1 h-[1em] w-48 rounded-md" style={{ fontSize: '1.25rem' }} />
                 </div>
                 <div className="mt-2.5 grid gap-1.5">
@@ -104,14 +106,14 @@ export default function PublicLoading() {
                         <Bone className="h-[1em] w-8 rounded-sm" style={{ fontSize: '1.125rem' }} />
                         <Bone
                           className="mt-1 h-[1em] w-16 rounded-sm"
-                          style={{ fontSize: '0.52rem' }}
+                          style={{ fontSize: '0.75rem' }}
                         />
                       </div>
                     ))}
                   </div>
                   {/* Latest notice — mirrors .public-board-latest */}
                   <div className="public-board-latest rounded-[0.8rem] border p-2">
-                    <Bone className="h-[1em] w-16 rounded-sm" style={{ fontSize: '0.56rem' }} />
+                    <Bone className="h-[1em] w-16 rounded-sm" style={{ fontSize: '0.75rem' }} />
                     <Bone
                       className="mt-1 h-[1em] w-full rounded-sm"
                       style={{ fontSize: '0.76rem' }}
@@ -146,14 +148,14 @@ export default function PublicLoading() {
           {/* Mirrors BoardOrderControls — info column + 3-slot nav */}
           <section className="public-board-sort public-board-sort-bar public-board-order public-board-span-full future-bento-cell grid min-w-0 gap-2 rounded-[1rem] p-1.5 sm:p-2 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-center">
             <div className="min-w-0 px-1 lg:w-[10rem]">
-              <Bone className="h-[1em] w-20 rounded-sm" style={{ fontSize: '0.68rem' }} />
+              <Bone className="h-[1em] w-20 rounded-sm" style={{ fontSize: '0.75rem' }} />
               <Bone className="mt-0.5 h-[1em] w-32 rounded-md" style={{ fontSize: '0.875rem' }} />
-              <Bone className="mt-0.5 h-[1em] w-44 rounded-sm" style={{ fontSize: '0.72rem' }} />
+              <Bone className="mt-0.5 h-[1em] w-44 rounded-sm" style={{ fontSize: '0.75rem' }} />
             </div>
             <nav className="grid min-w-0 grid-cols-3 gap-1 overflow-visible rounded-[var(--radius-control)] border border-[var(--color-border-subtle)] bg-[var(--color-surface-elevated)] p-0.5">
               {[0, 1, 2].map((i) => (
                 <div key={i} className="min-h-11 rounded-[0.55rem] p-2">
-                  <Bone className="h-[1em] w-14 rounded-sm" style={{ fontSize: '0.56rem' }} />
+                  <Bone className="h-[1em] w-14 rounded-sm" style={{ fontSize: '0.75rem' }} />
                   <Bone
                     className="mt-0.5 h-[1em] w-20 rounded-sm"
                     style={{ fontSize: '0.84rem' }}
@@ -168,7 +170,7 @@ export default function PublicLoading() {
           <section className="public-featured-grid public-board-grid">
             <Bone
               className="public-board-span-full h-[1em] w-28 rounded-sm"
-              style={{ fontSize: '0.68rem' }}
+              style={{ fontSize: '0.75rem' }}
             />
             <article className="hero-poster-card public-featured-compact public-board-main-column">
               <LoadingAnnouncementCard poster />
@@ -180,7 +182,7 @@ export default function PublicLoading() {
                   className="public-board-pin-card future-bento-cell flex min-h-[5.6rem] flex-col justify-start gap-2 rounded-[1rem] p-3 sm:p-3.5"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <Bone className="h-[1em] w-14 rounded-sm" style={{ fontSize: '0.68rem' }} />
+                    <Bone className="h-[1em] w-14 rounded-sm" style={{ fontSize: '0.75rem' }} />
                     <Bone className="size-2 rounded-full" />
                   </div>
                   <div>
@@ -201,7 +203,7 @@ export default function PublicLoading() {
           <section>
             <div className="dense-bento-section-heading mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <Bone className="h-[1em] w-28 rounded-sm" style={{ fontSize: '0.68rem' }} />
+                <Bone className="h-[1em] w-28 rounded-sm" style={{ fontSize: '0.75rem' }} />
                 <Bone className="mt-1 h-[1em] w-44 rounded-lg" style={{ fontSize: '1.875rem' }} />
               </div>
               <Bone className="h-[1em] w-32 rounded-sm" style={{ fontSize: '0.875rem' }} />

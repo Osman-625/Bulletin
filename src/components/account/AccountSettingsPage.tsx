@@ -3,9 +3,9 @@ import { ArrowUpRight, KeyRound, Palette, UserRound } from 'lucide-react'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
-import { updateAccountPassword, updateDisplayName } from '@/lib/account/actions'
-import { getDefaultAppPath, type AccessContext } from '@/lib/auth/authz'
-import { PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
+import { updateAccountPassword, updateDisplayName } from '@/modules/users/actions'
+import { getDefaultAppPath, type AccessContext } from '@/modules/auth/authz'
+import { PASSWORD_MIN_LENGTH } from '@/modules/auth/password-policy'
 
 type SettingsVariant = 'publisher' | 'admin' | 'super_admin' | 'owner'
 

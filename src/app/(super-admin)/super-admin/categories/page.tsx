@@ -3,19 +3,19 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
-import { logAuditEvent } from '@/lib/audit'
+import { logAuditEvent } from '@/modules/audit'
 import {
   canAccessSuperAdminArea,
   getCurrentAccessContext,
   getDefaultAppPath,
-} from '@/lib/auth/authz'
+} from '@/modules/auth/authz'
 import {
   DEFAULT_CATEGORY_COLOR as DEFAULT_CATEGORY_INPUT_COLOR,
   readCategoryFormData,
-} from '@/lib/categories/validation'
-import { reportServerError } from '@/lib/error-reporting'
-import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/server'
+} from '@/modules/categories/validation'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { createClient } from '@/infrastructure/database/server'
+import { createServiceClient } from '@/infrastructure/database/server'
 
 export const metadata = { title: 'Categories — Bulletin Super Admin' }
 
@@ -207,7 +207,10 @@ export default async function CategoriesPage({
 }: {
   searchParams: Promise<{ error?: string; edit?: string }>
 }) {
-  const [{ error, edit }, supabase] = await Promise.all([searchParams, createServiceClient()])
+  const [{ error, edit }, supabase] = await Promise.all([
+    searchParams,
+    requireSuperAdminAccess().then(() => createServiceClient()),
+  ])
   const { data: categories } = await supabase.from('categories').select('*').order('name')
   const hasCategories = (categories?.length ?? 0) > 0
   const categoryIds = (categories ?? []).map((category) => category.id)

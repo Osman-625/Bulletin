@@ -4,7 +4,7 @@ import {
   clientIpFromHeaders,
   rateLimitKey,
   resetRateLimitForTests,
-} from '@/lib/security/rate-limit'
+} from '@/shared/middleware/rate-limit'
 
 function headers(values: Record<string, string>): Headers {
   return new Headers(values)

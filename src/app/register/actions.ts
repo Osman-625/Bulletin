@@ -1,11 +1,11 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { logAuditEvent } from '@/lib/audit'
-import { validatePassword } from '@/lib/auth/password-policy'
-import { reportServerError } from '@/lib/error-reporting'
-import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { logAuditEvent } from '@/modules/audit'
+import { validatePassword } from '@/modules/auth/password-policy'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
+import { createAdminClient } from '@/infrastructure/database/admin'
 
 const REGISTRATION_ERROR = 'Could not create account. Try again or request a new invite.'
 

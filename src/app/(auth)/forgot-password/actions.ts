@@ -1,11 +1,11 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { logAuditEvent } from '@/lib/audit'
-import { reportServerError } from '@/lib/error-reporting'
-import { createNotificationsForUsers } from '@/lib/notifications'
-import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
-import { createServiceClient } from '@/lib/supabase/server'
+import { logAuditEvent } from '@/modules/audit'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { createNotificationsForUsers } from '@/modules/notifications'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
+import { createServiceClient } from '@/infrastructure/database/server'
 
 const FORGOT_PASSWORD_SENT_PATH = '/forgot-password?sent=1'
 

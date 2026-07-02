@@ -2,8 +2,8 @@ import Link from 'next/link'
 import { ThemeToggle } from './ThemeToggle'
 import { BrandMark } from './BrandMark'
 import { HeaderLoadingSignal } from './HeaderLoadingSignal'
-import { getDefaultAppPath, type AccessContext } from '@/lib/auth/authz'
-import { formatCampusLongDate } from '@/lib/announcements/public-board'
+import { getDefaultAppPath, type AccessContext } from '@/modules/auth/authz'
+import { formatCampusLongDate } from '@/modules/announcements/public-board'
 
 function formatRole(role: string) {
   return role.replaceAll('_', ' ')

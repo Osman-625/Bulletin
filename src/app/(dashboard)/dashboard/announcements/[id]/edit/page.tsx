@@ -1,13 +1,13 @@
 import { notFound, redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/infrastructure/database/server'
 import { AnnouncementForm } from '@/components/dashboard/AnnouncementForm'
-import { canManageAnnouncementForOrg } from '@/lib/announcements/access'
+import { canManageAnnouncementForOrg } from '@/modules/announcements/access'
 import {
   DEFAULT_DISPLAY_FONT,
   DEFAULT_DISPLAY_SIZE,
   DEFAULT_URGENCY,
-} from '@/lib/announcements/presentation'
-import { getCurrentAccessContext } from '@/lib/auth/authz'
+} from '@/modules/announcements/presentation'
+import { getCurrentAccessContext } from '@/modules/auth/authz'
 import {
   updateAnnouncement,
   submitForReview,

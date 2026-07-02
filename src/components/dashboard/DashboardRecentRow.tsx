@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { ArrowRight, Eye } from 'lucide-react'
 import { StatusBadge } from './StatusBadge'
-import { formatCampusCompactDate } from '@/lib/announcements/public-board'
+import { formatCampusCompactDate } from '@/modules/announcements/public-board'
 
 export type DashboardRecentAnnouncement = {
   id: string

@@ -2,12 +2,12 @@
 
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
-import { logAuditEvent } from '@/lib/audit'
-import { canAccessAdminArea, getCurrentAccessContext } from '@/lib/auth/authz'
-import { reportServerError } from '@/lib/error-reporting'
-import { notifyAnnouncementReviewed } from '@/lib/notifications'
-import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
-import { createClient } from '@/lib/supabase/server'
+import { logAuditEvent } from '@/modules/audit'
+import { canAccessAdminArea, getCurrentAccessContext } from '@/modules/auth/authz'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { notifyAnnouncementReviewed } from '@/modules/notifications'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
+import { createClient } from '@/infrastructure/database/server'
 
 const REVIEW_WRITE_ERROR = 'review_failed'
 

@@ -9,7 +9,7 @@ describe('announcement write action error hardening source guards', () => {
   it('keeps new announcement insert failures server-side', () => {
     const actions = source('src/app/(dashboard)/dashboard/announcements/new/actions.ts')
 
-    expect(actions).toContain("from '@/lib/error-reporting'")
+    expect(actions).toContain("from '@/shared/errors/error-reporting'")
     expect(actions).toContain('ANNOUNCEMENT_SAVE_ERROR')
     expect(actions).toContain('ANNOUNCEMENT_SUBMIT_ERROR')
     expect(actions).toContain('reportServerError(')
@@ -19,7 +19,7 @@ describe('announcement write action error hardening source guards', () => {
   it('keeps edit, publish, submit, and delete failures server-side', () => {
     const actions = source('src/app/(dashboard)/dashboard/announcements/[id]/edit/actions.ts')
 
-    expect(actions).toContain("from '@/lib/error-reporting'")
+    expect(actions).toContain("from '@/shared/errors/error-reporting'")
     expect(actions).toContain('ANNOUNCEMENT_LOAD_ERROR')
     expect(actions).toContain('ANNOUNCEMENT_SAVE_ERROR')
     expect(actions).toContain('ANNOUNCEMENT_PUBLISH_ERROR')

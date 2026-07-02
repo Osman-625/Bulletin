@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { reportServerWarning } from '@/lib/error-reporting'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { reportServerWarning } from '@/shared/errors/error-reporting'
+import { createAdminClient } from '@/infrastructure/database/admin'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

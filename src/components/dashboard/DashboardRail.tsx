@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LogOut } from 'lucide-react'
 import { logout } from '@/app/(auth)/login/actions'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/utils'
 import {
   ROLE_TABS,
   canUseRoleTab,
@@ -97,14 +97,14 @@ export function DashboardRail({ variant, role, navItems }: DashboardRailProps) {
         </div>
       )}
 
-      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-3">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
         <p className="mb-1 hidden px-2 font-mono text-[0.6rem] font-extrabold tracking-[0.18em] text-[var(--color-text-muted)] uppercase group-hover:block">
           Navigation
         </p>
         <RailLinks items={primaryNavItems} pathname={pathname} />
       </nav>
 
-      <div className="border-t border-[var(--color-border)] px-3 py-3">
+      <div className="border-t border-[var(--color-border)] p-3">
         <form action={logout}>
           <button
             type="submit"

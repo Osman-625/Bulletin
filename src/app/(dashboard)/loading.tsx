@@ -6,7 +6,10 @@ export default function DashboardLoading() {
         <div className="board-header-mark" aria-hidden="true" />
         <div className="board-header-copy min-w-0">
           <p className="board-kicker dashboard-skeleton block h-3 w-32 rounded-sm" />
-          <h1 className="board-title dashboard-skeleton block h-[1em] w-56 rounded-lg" />
+          <h1
+            aria-hidden="true"
+            className="board-title dashboard-skeleton block h-[1em] w-56 rounded-lg"
+          />
           <p className="board-description dashboard-skeleton block h-[1em] w-72 rounded-sm" />
         </div>
         <span
@@ -32,7 +35,10 @@ export default function DashboardLoading() {
         {/* Panel 1 — Your announcements */}
         <section className="board-panel">
           <div className="board-panel-head">
-            <h2 className="dashboard-skeleton block h-[1.12rem] w-44 rounded-md" />
+            <h2
+              aria-hidden="true"
+              className="dashboard-skeleton block h-[1.12rem] w-44 rounded-md"
+            />
             <span
               className="board-panel-link dashboard-skeleton pointer-events-none w-16"
               aria-hidden="true"
@@ -57,7 +63,10 @@ export default function DashboardLoading() {
         {/* Panel 2 — Needs attention */}
         <section className="board-panel">
           <div className="board-panel-head">
-            <h2 className="dashboard-skeleton block h-[1.12rem] w-36 rounded-md" />
+            <h2
+              aria-hidden="true"
+              className="dashboard-skeleton block h-[1.12rem] w-36 rounded-md"
+            />
           </div>
           <div className="board-list">
             {Array.from({ length: 4 }).map((_, i) => (

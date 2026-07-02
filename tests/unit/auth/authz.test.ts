@@ -12,7 +12,7 @@ import {
   canManageUser,
   type AppRole,
   type ScopedUser,
-} from '@/lib/auth/authz'
+} from '@/modules/auth/authz'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

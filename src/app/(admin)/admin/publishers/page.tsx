@@ -6,8 +6,8 @@ import {
   DashboardBoardPage,
   DashboardBoardPanel,
 } from '@/components/dashboard/DashboardBoard'
-import { formatCampusShortDate } from '@/lib/announcements/public-board'
-import { getAllPublishers } from '@/lib/data'
+import { formatCampusShortDate } from '@/modules/announcements/public-board'
+import { getAllPublishers } from '@/infrastructure/database/data'
 
 export const metadata = { title: 'Publishers — Bulletin Admin' }
 

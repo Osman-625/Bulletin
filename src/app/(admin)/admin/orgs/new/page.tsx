@@ -1,7 +1,7 @@
 import { ArrowLeft, Building2 } from 'lucide-react'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { ORGANIZATION_TYPE_OPTIONS } from '@/lib/organizations/validation'
+import { ORGANIZATION_TYPE_OPTIONS } from '@/modules/organizations/validation'
 import { createOrganization } from './actions'
 
 export const metadata = { title: 'New Organization, Bulletin Admin' }

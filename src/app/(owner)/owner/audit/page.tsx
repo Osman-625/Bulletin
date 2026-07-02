@@ -11,10 +11,11 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
-import { dateValue, formatCampusDateTime } from '@/lib/announcements/public-board'
-import type { Database, Json, Tables } from '@/lib/database.types'
-import { reportServerError } from '@/lib/error-reporting'
-import { createServiceClient } from '@/lib/supabase/server'
+import { dateValue, formatCampusDateTime } from '@/modules/announcements/public-board'
+import type { Database, Json, Tables } from '@/infrastructure/database/database.types'
+import { requireOwnerAccessContext } from '@/modules/auth/authz'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { createServiceClient } from '@/infrastructure/database/server'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'Audit Log — Bulletin Owner' }
@@ -660,6 +661,7 @@ export default async function AuditLogPage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
+  await requireOwnerAccessContext()
   const { page, q, target, actor } = await searchParams
   const currentPage = Math.max(1, parseInt(page ?? '1', 10) || 1)
   const targetFilter = target || 'all'

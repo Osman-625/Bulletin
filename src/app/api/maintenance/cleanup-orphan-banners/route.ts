@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
-import { cleanupOrphanBannerImages } from '@/lib/storage/banner-cleanup'
-import { reportServerError } from '@/lib/error-reporting'
-import { createServiceClient } from '@/lib/supabase/server'
+import { cleanupOrphanBannerImages } from '@/infrastructure/storage/banner-cleanup'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { createServiceClient } from '@/infrastructure/database/server'
 
 export const runtime = 'nodejs'
 

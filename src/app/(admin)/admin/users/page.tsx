@@ -4,8 +4,8 @@ import { redirect } from 'next/navigation'
 import { Users } from 'lucide-react'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
-import { formatCampusShortDate } from '@/lib/announcements/public-board'
-import { logAuditEvent } from '@/lib/audit'
+import { formatCampusShortDate } from '@/modules/announcements/public-board'
+import { logAuditEvent } from '@/modules/audit'
 import {
   canAccessAdminArea,
   canManageUser,
@@ -13,14 +13,14 @@ import {
   getDefaultAppPath,
   type AppRole,
   type ScopedUser,
-} from '@/lib/auth/authz'
+} from '@/modules/auth/authz'
 import {
   TEMPORARY_PASSWORD_MIN_LENGTH,
   validateTemporaryPassword,
-} from '@/lib/auth/password-policy'
-import { getVisibleUsersForAdminPage } from '@/lib/data'
-import { reportServerError } from '@/lib/error-reporting'
-import { createServiceClient } from '@/lib/supabase/server'
+} from '@/modules/auth/password-policy'
+import { getVisibleUsersForAdminPage } from '@/infrastructure/database/data'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { createServiceClient } from '@/infrastructure/database/server'
 
 export const metadata = { title: 'Users - Bulletin Admin' }
 

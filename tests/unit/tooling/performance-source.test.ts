@@ -7,7 +7,7 @@ function source(path: string) {
 
 describe('performance source guards', () => {
   it('paginates public announcements at the Supabase query boundary', () => {
-    const data = source('src/lib/data.ts')
+    const data = source('src/infrastructure/database/data.ts')
     const publicPage = source('src/app/(public)/page.tsx')
 
     expect(data).toContain('PUBLIC_FEED_PAGE_SIZE')
@@ -59,7 +59,7 @@ describe('performance source guards', () => {
   })
 
   it('paginates admin, owner, and super-admin user management at the Supabase query boundary', () => {
-    const data = source('src/lib/data.ts')
+    const data = source('src/infrastructure/database/data.ts')
     const adminUsers = source('src/app/(admin)/admin/users/page.tsx')
     const ownerUsers = source('src/app/(owner)/owner/users/page.tsx')
     const superAdminUsers = source('src/app/(super-admin)/super-admin/users/page.tsx')

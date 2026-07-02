@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { readOrganizationFormData } from '@/lib/organizations/validation'
+import { readOrganizationFormData } from '@/modules/organizations/validation'
 
 function source(path: string) {
   return readFileSync(path, 'utf8')
@@ -72,7 +72,7 @@ describe('readOrganizationFormData', () => {
   })
 
   it('renders organization type options from the shared validation config', () => {
-    const validationSource = source('src/lib/organizations/validation.ts')
+    const validationSource = source('src/modules/organizations/validation.ts')
     const newOrgPage = source('src/app/(admin)/admin/orgs/new/page.tsx')
 
     expect(validationSource).toContain('export const ORGANIZATION_TYPE_OPTIONS')

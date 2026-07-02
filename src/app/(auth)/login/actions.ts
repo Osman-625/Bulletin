@@ -1,12 +1,12 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { logAuditEvent } from '@/lib/audit'
-import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { getDefaultAppPath } from '@/lib/auth/authz'
-import { ensureAuthUserProfile } from '@/lib/auth/sync-users'
-import { reportServerError } from '@/lib/error-reporting'
-import { checkActionRateLimit } from '@/lib/security/action-rate-limit'
+import { logAuditEvent } from '@/modules/audit'
+import { createClient, createServiceClient } from '@/infrastructure/database/server'
+import { getDefaultAppPath } from '@/modules/auth/authz'
+import { ensureAuthUserProfile } from '@/modules/auth/sync-users'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
 
 const AUTH_TIMING_DUMMY_EMAIL = 'invalid-login@bulletin.invalid'
 

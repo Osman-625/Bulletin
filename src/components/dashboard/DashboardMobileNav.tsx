@@ -7,7 +7,7 @@ import { LogOut, X } from 'lucide-react'
 import { logout } from '@/app/(auth)/login/actions'
 import { BrandMark } from '@/components/layout/BrandMark'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/utils'
 import {
   ROLE_TABS,
   canUseRoleTab,
@@ -118,7 +118,7 @@ export function DashboardMobileNav({
         </div>
       </div>
 
-      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-3">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-3">
         {navItems.map((item) => {
           const isActive = getIsActive(item, pathname)
           const Icon = item.icon
@@ -147,7 +147,7 @@ export function DashboardMobileNav({
         })}
       </nav>
 
-      <div className="flex items-center justify-between gap-3 border-t border-[var(--color-border)] px-4 py-4">
+      <div className="flex items-center justify-between gap-3 border-t border-[var(--color-border)] p-4">
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
             {displayName ?? '—'}

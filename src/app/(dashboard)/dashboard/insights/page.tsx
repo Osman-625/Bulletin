@@ -1,9 +1,9 @@
 import { BarChart3, Eye, FileText, PieChart } from 'lucide-react'
 import { redirect } from 'next/navigation'
-import { shouldScopeAnnouncementsToMembership } from '@/lib/announcements/access'
-import { formatCampusCompactDate } from '@/lib/announcements/public-board'
-import { getCurrentAccessContext } from '@/lib/auth/authz'
-import { createClient } from '@/lib/supabase/server'
+import { shouldScopeAnnouncementsToMembership } from '@/modules/announcements/access'
+import { formatCampusCompactDate } from '@/modules/announcements/public-board'
+import { getCurrentAccessContext } from '@/modules/auth/authz'
+import { createClient } from '@/infrastructure/database/server'
 import {
   DashboardBoardBoard,
   DashboardBoardEmpty,
@@ -14,7 +14,7 @@ import {
   DashboardBoardRow,
   DashboardBoardStaticRow,
 } from '@/components/dashboard/DashboardBoard'
-import type { DbAnnouncement } from '@/lib/types'
+import type { DbAnnouncement } from '@/shared/types'
 
 export const metadata = { title: 'Insights' }
 

@@ -1,7 +1,7 @@
-import { reportServerError } from '@/lib/error-reporting'
-import { createServiceClient } from '@/lib/supabase/server'
-import { checkPersistentRateLimit } from '@/lib/security/persistent-rate-limit'
-import { rateLimitKey } from '@/lib/security/rate-limit'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { createServiceClient } from '@/infrastructure/database/server'
+import { checkPersistentRateLimit } from '@/shared/middleware/persistent-rate-limit'
+import { rateLimitKey } from '@/shared/middleware/rate-limit'
 import { NextResponse } from 'next/server'
 
 const SETUP_WRITE_ERROR = 'Setup failed. Check server logs and try again.'

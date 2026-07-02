@@ -4,9 +4,9 @@ import { redirect } from 'next/navigation'
 import { UserPlus } from 'lucide-react'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
-import { logAuditEvent } from '@/lib/audit'
-import { formatCampusShortDate } from '@/lib/announcements/public-board'
-import { createServiceClient } from '@/lib/supabase/server'
+import { logAuditEvent } from '@/modules/audit'
+import { formatCampusShortDate } from '@/modules/announcements/public-board'
+import { createServiceClient } from '@/infrastructure/database/server'
 import {
   canAccessOwnerArea,
   canManageUser,
@@ -14,14 +14,14 @@ import {
   getCurrentAccessContext,
   getDefaultAppPath,
   type AppRole,
-} from '@/lib/auth/authz'
+} from '@/modules/auth/authz'
 import {
   TEMPORARY_PASSWORD_MIN_LENGTH,
   validateTemporaryPassword,
-} from '@/lib/auth/password-policy'
-import { syncAuthUsersToProfiles } from '@/lib/auth/sync-users'
-import { reportServerError } from '@/lib/error-reporting'
-import type { DbUser } from '@/lib/types'
+} from '@/modules/auth/password-policy'
+import { syncAuthUsersToProfiles } from '@/modules/auth/sync-users'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import type { DbUser } from '@/shared/types'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'All Users — Bulletin Owner' }

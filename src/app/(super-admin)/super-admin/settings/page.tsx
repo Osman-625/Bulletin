@@ -4,7 +4,7 @@ import {
   canAccessSuperAdminArea,
   getCurrentAccessContext,
   getDefaultAppPath,
-} from '@/lib/auth/authz'
+} from '@/modules/auth/authz'
 
 export const metadata = { title: 'Settings - Bulletin Super Admin' }
 

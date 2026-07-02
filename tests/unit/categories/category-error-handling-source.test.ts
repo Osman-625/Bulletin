@@ -15,7 +15,7 @@ describe('category write error handling source guards', () => {
   it.each(categoryPages)('%s reports Supabase failures and redirects with safe copy', (path) => {
     const page = source(path)
 
-    expect(page).toContain("from '@/lib/error-reporting'")
+    expect(page).toContain("from '@/shared/errors/error-reporting'")
     expect(page).toContain('reportServerError(')
     expect(page).toContain('CATEGORY_SAVE_ERROR')
     expect(page).toContain('CATEGORY_DELETE_ERROR')

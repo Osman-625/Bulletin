@@ -8,8 +8,8 @@ import {
   DashboardBoardPanel,
   DashboardBoardRow,
 } from '@/components/dashboard/DashboardBoard'
-import { getPlatformStats } from '@/lib/data'
-import { requireUsableAccessContext } from '@/lib/auth/authz'
+import { getPlatformStats } from '@/infrastructure/database/data'
+import { requireUsableAccessContext } from '@/modules/auth/authz'
 
 export const metadata = { title: 'Platform Overview' }
 

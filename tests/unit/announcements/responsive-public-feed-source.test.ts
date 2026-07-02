@@ -71,7 +71,7 @@ describe('public feed responsive adaptation source guards', () => {
     expect(boardOrderControls).toContain('Showing:')
     expect(boardOrderControls).toContain('FeedPendingStatus')
     expect(feedPendingStatus).toContain('role="status"')
-    expect(feedPendingStatus).toContain('Updating notices...')
+    expect(feedPendingStatus).toContain('Updating notices…')
     expect(publicHome).not.toContain('public-page-reveal future-bento-cell hidden gap-4')
     expect(boardOrderControls).toContain('lg:grid-cols-[auto_minmax(0,1fr)]')
     expect(boardOrderControls).toContain('grid-cols-3')
@@ -84,18 +84,14 @@ describe('public feed responsive adaptation source guards', () => {
   it('keeps route loading skeleton in the same order as the rendered public feed', () => {
     const loading = source('src/app/(public)/loading.tsx')
 
-    expect(loading.indexOf('Section 2 — Search + filter')).toBeGreaterThan(
-      loading.indexOf('Section 1 — Hero')
+    expect(loading.indexOf('Search + category filters')).toBeGreaterThan(loading.indexOf('Hero'))
+    expect(loading.indexOf('Sort / order controls')).toBeGreaterThan(
+      loading.indexOf('Search + category filters')
     )
-    expect(loading.indexOf('Section 3 — Sort controls')).toBeGreaterThan(
-      loading.indexOf('Section 2 — Search + filter')
+    expect(loading.indexOf('Featured + pinned notices')).toBeGreaterThan(
+      loading.indexOf('Sort / order controls')
     )
-    expect(loading.indexOf('Section 4 — Featured + side notices')).toBeGreaterThan(
-      loading.indexOf('Section 3 — Sort controls')
-    )
-    expect(loading.indexOf('Section 5 — Feed')).toBeGreaterThan(
-      loading.indexOf('Section 4 — Featured + side notices')
-    )
+    expect(loading.indexOf('Feed')).toBeGreaterThan(loading.indexOf('Featured + pinned notices'))
   })
 
   it('uses clear copy for filtered views where every matching notice is featured above the feed', () => {
@@ -107,7 +103,7 @@ describe('public feed responsive adaptation source guards', () => {
 
   it('renders a distinct public feed load error instead of presenting query failures as empty boards', () => {
     const publicHome = source('src/app/(public)/page.tsx')
-    const data = source('src/lib/data.ts')
+    const data = source('src/infrastructure/database/data.ts')
 
     expect(data).toContain('error: string | null')
     expect(data).toContain("error: 'public_announcements_query_failed'")
@@ -147,23 +143,16 @@ describe('public feed responsive adaptation source guards', () => {
     expect(boardOrderControls).toContain('p-1.5')
     expect(boardOrderControls).toContain('sm:p-2')
     expect(boardOrderControls).not.toContain('gap-3 rounded-[1.05rem] p-3')
-    expect(card).toContain('lg:aspect-[16/6]')
-    expect(card).toContain('1.5rem')
-    expect(card).toContain("fit = 'cover'")
-    expect(card).toContain("fit === 'contain'")
-    expect(card).toContain('style={{ objectFit: fit }}')
-    expect(card).toContain('featured-announcement-media-frame')
-    expect(card).toContain('featured-announcement-image-window')
-    expect(card).toContain('featured-announcement-corner')
-    expect(card).toContain('fit="cover"')
-    expect(globals).toContain('.public-featured-compact [data-card-media]')
+    expect(card).toContain('export function CardImage')
+    expect(card).toContain('data-slot="image"')
+    expect(card).toContain("style={{ objectFit: 'contain' }}")
+    expect(card).toContain('announcement-card-image-frame')
+    expect(card).toContain('preload={featured}')
+    expect(card).not.toContain('featured-announcement-media-frame')
     expect(globals).toContain(".public-featured-compact [data-testid='announcement-card']")
-    expect(globals).toContain('.featured-announcement-media-frame')
-    expect(globals).toContain('.featured-announcement-image-window')
-    expect(globals).toContain('.featured-announcement-corner')
-    expect(globals).toContain('clip-path: polygon(100% 0, 100% 100%, 0 0)')
+    expect(globals).toContain('.announcement-card-media')
     expect(globals).toContain('height: 100%')
-    expect(globals).toContain('block-size: clamp(10.5rem, 18vw, 12.5rem)')
+    expect(globals).toContain('block-size: var(--public-card-media-height)')
     expect(globals).toContain('object-position: center')
     expect(globals).toContain('.public-board-sort-bar nav')
   })
@@ -197,7 +186,7 @@ describe('public feed responsive adaptation source guards', () => {
     expect(publicHome).not.toContain("classes.push('dense-bento-tall')")
     expect(publicHome).not.toContain("classes.push('dense-bento-compact')")
     expect(publicHome).not.toContain('const variants: AnnouncementCardVisual[]')
-    expect(card).toContain('{imageUrl && (')
+    expect(card).toContain('<CardImage')
     expect(card).not.toContain('announcement-card-fallback')
     expect(card).toContain('data-uniform-card="true"')
     expect(card).toContain(
@@ -216,7 +205,7 @@ describe('public feed responsive adaptation source guards', () => {
     expect(globals).toContain('--public-board-text-span: 5')
     expect(remTokenValues(globals, '--public-card-media-height').length).toBeGreaterThan(0)
     expect(
-      remTokenValues(globals, '--public-card-media-height').every((value) => value >= 16)
+      remTokenValues(globals, '--public-card-media-height').every((value) => value === 14.375)
     ).toBe(true)
     expect(cssBlock(globals, '.uniform-card-board')).toContain(
       'grid-auto-rows: var(--public-board-row)'
@@ -238,7 +227,7 @@ describe('public feed responsive adaptation source guards', () => {
     expect(globals).toContain('--dense-bento-row: 16rem')
     expect(globals).toContain('.public-feed-card-board')
     expect(globals).toContain('.dense-bento-board .card-with-image')
-    expect(globals).toContain('.dense-bento-board .card-without-image')
+    expect(globals).toContain('.uniform-card-board > .card-without-image')
     expect(globals).toContain('.priority-lane-board.uniform-card-board .dense-bento-item')
     expect(globals).toContain('grid-column: auto')
     expect(globals).toContain('object-fit: cover')
@@ -248,7 +237,7 @@ describe('public feed responsive adaptation source guards', () => {
     expect(globals).toContain('grid-template-columns: repeat(3, minmax(0, 1fr))')
     expect(globals).not.toContain('repeat(auto-fit')
     expect(globals).not.toContain('repeat(auto-fill')
-    expect(card).toContain('toSafeImageUrl(banner_url)')
+    expect(card).toContain('toSafeImageUrl(announcement.banner_url)')
     expect(card).toContain('object-cover object-center')
     expect(globals).not.toContain('.priority-lane-board .dense-bento-item:only-child')
     expect(globals).not.toContain(
@@ -267,7 +256,7 @@ describe('public feed responsive adaptation source guards', () => {
     expect(card).toContain('announcement-card-media')
     expect(card).toContain('announcement-card-image')
     expect(card).toContain('announcement-card-body')
-    expect(card).toContain('announcement-card-main')
+    expect(card).toContain('announcement-card-status')
     expect(card).toContain('announcement-card-title')
     expect(card).toContain('announcement-card-summary')
     expect(card).toContain('announcement-card-meta')
@@ -279,15 +268,14 @@ describe('public feed responsive adaptation source guards', () => {
     expect(cssBlock(globals, '.announcement-card')).toContain(
       'grid-template-rows: auto minmax(0, 1fr)'
     )
-    expect(globals).toContain('.uniform-card-board .card-with-image .announcement-card-summary')
-    expect(globals).toContain('.uniform-card-board .card-without-image .announcement-card-summary')
+    expect(globals).not.toContain('.uniform-card-board .card-with-image .announcement-card-summary')
+    expect(globals).not.toContain(
+      '.uniform-card-board .card-without-image .announcement-card-summary'
+    )
     expect(globals).toContain('-webkit-line-clamp: 3')
-    expect(
-      cssBlock(globals, '.uniform-card-board .card-with-image .announcement-card-summary')
-    ).toContain('min-height: 3em')
-    expect(
-      cssBlock(globals, '.uniform-card-board .card-without-image .announcement-card-summary')
-    ).toContain('min-height: 6em')
+    expect(cssBlock(globals, '.announcement-card-summary')).toContain(
+      'block-size: var(--announcement-card-description-slot)'
+    )
     expect(globals).toContain('.dense-bento-board .card-with-image [data-card-media]')
     expect(globals).toContain('block-size: var(--public-card-media-height)')
     expect(globals).toContain('padding: 20px')

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { URGENCY_META } from '@/lib/announcements/presentation'
+import { URGENCY_META } from '@/modules/announcements/presentation'
 
 function source(path: string) {
   return readFileSync(path, 'utf8')
@@ -112,6 +112,7 @@ describe('Future Commons production UI guards', () => {
     const publicBack = source('src/components/announcements/BackButton.tsx')
     const reviewPage = source('src/app/(admin)/admin/review/[id]/page.tsx')
     const announcementForm = source('src/components/dashboard/AnnouncementForm.tsx')
+    const announcementFormTopBar = source('src/components/dashboard/AnnouncementFormTopBar.tsx')
     const editPage = source('src/app/(dashboard)/dashboard/announcements/[id]/edit/page.tsx')
     const newOrgPage = source('src/app/(admin)/admin/orgs/new/page.tsx')
     const invitePublisherPage = source('src/app/(admin)/admin/publishers/invite/page.tsx')
@@ -129,9 +130,9 @@ describe('Future Commons production UI guards', () => {
     expect(publicBack).toContain('fallbackHref="/"')
     expect(reviewPage).toContain('DashboardBoardHeader')
     expect(reviewPage).toContain("href: '/admin/review'")
-    expect(announcementForm).toContain('BackNavButton')
     expect(announcementForm).toContain('backHref?: string')
-    expect(announcementForm).toContain('fallbackHref={backHref}')
+    expect(announcementFormTopBar).toContain('BackNavButton')
+    expect(announcementFormTopBar).toContain('fallbackHref={backHref}')
     expect(announcementForm).not.toContain("router.push('/dashboard/announcements')")
     expect(editPage).toContain('backHref="/dashboard/announcements"')
     expect(newOrgPage).toContain('DashboardBoardHeader')
@@ -165,7 +166,7 @@ describe('Future Commons production UI guards', () => {
     expect(detailPage).toContain('lg:min-h-[31rem]')
     expect(card).toContain('object-cover')
     // Public grid cards crop consistently; the detail page preserves the original poster.
-    expect(card).toContain('PosterBackdrop')
+    expect(card).toContain('aria-hidden="true"')
     expect(card).toContain('blur-2xl')
   })
 
@@ -196,13 +197,13 @@ describe('Future Commons production UI guards', () => {
   it('adds board-order sorting without replacing category filters', () => {
     const publicHome = source('src/app/(public)/page.tsx')
     const boardOrderControls = source('src/components/public/BoardOrderControls.tsx')
-    const publicBoard = source('src/lib/announcements/public-board.ts')
+    const publicBoard = source('src/modules/announcements/public-board.ts')
     const categoryFilter = source('src/components/announcements/CategoryFilter.tsx')
     const card = source('src/components/announcements/AnnouncementCard.tsx')
-    const data = source('src/lib/data.ts')
+    const data = source('src/infrastructure/database/data.ts')
 
     expect(publicBoard).toContain("export const BOARD_SORTS = ['priority', 'issued', 'closing']")
-    expect(publicHome).toContain('@/lib/announcements/public-board')
+    expect(publicHome).toContain('@/modules/announcements/public-board')
     expect(publicHome).toContain('BoardOrderControls')
     expect(boardOrderControls).toContain(
       'buildFeedHref({ category, q: search, sort: option.sort })'
@@ -240,6 +241,7 @@ describe('Future Commons production UI guards', () => {
 
   it('renders publisher form guardrails for uploads, scheduling, body length, and destructive actions', () => {
     const form = source('src/components/dashboard/AnnouncementForm.tsx')
+    const topBar = source('src/components/dashboard/AnnouncementFormTopBar.tsx')
     const actionBar = source('src/components/dashboard/ActionBar.tsx')
 
     expect(form).toContain('ANNOUNCEMENT_BODY_MAX')
@@ -248,20 +250,20 @@ describe('Future Commons production UI guards', () => {
     expect(form).toContain('organizationId')
     expect(form).toContain('supabase.auth.getUser()')
     expect(form).toContain('bannerUploadError')
-    expect(form).toContain('deleteDialogRef')
-    expect(form).toContain('deleteCancelRef')
-    expect(form).toContain('deleteTriggerRef')
-    expect(form).toContain('<dialog')
-    expect(form).toContain('dialog.showModal()')
-    expect(form).toContain('onCancel={handleDeleteDialogCancel}')
-    expect(form).toContain('closeDeleteDialog')
-    expect(form).toContain('deleteTriggerRef.current?.focus()')
+    expect(topBar).toContain('deleteDialogRef')
+    expect(topBar).toContain('deleteCancelRef')
+    expect(topBar).toContain('deleteTriggerRef')
+    expect(topBar).toContain('<dialog')
+    expect(topBar).toContain('dialog.showModal()')
+    expect(topBar).toContain('onCancel={handleDeleteDialogCancel}')
+    expect(topBar).toContain('closeDeleteDialog')
+    expect(topBar).toContain('deleteTriggerRef.current?.focus()')
     expect(form).toContain('AnnouncementFormTopBar')
     expect(form).toContain('PublishingReadinessChecklist')
     expect(form).toContain('AnnouncementLivePreview')
-    expect(form).not.toContain('role="alertdialog"')
-    expect(form).not.toContain('handleDeleteConfirmKeyDown')
-    expect(form).not.toContain('onKeyDown={handleDeleteConfirmKeyDown}')
+    expect(topBar).not.toContain('role="alertdialog"')
+    expect(topBar).not.toContain('handleDeleteConfirmKeyDown')
+    expect(topBar).not.toContain('onKeyDown={handleDeleteConfirmKeyDown}')
     expect(actionBar).toContain('showUnpublishConfirm')
     expect(actionBar).toContain('Unpublishing will hide this announcement from the public feed.')
     expect(actionBar).toContain('unpublishConfirmRef')
@@ -394,7 +396,7 @@ describe('Future Commons production UI guards', () => {
       source('src/app/(admin)/admin/review/[id]/page.tsx'),
       source('src/app/(admin)/admin/analytics/page.tsx'),
       source('src/app/(owner)/owner/analytics/page.tsx'),
-      source('src/lib/owner/resources.ts'),
+      source('src/modules/owner/resources.ts'),
     ]
 
     for (const file of displaySurfaces) {
@@ -462,11 +464,11 @@ describe('Future Commons production UI guards', () => {
 
     expect(ownerHome).toContain('DashboardBoardPage')
     expect(ownerHome).toContain('DashboardBoardMetrics')
-    expect(ownerHome).toContain('DashboardBoardBoard')
     expect(ownerHome).toContain('getOwnerResourceOverview')
-    expect(ownerHome).toContain('Owner workspaces')
+    expect(ownerHome).toContain('WorkspaceCard')
+    expect(ownerHome).toContain('Workspaces')
     expect(ownerHome).toContain('Needs attention')
-    expect(ownerHome).toContain('Owner resources')
+    expect(ownerHome).toContain("href: '/owner/resources'")
     expect(ownerHome).toContain('Super board')
     expect(ownerHome).toContain('Publisher board')
     expect(ownerResources).toContain('No tracked announcement views yet')
@@ -672,7 +674,7 @@ describe('Future Commons production UI guards', () => {
     expect(card).toContain('data-image-layout={visual}')
     expect(card).toContain('data-card-media={visual}')
     expect(card).toContain("data-has-image={hasImage ? 'true' : 'false'}")
-    expect(card).toContain('{imageUrl && (')
+    expect(card).toContain('<CardImage')
     expect(card).not.toContain('announcement-card-fallback')
     expect(card).not.toContain('min-h-[26rem]')
     expect(card).not.toContain('min-h-[18rem]')
@@ -681,21 +683,21 @@ describe('Future Commons production UI guards', () => {
     expect(globals).toContain('grid-row: span var(--public-board-image-span)')
     expect(globals).toContain('grid-row: span var(--public-board-text-span)')
     expect(card).toContain('featureLabel')
-    expect(card).toContain('featured-announcement-badge')
     expect(card).toContain('featured-announcement-card')
-    expect(card).toContain("visual === 'poster' || visual === 'ribbon'")
-    expect(card).toContain('aspect-[4/3] sm:aspect-[16/9] lg:aspect-[16/6]')
+    expect(card).toContain("featureLabel: featured ? (featureLabel ?? 'Featured') : undefined")
+    expect(card).toContain('StatusBadge')
+    expect(card).not.toContain("visual === 'poster' || visual === 'ribbon'")
+    expect(card).not.toContain('aspect-[4/3] sm:aspect-[16/9] lg:aspect-[16/6]')
     expect(card).not.toContain('aspect-[7/2]')
-    expect(card).toContain('aspect-[16/9]')
-    expect(card).toContain('announcement-card-summary-clamp-3')
-    expect(card).toContain('announcement-card-summary-clamp-4')
+    expect(card).not.toContain('aspect-[16/9]')
+    expect(card).toContain('CardDescription')
     expect(card).toContain('announcement-card-body')
-    expect(card).toContain('hasBadgeRow')
+    expect(card).not.toContain('hasBadgeRow')
     expect(globals).toContain('.announcement-card-summary-clamp')
     expect(globals).toContain('.uniform-card-board')
     expect(globals).toContain('.dense-bento-board .card-with-image')
-    expect(globals).toContain('.dense-bento-board .card-without-image')
-    expect(globals).toContain('.dense-bento-board .announcement-card-body')
+    expect(globals).toContain('.uniform-card-board > .card-without-image')
+    expect(globals).toContain('.announcement-card-body')
     expect(card).toContain("'poster' | 'letterbox' | 'stamp' | 'ribbon'")
     expect(globals).toContain('grid-auto-flow: row dense')
     expect(globals).toContain('grid-auto-rows: var(--public-board-row)')
@@ -707,7 +709,7 @@ describe('Future Commons production UI guards', () => {
     expect(globals).not.toContain('repeat(auto-fit')
     expect(globals).not.toContain('repeat(auto-fill')
     expect(globals).toContain('object-position: center')
-    expect(globals).toContain('object-position: center 40%')
+    expect(globals).not.toContain('object-position: center 40%')
     expect(card).toContain('object-cover object-center')
     expect(globals).not.toContain('.priority-lane-board .dense-bento-item:only-child')
     expect(globals).not.toContain(

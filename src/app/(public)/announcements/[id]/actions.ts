@@ -1,10 +1,10 @@
 'use server'
 
 import { headers } from 'next/headers'
-import { reportServerError } from '@/lib/error-reporting'
-import { checkPersistentRateLimit } from '@/lib/security/persistent-rate-limit'
-import { rateLimitKey } from '@/lib/security/rate-limit'
-import { createServiceClient } from '@/lib/supabase/server'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { checkPersistentRateLimit } from '@/shared/middleware/persistent-rate-limit'
+import { rateLimitKey } from '@/shared/middleware/rate-limit'
+import { createServiceClient } from '@/infrastructure/database/server'
 
 const VIEW_RATE_LIMIT = 30
 const VIEW_RATE_LIMIT_WINDOW_MS = 60_000

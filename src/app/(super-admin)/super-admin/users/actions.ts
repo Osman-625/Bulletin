@@ -2,20 +2,20 @@
 
 import { refresh, revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { logAuditEvent } from '@/lib/audit'
+import { logAuditEvent } from '@/modules/audit'
 import {
   canAccessSuperAdminArea,
   canManageUser,
   getCurrentAccessContext,
   getDefaultAppPath,
   type AppRole,
-} from '@/lib/auth/authz'
+} from '@/modules/auth/authz'
 import {
   TEMPORARY_PASSWORD_MIN_LENGTH,
   validateTemporaryPassword,
-} from '@/lib/auth/password-policy'
-import { reportServerError } from '@/lib/error-reporting'
-import { createAdminClient } from '@/lib/supabase/admin'
+} from '@/modules/auth/password-policy'
+import { reportServerError } from '@/shared/errors/error-reporting'
+import { createAdminClient } from '@/infrastructure/database/admin'
 
 export type PasswordResetRequestState = {
   error?: string

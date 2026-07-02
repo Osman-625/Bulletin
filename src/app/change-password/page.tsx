@@ -1,6 +1,6 @@
 import { BrandMark } from '@/components/layout/BrandMark'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
-import { PASSWORD_MIN_LENGTH } from '@/lib/auth/password-policy'
+import { PASSWORD_MIN_LENGTH } from '@/modules/auth/password-policy'
 import { changePassword } from './actions'
 
 export const metadata = { title: 'Change Password — Bulletin' }

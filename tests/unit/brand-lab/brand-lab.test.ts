@@ -4,7 +4,7 @@ import {
   brandDirections,
   brandLabResearchAnchors,
   selectedBrandDirection,
-} from '@/lib/brand-lab/directions'
+} from '@/modules/brand-lab/directions'
 
 describe('brand lab system', () => {
   it('keeps three distinct concept directions with a Future Commons production recommendation', () => {

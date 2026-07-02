@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Bell, Menu } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/utils'
 import { BrandMark } from '@/components/layout/BrandMark'
 import { ThemeToggle } from '@/components/layout/ThemeToggle'
 import { CommandPalette } from './CommandPalette'

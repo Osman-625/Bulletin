@@ -2,7 +2,7 @@ import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import { ArrowRight } from 'lucide-react'
 import { CountUp } from '@/components/dashboard/CountUp'
-import { cn } from '@/lib/utils'
+import { cn } from '@/shared/utils'
 
 type BoardAction = {
   href: string

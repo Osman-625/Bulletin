@@ -113,3 +113,8 @@ scripts/verify-public-recording-structure.mjs
 
 # AI-generated audit reports (local reference only — not source)
 docs/audits/
+
+# Installed third-party agent skills (local tooling — not project source)
+.claude/skills/
+.agents/skills/
+skills-lock.json

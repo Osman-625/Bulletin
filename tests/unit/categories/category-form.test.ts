@@ -3,7 +3,7 @@ import {
   DEFAULT_CATEGORY_COLOR,
   readCategoryFormData,
   normalizeCategorySlug,
-} from '@/lib/categories/validation'
+} from '@/modules/categories/validation'
 
 function formData(entries: Record<string, string>) {
   const data = new FormData()
