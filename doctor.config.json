@@ -21,6 +21,37 @@
       {
         "files": ["src/app/opengraph-image.tsx"],
         "rules": ["react-doctor/only-export-components"]
+      },
+      {
+        "files": [
+          "src/app/*/admin/orgs/new/actions.ts",
+          "src/app/*/admin/publishers/invite/actions.ts",
+          "src/app/*/admin/review/*/actions.ts",
+          "src/app/*/admin/users/page.tsx",
+          "src/app/*/forgot-password/actions.ts",
+          "src/app/*/dashboard/announcements/new/actions.ts",
+          "src/app/*/owner/users/page.tsx",
+          "src/app/*/super-admin/admins/invite/actions.ts",
+          "src/app/*/super-admin/users/page.tsx",
+          "src/app/change-password/actions.ts",
+          "src/app/register/actions.ts",
+          "src/modules/categories/management.ts",
+          "src/modules/notifications/actions.ts",
+          "src/modules/users/actions.ts"
+        ],
+        "rules": ["react-doctor/supabase-client-owned-authz-field"]
+      },
+      {
+        "files": [".next/**", "graphify-out/**"],
+        "rules": ["react-doctor/artifact-baas-authority-surface"]
+      },
+      {
+        "files": ["supabase/migrations/20260411000001_schema.sql"],
+        "rules": ["react-doctor/supabase-table-missing-rls"]
+      },
+      {
+        "files": ["supabase/migrations/20260418000004_fixes_and_additions.sql"],
+        "rules": ["react-doctor/supabase-rls-policy-risk"]
       }
     ]
   }

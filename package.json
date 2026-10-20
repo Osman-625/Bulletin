@@ -15,7 +15,8 @@
     "test:smoke": "playwright test --config config/playwright.smoke.config.ts",
     "test:e2e:ui": "playwright test --ui --config config/playwright.config.ts",
     "prepare": "husky",
-    "doctor": "react-doctor"
+    "doctor": "react-doctor --yes",
+    "fallow": "npx --yes fallow@3.34.1"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -68,7 +69,6 @@
     "postcss": "8.5.10",
     "qs": "6.15.3",
     "vite": "8.1.0",
-    "ws": "8.21.0",
     "yaml": "2.9.0"
   }
 }
