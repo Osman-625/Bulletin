@@ -20,7 +20,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const supabase = await createClient()
   let pendingQuery = supabase
     .from('announcements')
-    .select('*', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .eq('status', 'submitted')
 
   if (role === 'admin') {

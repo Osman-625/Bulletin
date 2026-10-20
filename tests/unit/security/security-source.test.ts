@@ -244,17 +244,18 @@ describe('security source guards', () => {
     const ownerUsers = source('src/app/(owner)/owner/users/page.tsx')
     const superAdminUsers = source('src/app/(super-admin)/super-admin/users/page.tsx')
     const superAdminActions = source('src/app/(super-admin)/super-admin/users/actions.ts')
+    const userManagement = source('src/components/dashboard/UserManagement.tsx')
     const resetRequestButton = source(
       'src/app/(super-admin)/super-admin/users/PasswordResetRequestButton.tsx'
     )
-    const resetButton = source('src/app/(super-admin)/super-admin/users/_ResetButton.tsx')
 
     for (const file of [adminUsers, ownerUsers, superAdminUsers, superAdminActions]) {
       expect(file).toContain("from '@/modules/auth/password-policy'")
       expect(file).toContain('validateTemporaryPassword')
     }
 
-    for (const file of [adminUsers, ownerUsers, superAdminUsers, resetRequestButton, resetButton]) {
+    // The owner and super-admin forms render their length hints from the shared component.
+    for (const file of [adminUsers, userManagement, resetRequestButton]) {
       expect(file).toContain("from '@/modules/auth/password-policy'")
       expect(file).toContain('TEMPORARY_PASSWORD_MIN_LENGTH')
     }
@@ -479,24 +480,15 @@ describe('security source guards', () => {
 
   it('adds application-layer guards to sensitive platform data helpers', () => {
     const data = source('src/infrastructure/database/data.ts')
-    const orgWithMembersStart = data.indexOf('export async function getOrgWithMembers')
-    const allPublishersStart = data.indexOf('export async function getAllPublishers')
     const allAdminsStart = data.indexOf('export async function getAllAdmins')
     const platformStatsStart = data.indexOf('export async function getPlatformStats')
     const visibleUsersStart = data.indexOf('export async function getVisibleUsersForAdminPage')
 
-    const orgWithMembers = data.slice(orgWithMembersStart, allPublishersStart)
     const visibleUsers = data.slice(visibleUsersStart, allAdminsStart)
     const allAdmins = data.slice(allAdminsStart, platformStatsStart)
     const platformStats = data.slice(platformStatsStart)
 
     expect(data).toContain('canAccessSuperAdminArea')
-    expect(orgWithMembers).toContain('const access = await getCurrentAccessContext()')
-    expect(orgWithMembers).toContain('if (!access || !canAccessAdminArea(access.role)) return null')
-    expect(orgWithMembers).toContain("access.role === 'admin' && !access.orgIds.includes(orgId)")
-    expect(orgWithMembers.indexOf('getCurrentAccessContext')).toBeLessThan(
-      orgWithMembers.indexOf(".from('organizations')")
-    )
     expect(visibleUsers).toContain(
       "access.role === 'owner' ? await createServiceClient() : await createClient()"
     )
@@ -532,7 +524,7 @@ describe('security source guards', () => {
     }
   })
 
-  it('guards category service-role page reads before creating privileged clients', () => {
+  it('guards category service-role page reads before loading the category list', () => {
     const categoryPages = [
       ['src/app/(admin)/admin/categories/page.tsx', 'requireAdminAccess'],
       ['src/app/(super-admin)/super-admin/categories/page.tsx', 'requireSuperAdminAccess'],
@@ -544,19 +536,8 @@ describe('security source guards', () => {
       const page = file.slice(file.indexOf('export default async function'))
 
       expect(page).toContain(guard)
-      expect(page.indexOf(guard)).toBeLessThan(page.indexOf('createServiceClient'))
+      expect(page.indexOf(guard)).toBeLessThan(page.indexOf('loadCategoryList'))
     }
-  })
-
-  it('keeps direct publish action admin-only before any status update', () => {
-    const actions = source('src/app/(dashboard)/dashboard/announcements/[id]/edit/actions.ts')
-    const publishStart = actions.indexOf('export async function publishAnnouncement')
-    const unpublishStart = actions.indexOf('export async function unpublishAnnouncement')
-    const publish = actions.slice(publishStart, unpublishStart)
-
-    expect(actions).toContain('canAccessAdminArea')
-    expect(publish).toContain('if (!canAccessAdminArea(announcement.actorRole))')
-    expect(publish.indexOf('canAccessAdminArea')).toBeLessThan(publish.indexOf('.update({'))
   })
 
   it('routes submitted-announcement notifications only to admin-review-capable roles', () => {
@@ -589,6 +570,7 @@ describe('security source guards', () => {
     const publisherPage = source('src/app/(admin)/admin/publishers/invite/page.tsx')
     const adminAction = source('src/app/(super-admin)/super-admin/admins/invite/actions.ts')
     const adminPage = source('src/app/(super-admin)/super-admin/admins/invite/page.tsx')
+    const createdInvite = source('src/modules/invitations/created-invite.ts')
 
     expect(publisherAction).not.toContain('?token=${data.token}')
     expect(adminAction).not.toContain('?token=${data.token}')
@@ -596,10 +578,10 @@ describe('security source guards', () => {
     expect(adminAction).toContain('?created=${data.id}')
     expect(publisherPage).toContain('created?: string')
     expect(adminPage).toContain('created?: string')
-    expect(publisherPage).toContain("select('email, token')")
-    expect(adminPage).toContain("select('email, token')")
-    expect(publisherPage).toContain(".eq('invited_by', access.userId)")
-    expect(adminPage).toContain(".eq('invited_by', access.userId)")
+    expect(publisherPage).toContain('getCreatedInvite')
+    expect(adminPage).toContain('getCreatedInvite')
+    expect(createdInvite).toContain("select('email, token')")
+    expect(createdInvite).toContain(".eq('invited_by', access.userId)")
   })
 
   it('allows only owners to create super-admin invitations', () => {

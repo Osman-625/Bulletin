@@ -1,33 +1,25 @@
 import Link from 'next/link'
-import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { GlassCard } from '@/components/dashboard/GlassCard'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
-import { logAuditEvent } from '@/modules/audit'
 import {
   canAccessAdminArea,
   getCurrentAccessContext,
   getDefaultAppPath,
 } from '@/modules/auth/authz'
 import {
-  DEFAULT_CATEGORY_COLOR as DEFAULT_CATEGORY_INPUT_COLOR,
-  readCategoryFormData,
-} from '@/modules/categories/validation'
-import { reportServerError } from '@/shared/errors/error-reporting'
-import { createClient } from '@/infrastructure/database/server'
-import { createServiceClient } from '@/infrastructure/database/server'
+  ADMIN_CATEGORY_SCOPE,
+  createCategoryRecord,
+  deleteCategoryRecord,
+  loadCategoryList,
+  toggleCategoryRecord,
+  updateCategoryRecord,
+} from '@/modules/categories/management'
+import { DEFAULT_CATEGORY_COLOR as DEFAULT_CATEGORY_INPUT_COLOR } from '@/modules/categories/validation'
 
 export const metadata = { title: 'Categories — Bulletin Admin' }
 
-const CATEGORY_PATH = '/admin/categories'
-const CATEGORY_SAVE_ERROR = 'Could not save category. Try again.'
-const CATEGORY_TOGGLE_ERROR = 'Could not update category status. Try again.'
-const CATEGORY_DELETE_ERROR = 'Could not delete category. Try again.'
 const DEFAULT_CATEGORY_COLOR = 'var(--color-accent-inti)'
-
-function categoryErrorHref(message: string) {
-  return `${CATEGORY_PATH}?error=${encodeURIComponent(message)}`
-}
 
 async function requireAdminAccess() {
   const access = await getCurrentAccessContext()
@@ -38,146 +30,22 @@ async function requireAdminAccess() {
 
 async function createCategory(formData: FormData) {
   'use server'
-  const access = await requireAdminAccess()
-  const parsed = readCategoryFormData(formData)
-  if (!parsed.ok) redirect(categoryErrorHref(parsed.error))
-
-  const supabase = await createClient()
-  const { name, slug, color } = parsed.data
-  const { data: category, error } = await supabase
-    .from('categories')
-    .insert({ name, slug, color, is_active: true })
-    .select('id')
-    .single()
-  if (error) {
-    reportServerError('admin.categories.create', error, { actorId: access.userId, name, slug })
-    redirect(categoryErrorHref(CATEGORY_SAVE_ERROR))
-  }
-  await logAuditEvent({
-    actorId: access.userId,
-    action: 'category.created',
-    targetType: 'category',
-    targetId: category.id,
-    metadata: { name, slug, color, is_active: true },
-  })
-  revalidatePath('/admin/categories')
-  redirect('/admin/categories')
+  await createCategoryRecord(ADMIN_CATEGORY_SCOPE, await requireAdminAccess(), formData)
 }
 
 async function updateCategory(id: string, formData: FormData) {
   'use server'
-  const access = await requireAdminAccess()
-  const parsed = readCategoryFormData(formData)
-  if (!parsed.ok) redirect(categoryErrorHref(parsed.error))
-
-  const supabase = await createClient()
-  const { name, slug, color } = parsed.data
-  const { error } = await supabase.from('categories').update({ name, slug, color }).eq('id', id)
-  if (error) {
-    reportServerError('admin.categories.update', error, {
-      actorId: access.userId,
-      targetId: id,
-      name,
-      slug,
-    })
-    redirect(categoryErrorHref(CATEGORY_SAVE_ERROR))
-  }
-  await logAuditEvent({
-    actorId: access.userId,
-    action: 'category.updated',
-    targetType: 'category',
-    targetId: id,
-    metadata: { name, slug, color },
-  })
-  revalidatePath('/admin/categories')
-  redirect('/admin/categories')
+  await updateCategoryRecord(ADMIN_CATEGORY_SCOPE, await requireAdminAccess(), id, formData)
 }
 
 async function toggleCategory(id: string, isActive: boolean) {
   'use server'
-  const [access, supabase, service] = await Promise.all([
-    requireAdminAccess(),
-    createClient(),
-    createServiceClient(),
-  ])
-  const [{ error: toggleError }, { data: category }] = await Promise.all([
-    supabase.from('categories').update({ is_active: isActive }).eq('id', id),
-    service.from('categories').select('name, slug').eq('id', id).single(),
-  ])
-  if (toggleError) {
-    reportServerError('admin.categories.toggle', toggleError, {
-      actorId: access.userId,
-      targetId: id,
-      isActive,
-    })
-    redirect(categoryErrorHref(CATEGORY_TOGGLE_ERROR))
-  }
-  await logAuditEvent({
-    actorId: access.userId,
-    action: isActive ? 'category.activated' : 'category.deactivated',
-    targetType: 'category',
-    targetId: id,
-    metadata: {
-      name: category?.name ?? null,
-      slug: category?.slug ?? null,
-      is_active: isActive,
-    },
-  })
-  revalidatePath('/admin/categories')
+  await toggleCategoryRecord(ADMIN_CATEGORY_SCOPE, await requireAdminAccess(), id, isActive)
 }
 
 async function deleteCategory(id: string) {
   'use server'
-  const [access, supabase] = await Promise.all([requireAdminAccess(), createServiceClient()])
-  const [{ data: category, error: categoryError }, { count, error: countError }] =
-    await Promise.all([
-      supabase.from('categories').select('name, slug, color').eq('id', id).single(),
-      supabase
-        .from('announcements')
-        .select('*', { count: 'exact', head: true })
-        .eq('category_id', id),
-    ])
-  if (categoryError) {
-    reportServerError('admin.categories.read_for_delete', categoryError, {
-      actorId: access.userId,
-      targetId: id,
-    })
-    redirect(categoryErrorHref(CATEGORY_DELETE_ERROR))
-  }
-  if (countError) {
-    reportServerError('admin.categories.count_links', countError, {
-      actorId: access.userId,
-      targetId: id,
-    })
-    redirect(categoryErrorHref(CATEGORY_DELETE_ERROR))
-  }
-  if ((count ?? 0) > 0) {
-    redirect(
-      `/admin/categories?error=${encodeURIComponent(`Cannot delete: category has ${count} linked announcement(s). Contact a Super Admin for force delete.`)}`
-    )
-  }
-  const { error: deleteError } = await supabase.from('categories').delete().eq('id', id)
-  if (deleteError) {
-    reportServerError('admin.categories.delete', deleteError, {
-      actorId: access.userId,
-      targetId: id,
-    })
-    redirect(categoryErrorHref(CATEGORY_DELETE_ERROR))
-  }
-  await logAuditEvent({
-    actorId: access.userId,
-    action: 'category.deleted',
-    targetType: 'category',
-    targetId: id,
-    metadata: {
-      name: category?.name ?? null,
-      slug: category?.slug ?? null,
-      color: category?.color ?? null,
-      linked_announcements: count ?? 0,
-    },
-  })
-  revalidatePath('/admin/categories')
-  redirect('/admin/categories')
+  await deleteCategoryRecord(ADMIN_CATEGORY_SCOPE, await requireAdminAccess(), id, false)
 }
 
 export default async function AdminCategoriesPage({
@@ -185,26 +53,11 @@ export default async function AdminCategoriesPage({
 }: {
   searchParams: Promise<{ error?: string; edit?: string }>
 }) {
-  const [{ error, edit }, supabase] = await Promise.all([
+  const [{ error, edit }, { categories, announcementCounts }] = await Promise.all([
     searchParams,
-    requireAdminAccess().then(() => createServiceClient()),
+    requireAdminAccess().then(loadCategoryList),
   ])
-  const { data: categories } = await supabase.from('categories').select('*').order('name')
-  const hasCategories = (categories?.length ?? 0) > 0
-  const categoryIds = (categories ?? []).map((category) => category.id)
-
-  const announcementCounts: Record<string, number> = {}
-  if (categoryIds.length > 0) {
-    const { data: counts } = await supabase
-      .from('announcements')
-      .select('category_id')
-      .in('category_id', categoryIds)
-    for (const row of counts ?? []) {
-      if (row.category_id) {
-        announcementCounts[row.category_id] = (announcementCounts[row.category_id] ?? 0) + 1
-      }
-    }
-  }
+  const hasCategories = categories.length > 0
 
   return (
     <DashboardBoardPage className="flex flex-col gap-5">

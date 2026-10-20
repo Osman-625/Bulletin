@@ -2,21 +2,29 @@
 
 import { useReducer, useEffect, useRef, useCallback, useTransition } from 'react'
 import { unstable_rethrow } from 'next/navigation'
-import NextImage from 'next/image'
-import { AlertTriangle, Calendar, Clock, Link2, Pin, Type, Upload, X } from 'lucide-react'
+import { AlertTriangle, Link2, Type } from 'lucide-react'
 import { cn } from '@/shared/utils'
 import { ActionBar } from './ActionBar'
 import type { AutosaveStatus } from './AutosaveIndicator'
 import { AnnouncementFormTopBar } from './AnnouncementFormTopBar'
 import { AnnouncementLivePreview } from './AnnouncementLivePreview'
+import { AnnouncementScheduleFields } from './AnnouncementScheduleFields'
+import { BannerImageField } from './BannerImageField'
 import { PublishingReadinessChecklist } from './PublishingReadinessChecklist'
+import {
+  announcementFormReducer,
+  createAnnouncementFormState,
+  futureDateTimeError,
+  isFutureDateTime,
+  isValidUrl,
+  type AnnouncementFormData,
+  type AnnouncementFormValues,
+} from './announcement-form-state'
 import type { PostStatus } from '@/shared/types'
-import { createClient } from '@/infrastructure/database/client'
 import {
   ANNOUNCEMENT_BODY_MAX,
   ANNOUNCEMENT_TITLE_MAX,
-  BANNER_MAX_FILE_SIZE_BYTES,
-  BANNER_MAX_FILE_SIZE_MB,
+  UNTITLED_ANNOUNCEMENT_TITLE,
 } from '@/modules/announcements/form'
 import { reportClientError } from '@/shared/errors/client-error-reporting'
 import { captureProductEvent } from '@/shared/constants/product-analytics'
@@ -33,31 +41,12 @@ import {
   type AnnouncementUrgency,
 } from '@/modules/announcements/presentation'
 
-// ─── Types ───────────────────────────────────────────────────
+export type { AnnouncementFormData }
 
 type CategoryOption = {
   id: string
   name: string
   color: string | null
-}
-
-export type AnnouncementFormData = {
-  id?: string
-  title: string
-  body: string
-  status: PostStatus
-  category_id: string | null
-  banner_url: string | null
-  registration_link: string | null
-  expires_at: string | null
-  scheduled_publish_at: string | null
-  pinned_until: string | null
-  rejection_comment: string | null
-  view_count: number
-  published_at: string | null
-  urgency: AnnouncementUrgency
-  display_font: AnnouncementDisplayFont
-  display_size: AnnouncementDisplaySize
 }
 
 interface AnnouncementFormProps {
@@ -71,106 +60,6 @@ interface AnnouncementFormProps {
   onDelete?: () => Promise<void>
   isNew?: boolean
   backHref?: string
-}
-
-type AnnouncementFormState = {
-  title: string
-  body: string
-  categoryId: string
-  bannerUrl: string
-  registrationLink: string
-  expiresAt: string
-  scheduledPublishAt: string
-  pinnedUntil: string
-  status: PostStatus
-  urgency: AnnouncementUrgency
-  displayFont: AnnouncementDisplayFont
-  displaySize: AnnouncementDisplaySize
-  saveState: AutosaveStatus
-  isSaving: boolean
-  isPublishing: boolean
-  urlError: string
-  isDragOver: boolean
-  isUploading: boolean
-  bannerSizeError: boolean
-  bannerUploadError: string
-  formError: string
-}
-
-type AnnouncementFormAction = {
-  type: 'patch'
-  values: Partial<AnnouncementFormState>
-}
-
-// ─── Helpers ─────────────────────────────────────────────────
-
-function isValidUrl(str: string): boolean {
-  try {
-    const url = new URL(str)
-    return url.protocol === 'http:' || url.protocol === 'https:'
-  } catch {
-    return false
-  }
-}
-
-function toDateInputValue(iso: string | null | undefined): string {
-  return iso?.slice(0, 10) ?? ''
-}
-
-function toDateTimeLocalInputValue(iso: string | null | undefined): string {
-  if (!iso) return ''
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return ''
-
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-  return local.toISOString().slice(0, 16)
-}
-
-function createAnnouncementFormState(initialData: AnnouncementFormData): AnnouncementFormState {
-  return {
-    title: initialData.title,
-    body: initialData.body,
-    categoryId: initialData.category_id ?? '',
-    bannerUrl: initialData.banner_url ?? '',
-    registrationLink: initialData.registration_link ?? '',
-    expiresAt: toDateInputValue(initialData.expires_at),
-    scheduledPublishAt: toDateTimeLocalInputValue(initialData.scheduled_publish_at),
-    pinnedUntil: toDateTimeLocalInputValue(initialData.pinned_until),
-    status: initialData.status,
-    urgency: initialData.urgency,
-    displayFont: initialData.display_font,
-    displaySize: initialData.display_size,
-    saveState: 'idle',
-    isSaving: false,
-    isPublishing: false,
-    urlError: '',
-    isDragOver: false,
-    isUploading: false,
-    bannerSizeError: false,
-    bannerUploadError: '',
-    formError: '',
-  }
-}
-
-function announcementFormReducer(
-  state: AnnouncementFormState,
-  action: AnnouncementFormAction
-): AnnouncementFormState {
-  switch (action.type) {
-    case 'patch':
-      return { ...state, ...action.values }
-  }
-}
-
-function isFutureDateTime(value: string): boolean {
-  if (!value) return false
-  const date = new Date(value)
-  return !Number.isNaN(date.getTime()) && date.getTime() > Date.now()
-}
-
-function futureDateTimeError(value: string, label: string): string {
-  if (!value) return ''
-  return isFutureDateTime(value) ? '' : `${label} must be in the future or left blank.`
 }
 
 // ─── Component ───────────────────────────────────────────────
@@ -210,14 +99,10 @@ function useAnnouncementFormController({
     isSaving,
     isPublishing,
     urlError,
-    isDragOver,
-    isUploading,
-    bannerSizeError,
-    bannerUploadError,
     formError,
   } = state
 
-  function patchState(values: Partial<AnnouncementFormState>) {
+  function patchState(values: AnnouncementFormValues) {
     dispatch({ type: 'patch', values })
   }
 
@@ -285,28 +170,11 @@ function useAnnouncementFormController({
     patchState({ urlError: value })
   }
 
-  function setIsDragOver(value: boolean) {
-    patchState({ isDragOver: value })
-  }
-
-  function setIsUploading(value: boolean) {
-    patchState({ isUploading: value })
-  }
-
-  function setBannerSizeError(value: boolean) {
-    patchState({ bannerSizeError: value })
-  }
-
-  function setBannerUploadError(value: string) {
-    patchState({ bannerUploadError: value })
-  }
-
   function setFormError(value: string) {
     patchState({ formError: value })
   }
 
   const bodyRef = useRef<HTMLTextAreaElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const lastSaveRef = useRef(0)
   const dirtyRef = useRef(false)
   // Stable ref so the autosave interval always calls the latest handleSave
@@ -332,6 +200,11 @@ function useAnnouncementFormController({
     displayFont,
     displaySize,
   ])
+
+  // The effect above also runs on mount; undo it so opening an announcement doesn't autosave it.
+  useEffect(() => {
+    dirtyRef.current = false
+  }, [])
 
   // Auto-grow textarea
   useEffect(() => {
@@ -494,7 +367,8 @@ function useAnnouncementFormController({
       } else {
         await onSave(fd)
         if (onPublish) await onPublish()
-        setStatus('published')
+        // submitForReview moves the announcement to "submitted", not "published".
+        setStatus('submitted')
         setSaveState('saved')
         dirtyRef.current = false
       }
@@ -551,75 +425,11 @@ function useAnnouncementFormController({
   }
 
   function getReadyForReviewError(): string {
-    if (!title.trim()) return 'Add a title before submitting for review.'
+    if (!title.trim() || title.trim() === UNTITLED_ANNOUNCEMENT_TITLE) {
+      return 'Add a title before submitting for review.'
+    }
     if (!body.trim()) return 'Add announcement body before submitting for review.'
     return ''
-  }
-
-  // ─── Banner upload ───────────────────────────────────────────
-
-  async function uploadBanner(file: File) {
-    setBannerSizeError(false)
-    setBannerUploadError('')
-    if (file.size > BANNER_MAX_FILE_SIZE_BYTES) {
-      setBannerSizeError(true)
-      return
-    }
-    setIsUploading(true)
-    try {
-      const supabase = createClient()
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-
-      if (userError || !user) throw new Error('Sign in again before uploading an image.')
-
-      const ext = (file.name.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
-      const organizationSegment = organizationId ?? 'unassigned'
-      const path = `${user.id}/${organizationSegment}/${crypto.randomUUID()}.${ext || 'jpg'}`
-
-      const { error: uploadError } = await supabase.storage.from('banner-images').upload(path, file)
-
-      if (uploadError) throw uploadError
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from('banner-images').getPublicUrl(path)
-
-      setBannerUrl(publicUrl)
-      captureProductEvent('publisher_banner_uploaded', {
-        file_size: file.size,
-        file_type: file.type || null,
-        organization_id: organizationId ?? null,
-      })
-    } catch (error) {
-      reportClientError('announcement_form.banner_upload', error, {
-        fileSize: file.size,
-        fileType: file.type || null,
-        organizationId: organizationId ?? null,
-      })
-      setBannerUploadError('Upload failed. Try another image or sign in again.')
-    } finally {
-      setIsUploading(false)
-    }
-  }
-
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) uploadBanner(file)
-  }
-
-  function handleDrop(e: React.DragEvent) {
-    e.preventDefault()
-    setIsDragOver(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file && file.type.startsWith('image/')) uploadBanner(file)
-  }
-
-  function handleDragOver(e: React.DragEvent) {
-    e.preventDefault()
-    setIsDragOver(true)
   }
 
   function removeBanner() {
@@ -662,8 +472,6 @@ function useAnnouncementFormController({
   return {
     actionBar,
     backHref,
-    bannerSizeError,
-    bannerUploadError,
     bannerUrl,
     body,
     bodyRef,
@@ -674,21 +482,16 @@ function useAnnouncementFormController({
     displaySize,
     expiresAt,
     expiresAtError,
-    fileInputRef,
     formError,
     handleDelete,
-    handleDragOver,
-    handleDrop,
-    handleFileChange,
     handleUrlBlur,
     initialData,
-    isDragOver,
     isNew,
     isPending,
     isPinned,
     isScheduled,
-    isUploading,
     onDelete,
+    organizationId,
     pinnedUntil,
     pinnedUntilError,
     registrationLink,
@@ -696,12 +499,12 @@ function useAnnouncementFormController({
     scheduledPublishAt,
     scheduledPublishError,
     selectedCategory,
+    setBannerUrl,
     setBody,
     setCategoryId,
     setDisplayFont,
     setDisplaySize,
     setExpiresAt,
-    setIsDragOver,
     setPinnedUntil,
     setRegistrationLink,
     setScheduledPublishAt,
@@ -720,8 +523,6 @@ type AnnouncementFormViewProps = ReturnType<typeof useAnnouncementFormController
 function renderAnnouncementFormView({
   actionBar,
   backHref,
-  bannerSizeError,
-  bannerUploadError,
   bannerUrl,
   body,
   bodyRef,
@@ -732,21 +533,16 @@ function renderAnnouncementFormView({
   displaySize,
   expiresAt,
   expiresAtError,
-  fileInputRef,
   formError,
   handleDelete,
-  handleDragOver,
-  handleDrop,
-  handleFileChange,
   handleUrlBlur,
   initialData,
-  isDragOver,
   isNew,
   isPending,
   isPinned,
   isScheduled,
-  isUploading,
   onDelete,
+  organizationId,
   pinnedUntil,
   pinnedUntilError,
   registrationLink,
@@ -754,12 +550,12 @@ function renderAnnouncementFormView({
   scheduledPublishAt,
   scheduledPublishError,
   selectedCategory,
+  setBannerUrl,
   setBody,
   setCategoryId,
   setDisplayFont,
   setDisplaySize,
   setExpiresAt,
-  setIsDragOver,
   setPinnedUntil,
   setRegistrationLink,
   setScheduledPublishAt,
@@ -1043,102 +839,12 @@ function renderAnnouncementFormView({
               </fieldset>
             </div>
 
-            {/* Banner Image Upload */}
-            <div>
-              <label
-                htmlFor="banner-image-upload"
-                className="mb-2 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
-              >
-                Banner Image
-              </label>
-
-              {bannerUrl ? (
-                <div className="relative overflow-hidden rounded-xl border border-[var(--color-glass-border)]">
-                  <NextImage
-                    src={bannerUrl}
-                    alt="Banner preview"
-                    width={720}
-                    height={192}
-                    className="h-48 w-full object-contain"
-                    unoptimized
-                  />
-                  <button
-                    type="button"
-                    onClick={removeBanner}
-                    className="absolute top-3 right-3 flex min-h-11 items-center gap-1.5 rounded-lg bg-[color-mix(in_oklab,var(--color-text-primary)_62%,transparent)] px-3 text-xs font-medium text-[var(--color-canvas)] backdrop-blur-sm transition-colors hover:bg-[color-mix(in_oklab,var(--color-text-primary)_76%,transparent)]"
-                  >
-                    <X size={12} />
-                    Remove
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={() => setIsDragOver(false)}
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  aria-describedby={
-                    bannerSizeError || bannerUploadError ? 'banner-image-upload-error' : undefined
-                  }
-                  className={cn(
-                    'flex w-full flex-col items-center justify-center gap-3 rounded-xl py-12 text-center',
-                    'border-2 border-dashed transition-all duration-200',
-                    'focus:ring-2 focus:ring-[var(--color-accent)]/30 focus:outline-none',
-                    isUploading && 'cursor-wait opacity-80',
-                    isDragOver
-                      ? 'border-[var(--color-accent)] bg-[var(--color-accent-surface)]'
-                      : 'border-[var(--color-glass-border)] hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-surface-elevated)]'
-                  )}
-                >
-                  <Upload
-                    size={24}
-                    className={cn(
-                      'text-[var(--color-text-muted)]',
-                      isDragOver && 'text-[var(--color-accent)]'
-                    )}
-                  />
-                  <div className="text-center">
-                    <p className="text-sm text-[var(--color-text-secondary)]">
-                      {isUploading ? 'Uploading…' : 'Drop an image here or click to upload'}
-                    </p>
-                    <p className="mt-1 text-xs text-[var(--color-text-muted)]">
-                      JPG, PNG, or WebP, max {BANNER_MAX_FILE_SIZE_MB}MB
-                    </p>
-                    {(bannerSizeError || bannerUploadError) && (
-                      <div
-                        id="banner-image-upload-error"
-                        role="alert"
-                        aria-live="polite"
-                        className="mt-1 text-xs font-semibold text-[var(--color-destructive)]"
-                      >
-                        {bannerSizeError && (
-                          <p>
-                            File exceeds {BANNER_MAX_FILE_SIZE_MB} MB limit. Choose a smaller image.
-                          </p>
-                        )}
-                        {bannerUploadError && <p>{bannerUploadError}</p>}
-                      </div>
-                    )}
-                  </div>
-                </button>
-              )}
-
-              <input
-                id="banner-image-upload"
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handleFileChange}
-                aria-label="Upload banner image"
-                aria-invalid={bannerSizeError || Boolean(bannerUploadError)}
-                aria-describedby={
-                  bannerSizeError || bannerUploadError ? 'banner-image-upload-error' : undefined
-                }
-                className="hidden"
-              />
-            </div>
+            <BannerImageField
+              bannerUrl={bannerUrl}
+              organizationId={organizationId}
+              onChange={setBannerUrl}
+              onRemove={removeBanner}
+            />
 
             {/* Registration Link */}
             <div>
@@ -1205,156 +911,23 @@ function renderAnnouncementFormView({
               </p>
             </div>
 
-            {/* Publishing Controls */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-              <div>
-                <label
-                  htmlFor="scheduled-publish-at"
-                  className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
-                >
-                  Schedule for later <span className="tracking-normal normal-case">(optional)</span>
-                </label>
-                <div className="relative">
-                  <Clock
-                    size={16}
-                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
-                  />
-                  <input
-                    id="scheduled-publish-at"
-                    type="datetime-local"
-                    value={scheduledPublishAt}
-                    onChange={(e) => {
-                      setScheduledPublishAt(e.target.value)
-                      clearFormErrorOnEdit()
-                    }}
-                    aria-invalid={Boolean(scheduledPublishError)}
-                    aria-describedby={
-                      scheduledPublishError
-                        ? 'scheduled-publish-at-error scheduled-publish-at-help'
-                        : 'scheduled-publish-at-help'
-                    }
-                    className={cn(
-                      'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
-                      'bg-transparent text-[var(--color-text-primary)]',
-                      'border',
-                      scheduledPublishError
-                        ? 'border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30'
-                        : 'border-[var(--color-glass-border)] focus:border-[var(--color-accent)] focus:ring-[var(--color-accent)]/30',
-                      'focus:ring-2 focus:outline-none',
-                      'transition-all duration-200'
-                    )}
-                  />
-                </div>
-                {scheduledPublishError && (
-                  <p
-                    id="scheduled-publish-at-error"
-                    className="mt-1.5 text-xs text-[var(--color-destructive)]"
-                  >
-                    {scheduledPublishError}
-                  </p>
-                )}
-                <p
-                  id="scheduled-publish-at-help"
-                  className="mt-1.5 text-xs text-[var(--color-text-muted)]"
-                >
-                  Leave blank to go live right after approval.
-                </p>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="pinned-until"
-                  className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
-                >
-                  Pin Until <span className="tracking-normal normal-case">(optional)</span>
-                </label>
-                <div className="relative">
-                  <Pin
-                    size={16}
-                    className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
-                  />
-                  <input
-                    id="pinned-until"
-                    type="datetime-local"
-                    value={pinnedUntil}
-                    onChange={(e) => {
-                      setPinnedUntil(e.target.value)
-                      clearFormErrorOnEdit()
-                    }}
-                    aria-invalid={Boolean(pinnedUntilError)}
-                    aria-describedby={
-                      pinnedUntilError
-                        ? 'pinned-until-error pinned-until-help'
-                        : 'pinned-until-help'
-                    }
-                    className={cn(
-                      'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
-                      'bg-transparent text-[var(--color-text-primary)]',
-                      'border',
-                      pinnedUntilError
-                        ? 'border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30'
-                        : 'border-[var(--color-glass-border)] focus:border-[var(--color-accent)] focus:ring-[var(--color-accent)]/30',
-                      'focus:ring-2 focus:outline-none',
-                      'transition-all duration-200'
-                    )}
-                  />
-                </div>
-                {pinnedUntilError && (
-                  <p
-                    id="pinned-until-error"
-                    className="mt-1.5 text-xs text-[var(--color-destructive)]"
-                  >
-                    {pinnedUntilError}
-                  </p>
-                )}
-                <p id="pinned-until-help" className="mt-1.5 text-xs text-[var(--color-text-muted)]">
-                  Pinned posts stay first on the public board.
-                </p>
-              </div>
-            </div>
-
-            {/* Expires At */}
-            <div>
-              <label
-                htmlFor="expires-at"
-                className="mb-1 block text-xs font-medium tracking-widest text-[var(--color-text-muted)] uppercase"
-              >
-                Expiry Date <span className="tracking-normal normal-case">(optional)</span>
-              </label>
-              <div className="relative">
-                <Calendar
-                  size={16}
-                  className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-text-muted)]"
-                />
-                <input
-                  id="expires-at"
-                  type="date"
-                  value={expiresAt}
-                  onChange={(e) => setExpiresAt(e.target.value)}
-                  aria-invalid={Boolean(expiresAtError)}
-                  aria-describedby={expiresAtError ? 'expires-at-error' : undefined}
-                  className={cn(
-                    'w-full rounded-xl py-3 pr-4 pl-9 text-sm',
-                    'bg-transparent text-[var(--color-text-primary)]',
-                    'border',
-                    expiresAtError
-                      ? 'border-[var(--color-destructive)] focus:ring-[var(--color-destructive)]/30'
-                      : 'border-[var(--color-glass-border)] focus:border-[var(--color-accent)] focus:ring-[var(--color-accent)]/30',
-                    'focus:ring-2 focus:outline-none',
-                    'transition-all duration-200'
-                  )}
-                />
-              </div>
-              {expiresAtError && (
-                <p
-                  id="expires-at-error"
-                  role="alert"
-                  className="mt-1.5 text-xs text-[var(--color-destructive)]"
-                >
-                  {expiresAtError}
-                </p>
-              )}
-            </div>
+            <AnnouncementScheduleFields
+              scheduledPublishAt={scheduledPublishAt}
+              scheduledPublishError={scheduledPublishError}
+              onScheduledPublishAtChange={(value) => {
+                setScheduledPublishAt(value)
+                clearFormErrorOnEdit()
+              }}
+              pinnedUntil={pinnedUntil}
+              pinnedUntilError={pinnedUntilError}
+              onPinnedUntilChange={(value) => {
+                setPinnedUntil(value)
+                clearFormErrorOnEdit()
+              }}
+              expiresAt={expiresAt}
+              expiresAtError={expiresAtError}
+              onExpiresAtChange={setExpiresAt}
+            />
           </section>
 
           <PublishingReadinessChecklist />

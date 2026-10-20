@@ -3,8 +3,8 @@ export const INVITATION_EXPIRY_DAYS = 7
 const ADMIN_INVITE_ROLES = ['admin', 'super_admin'] as const
 const PUBLISHER_MEMBER_ROLES = ['publisher', 'admin'] as const
 
-export type AdminInviteRole = (typeof ADMIN_INVITE_ROLES)[number]
-export type PublisherMemberRole = (typeof PUBLISHER_MEMBER_ROLES)[number]
+type AdminInviteRole = (typeof ADMIN_INVITE_ROLES)[number]
+type PublisherMemberRole = (typeof PUBLISHER_MEMBER_ROLES)[number]
 
 type AdminInvitationFormData = {
   email: string

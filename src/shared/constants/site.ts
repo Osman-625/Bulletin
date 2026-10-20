@@ -1,4 +1,4 @@
-export const DEFAULT_SITE_URL = 'https://bulletininti.vercel.app'
+const DEFAULT_SITE_URL = 'https://bulletininti.vercel.app'
 
 export function getCanonicalSiteUrl(value = process.env.NEXT_PUBLIC_APP_URL): string {
   if (!value) return DEFAULT_SITE_URL

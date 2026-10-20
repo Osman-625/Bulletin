@@ -202,7 +202,7 @@ describe('Future Commons production UI guards', () => {
     const card = source('src/components/announcements/AnnouncementCard.tsx')
     const data = source('src/infrastructure/database/data.ts')
 
-    expect(publicBoard).toContain("export const BOARD_SORTS = ['priority', 'issued', 'closing']")
+    expect(publicBoard).toContain("const BOARD_SORTS = ['priority', 'issued', 'closing']")
     expect(publicHome).toContain('@/modules/announcements/public-board')
     expect(publicHome).toContain('BoardOrderControls')
     expect(boardOrderControls).toContain(
@@ -240,7 +240,13 @@ describe('Future Commons production UI guards', () => {
   })
 
   it('renders publisher form guardrails for uploads, scheduling, body length, and destructive actions', () => {
-    const form = source('src/components/dashboard/AnnouncementForm.tsx')
+    const form = [
+      'src/components/dashboard/AnnouncementForm.tsx',
+      'src/components/dashboard/BannerImageField.tsx',
+      'src/components/dashboard/AnnouncementScheduleFields.tsx',
+    ]
+      .map(source)
+      .join('\n')
     const topBar = source('src/components/dashboard/AnnouncementFormTopBar.tsx')
     const actionBar = source('src/components/dashboard/ActionBar.tsx')
 
@@ -342,22 +348,6 @@ describe('Future Commons production UI guards', () => {
     expect(dashboardCss).not.toContain('.dashboard-canvas::before')
     expect(dashboardCss).not.toContain('transparent 1px')
     expect(dashboardCss).not.toContain('background-size:')
-  })
-
-  it('uses a native super-admin reset password modal with focus restore and Escape close', () => {
-    const resetButton = source('src/app/(super-admin)/super-admin/users/_ResetButton.tsx')
-
-    expect(resetButton).toContain('dialogRef')
-    expect(resetButton).toContain('<dialog')
-    expect(resetButton).toContain('dialog.showModal()')
-    expect(resetButton).toContain('onCancel={handleDialogCancel}')
-    expect(resetButton).toContain('firstFocusRef')
-    expect(resetButton).toContain('previousFocusedElementRef')
-    expect(resetButton).not.toContain('handleDialogKeyDown')
-    expect(resetButton).not.toContain('querySelectorAll<HTMLElement>')
-    expect(resetButton).not.toContain('aria-modal="true"')
-    expect(resetButton).not.toContain('role="dialog"')
-    expect(resetButton).not.toContain('onKeyDown={handleDialogKeyDown}')
   })
 
   it('renders explicit empty states for category management pages', () => {
@@ -480,13 +470,15 @@ describe('Future Commons production UI guards', () => {
     const adminUsers = source('src/app/(admin)/admin/users/page.tsx')
     const superAdminUsers = source('src/app/(super-admin)/super-admin/users/page.tsx')
     const ownerUsers = source('src/app/(owner)/owner/users/page.tsx')
+    const userManagement = source('src/components/dashboard/UserManagement.tsx')
 
-    expect(adminUsers).toContain('No users match this view')
-    expect(adminUsers).toContain('Clear the role filter')
-    expect(superAdminUsers).toContain('No users match this view')
-    expect(superAdminUsers).toContain('Clear the role filter')
-    expect(ownerUsers).toContain('No users match this view')
-    expect(ownerUsers).toContain('Clear the role filter')
+    // The empty state lives in one shared component that all three pages render.
+    expect(userManagement).toContain('No users match this view')
+    expect(userManagement).toContain('Clear the role filter')
+    expect(userManagement).toContain('<output')
+    for (const page of [adminUsers, superAdminUsers, ownerUsers]) {
+      expect(page).toContain('<UsersEmptyState')
+    }
   })
 
   it('strengthens category filter focus and touch affordances', () => {
@@ -568,16 +560,16 @@ describe('Future Commons production UI guards', () => {
     const adminUsers = source('src/app/(admin)/admin/users/page.tsx')
     const superAdminUsers = source('src/app/(super-admin)/super-admin/users/page.tsx')
     const ownerUsers = source('src/app/(owner)/owner/users/page.tsx')
-    const resetButton = source('src/app/(super-admin)/super-admin/users/_ResetButton.tsx')
+    const userManagement = source('src/components/dashboard/UserManagement.tsx')
 
     expect(boardOrderControls).toContain('min-h-11')
-    for (const page of [adminUsers, superAdminUsers, ownerUsers]) {
+    expect(userManagement).toContain('inline-flex min-h-11 items-center')
+    expect(userManagement).toContain('min-h-11 rounded-xl')
+    for (const page of [adminUsers, superAdminUsers, ownerUsers, userManagement]) {
       expect(page).toContain('inline-flex min-h-11 items-center')
-      expect(page).toContain('min-h-11 rounded-xl')
       expect(page).not.toContain('inline-flex min-h-10 items-center')
       expect(page).not.toContain('px-3 py-1.5 text-xs')
     }
-    expect(resetButton).toContain('min-h-11')
   })
 
   it('removes stale public card sizing declarations from globals', () => {

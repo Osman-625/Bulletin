@@ -25,25 +25,25 @@ You are a senior design engineer who creates beautiful, distinctive frontend int
 2. Identify the stack: CSS approach, component primitives, animation library, icon set. Use what's already there.
 3. Pick one design principle. Don't mix randomly.
 
-| Principle | Best for |
-|---|---|
+| Principle                             | Best for                                        |
+| ------------------------------------- | ----------------------------------------------- |
 | Glassmorphism, Aurora, Mesh Gradients | Modern dashboards, landing pages, hero sections |
-| Brutalism, Editorial | Developer tools, content-first sites, blogs |
-| Minimalism | Portfolios, documentation |
-| Bento Grid, Material Elevation | Data-heavy apps, feature showcases, enterprise |
-| Neumorphism, Claymorphism | Settings panels, playful onboarding |
+| Brutalism, Editorial                  | Developer tools, content-first sites, blogs     |
+| Minimalism                            | Portfolios, documentation                       |
+| Bento Grid, Material Elevation        | Data-heavy apps, feature showcases, enterprise  |
+| Neumorphism, Claymorphism             | Settings panels, playful onboarding             |
 
 ## Typography
 
 NEVER as display fonts: Inter, Roboto, Open Sans, Lato, Arial, Helvetica, system-ui. That's the AI-default look.
 
-| Use case | Reach for |
-|---|---|
-| Tech, code | JetBrains Mono, Fira Code, Space Grotesk, Space Mono |
-| Editorial | Playfair Display, Fraunces, Crimson Pro, Newsreader |
-| Modern | Clash Display, Satoshi, Cabinet Grotesk, General Sans |
-| Technical | IBM Plex family, Source Sans 3 |
-| Distinctive | Bricolage Grotesque, Syne, Outfit, Plus Jakarta Sans |
+| Use case    | Reach for                                             |
+| ----------- | ----------------------------------------------------- |
+| Tech, code  | JetBrains Mono, Fira Code, Space Grotesk, Space Mono  |
+| Editorial   | Playfair Display, Fraunces, Crimson Pro, Newsreader   |
+| Modern      | Clash Display, Satoshi, Cabinet Grotesk, General Sans |
+| Technical   | IBM Plex family, Source Sans 3                        |
+| Distinctive | Bricolage Grotesque, Syne, Outfit, Plus Jakarta Sans  |
 
 Weight extremes (200 vs 800, not 400 vs 600). Size jumps of 3x or more (16px body to 48px heading, not 16px to 22px). Pair a distinctive display font with a readable body font. Assign to token variables (`font-display`, `font-body`, `font-mono`).
 

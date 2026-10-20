@@ -34,6 +34,16 @@ describe('tooling source guards', () => {
     expect(buildIndex).toBeLessThan(e2eIndex)
   })
 
+  it('enforces formatting, dependency audit, and main-branch E2E gates in CI', () => {
+    const workflow = source('.github/workflows/test.yml')
+
+    expect(workflow).toContain('npm run format:check')
+    expect(workflow).toContain('npm audit --audit-level=high')
+    expect(workflow).toContain('npm audit --omit=dev --audit-level=high')
+    expect(workflow).toContain('refs/heads/main')
+    expect(workflow).toContain('E2E tests are required on main')
+  })
+
   it('uses bracket notation for custom GitHub Actions secrets and variables', () => {
     for (const workflowPath of [
       '.github/workflows/test.yml',
@@ -214,7 +224,12 @@ describe('tooling source guards', () => {
     const viewTracker = source('src/app/(public)/announcements/[id]/ViewTracker.tsx')
     const detailPage = source('src/app/(public)/announcements/[id]/page.tsx')
     const registrationLink = source('src/components/announcements/RegistrationLink.tsx')
-    const form = source('src/components/dashboard/AnnouncementForm.tsx')
+    const form = [
+      'src/components/dashboard/AnnouncementForm.tsx',
+      'src/components/dashboard/BannerImageField.tsx',
+    ]
+      .map(source)
+      .join('\n')
 
     expect(pkg.dependencies?.['posthog-js']).toBeDefined()
     expect(clientInstrumentation).toContain("import posthog from 'posthog-js'")

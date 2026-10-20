@@ -82,6 +82,7 @@ End with a single sentence naming the most important fix.
 **Verbose**:
 
 For each finding:
+
 - **File:Line**: exact location.
 - **Issue**: what's wrong and why it matters. Be specific ("this throws if user is null", not "potential null issue").
 - **Suggestion**: how to fix it. Include code if helpful.

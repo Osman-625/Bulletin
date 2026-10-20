@@ -7,7 +7,7 @@ import {
   DEFAULT_DISPLAY_SIZE,
   DEFAULT_URGENCY,
 } from '@/modules/announcements/presentation'
-import { getCurrentAccessContext } from '@/modules/auth/authz'
+import { canAccessAdminArea, getCurrentAccessContext } from '@/modules/auth/authz'
 import {
   updateAnnouncement,
   submitForReview,
@@ -77,7 +77,10 @@ export default async function EditAnnouncementPage({
       categories={categories ?? []}
       onSave={updateAnnouncement.bind(null, id)}
       onPublish={submitForReview.bind(null, id)}
-      onUnpublish={unpublishAnnouncement.bind(null, id)}
+      // RLS only lets admin-area roles change a published announcement.
+      onUnpublish={
+        canAccessAdminArea(access.role) ? unpublishAnnouncement.bind(null, id) : undefined
+      }
       onDelete={deleteAnnouncement.bind(null, id)}
       organizationId={announcement.organization_id}
       backHref="/dashboard/announcements"

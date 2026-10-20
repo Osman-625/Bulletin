@@ -46,13 +46,16 @@ export default async function NewAnnouncementPage() {
     getWritableOrganizationId(supabase, access),
     supabase.from('categories').select('id, name, color').eq('is_active', true).order('name'),
   ])
+  const { data: organization } = organizationId
+    ? await supabase.from('organizations').select('name').eq('id', organizationId).maybeSingle()
+    : { data: null }
 
   return (
     <DashboardBoardPage className="new-announcement-page flex flex-col gap-5">
       <DashboardBoardHeader
         kicker="Publisher editor"
         title="New announcement"
-        description="Write the notice first, then tune category, timing, and preview details before sending it for review."
+        description={`${organization ? `Posting to ${organization.name}. ` : ''}Write the notice first, then tune category, timing, and preview details before sending it for review.`}
         action={{
           href: '/dashboard/announcements',
           label: 'Announcement register',

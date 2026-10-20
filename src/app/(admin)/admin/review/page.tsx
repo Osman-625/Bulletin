@@ -15,7 +15,7 @@ import {
 } from '@/components/dashboard/DashboardBoard'
 import { StatusBadge } from '@/components/dashboard/StatusBadge'
 import { formatCampusShortDate } from '@/modules/announcements/public-board'
-import { getSubmittedAnnouncements } from '@/infrastructure/database/data'
+import { getLiveAnnouncements, getSubmittedAnnouncements } from '@/infrastructure/database/data'
 
 export const metadata = { title: 'Review Queue' }
 
@@ -43,7 +43,7 @@ function ReviewQueueItem({
             <span className="font-mono text-[0.68rem] font-bold tracking-[0.14em] text-[var(--color-text-muted)] uppercase">
               {String(index + 1).padStart(2, '0')}
             </span>
-            <StatusBadge status="submitted" />
+            <StatusBadge status={announcement.status} />
             <span className="font-mono text-[0.68rem] font-semibold tracking-[0.12em] text-[var(--color-text-muted)] uppercase">
               {announcement.categories?.name ?? 'Uncategorized'}
             </span>
@@ -72,7 +72,7 @@ function ReviewQueueItem({
 }
 
 export default async function ReviewQueuePage() {
-  const queue = await getSubmittedAnnouncements()
+  const [queue, live] = await Promise.all([getSubmittedAnnouncements(), getLiveAnnouncements()])
   const urgentCount = queue.filter((announcement) => announcement.urgency === 'urgent').length
   const orgCount = new Set(
     queue.flatMap((announcement) => {
@@ -143,6 +143,20 @@ export default async function ReviewQueuePage() {
         ) : (
           <div className="admin-review-list">
             {queue.map((announcement, index) => (
+              <ReviewQueueItem key={announcement.id} announcement={announcement} index={index} />
+            ))}
+          </div>
+        )}
+      </DashboardBoardPanel>
+
+      <DashboardBoardPanel title="Live notices" count={`${live.length} live`}>
+        {live.length === 0 ? (
+          <p className="px-5 py-8 text-sm text-[var(--color-text-muted)]">
+            No notices are live in your scope right now.
+          </p>
+        ) : (
+          <div className="admin-review-list">
+            {live.map((announcement, index) => (
               <ReviewQueueItem key={announcement.id} announcement={announcement} index={index} />
             ))}
           </div>

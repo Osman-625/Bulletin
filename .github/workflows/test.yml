@@ -33,6 +33,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run format:check
+      - run: npm audit --audit-level=high
+      - run: npm audit --omit=dev --audit-level=high
 
       - name: Check Supabase types are current
         if: ${{ env.NEXT_PUBLIC_SUPABASE_URL != '' }}
@@ -53,6 +56,11 @@ jobs:
         id: e2e_check
         run: |
           if [ -z "$NEXT_PUBLIC_SUPABASE_URL" ]; then
+            if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+              echo "::error::Supabase secrets not configured — E2E tests are required on main"
+              exit 1
+            fi
+
             echo "::warning::Supabase secrets not configured — skipping E2E tests"
             echo "can_run=false" >> "$GITHUB_OUTPUT"
           else

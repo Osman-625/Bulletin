@@ -45,8 +45,78 @@ describe('React Doctor configuration', () => {
           files: ['src/app/opengraph-image.tsx'],
           rules: ['react-doctor/only-export-components'],
         },
+        {
+          files: [
+            'src/app/*/admin/orgs/new/actions.ts',
+            'src/app/*/admin/publishers/invite/actions.ts',
+            'src/app/*/admin/review/*/actions.ts',
+            'src/app/*/admin/users/page.tsx',
+            'src/app/*/forgot-password/actions.ts',
+            'src/app/*/dashboard/announcements/new/actions.ts',
+            'src/app/*/owner/users/page.tsx',
+            'src/app/*/super-admin/admins/invite/actions.ts',
+            'src/app/*/super-admin/users/page.tsx',
+            'src/app/change-password/actions.ts',
+            'src/app/register/actions.ts',
+            'src/modules/categories/management.ts',
+            'src/modules/notifications/actions.ts',
+            'src/modules/users/actions.ts',
+          ],
+          rules: ['react-doctor/supabase-client-owned-authz-field'],
+        },
+        {
+          files: ['.next/**', 'graphify-out/**'],
+          rules: ['react-doctor/artifact-baas-authority-surface'],
+        },
+        {
+          files: ['supabase/migrations/20260411000001_schema.sql'],
+          rules: ['react-doctor/supabase-table-missing-rls'],
+        },
+        {
+          files: ['supabase/migrations/20260418000004_fixes_and_additions.sql'],
+          rules: ['react-doctor/supabase-rls-policy-risk'],
+        },
       ])
     )
+  })
+
+  it('keeps React Doctor security suppressions tied to verified false positives', () => {
+    const config = JSON.parse(readFileSync('doctor.config.json', 'utf8')) as {
+      ignore?: {
+        overrides?: Array<{
+          files?: string[]
+          rules?: string[]
+        }>
+      }
+    }
+    const overrides = config.ignore?.overrides ?? []
+
+    const clientOwnedAuthzSuppression = overrides.find((override) =>
+      override.rules?.includes('react-doctor/supabase-client-owned-authz-field')
+    )
+    const generatedArtifactSuppression = overrides.find((override) =>
+      override.rules?.includes('react-doctor/artifact-baas-authority-surface')
+    )
+    const initialSchemaSuppression = overrides.find((override) =>
+      override.rules?.includes('react-doctor/supabase-table-missing-rls')
+    )
+    const auditLogSuppression = overrides.find((override) =>
+      override.rules?.includes('react-doctor/supabase-rls-policy-risk')
+    )
+
+    expect(clientOwnedAuthzSuppression?.files).not.toContain('src/app/**')
+    expect(clientOwnedAuthzSuppression?.files).not.toContain('src/**')
+    expect(clientOwnedAuthzSuppression?.files).not.toContain(
+      'src/app/(admin)/admin/review/[id]/actions.ts'
+    )
+    expect(clientOwnedAuthzSuppression?.files).toContain('src/app/*/admin/review/*/actions.ts')
+    expect(generatedArtifactSuppression?.files).toEqual(['.next/**', 'graphify-out/**'])
+    expect(initialSchemaSuppression?.files).toEqual([
+      'supabase/migrations/20260411000001_schema.sql',
+    ])
+    expect(auditLogSuppression?.files).toEqual([
+      'supabase/migrations/20260418000004_fixes_and_additions.sql',
+    ])
   })
 
   it('keeps React Doctor suppressions out of ESLint comments', () => {
@@ -84,19 +154,18 @@ describe('React Doctor configuration', () => {
   it('keeps repeated date setup outside hot paths and lazy form state initialization', () => {
     const publicBoard = source('src/modules/announcements/public-board.ts')
     const announcementForm = source('src/components/dashboard/AnnouncementForm.tsx')
+    const formState = source('src/components/dashboard/announcement-form-state.ts')
 
     expect(publicBoard).toContain('const CAMPUS_DAY_FORMATTER = new Intl.DateTimeFormat')
     expect(publicBoard).toContain('CAMPUS_DAY_FORMATTER.formatToParts')
     expect(announcementForm).toContain(
       'useReducer(\n    announcementFormReducer,\n    initialData,\n    createAnnouncementFormState\n  )'
     )
-    expect(announcementForm).toContain('expiresAt: toDateInputValue(initialData.expires_at)')
-    expect(announcementForm).toContain(
+    expect(formState).toContain('expiresAt: toDateInputValue(initialData.expires_at)')
+    expect(formState).toContain(
       'scheduledPublishAt: toDateTimeLocalInputValue(initialData.scheduled_publish_at)'
     )
-    expect(announcementForm).toContain(
-      'pinnedUntil: toDateTimeLocalInputValue(initialData.pinned_until)'
-    )
+    expect(formState).toContain('pinnedUntil: toDateTimeLocalInputValue(initialData.pinned_until)')
   })
 
   it('uses single-pass array transforms for React Doctor performance warnings', () => {

@@ -14,7 +14,7 @@ import {
   normalizeAnnouncementDisplaySize,
   normalizeAnnouncementUrgency,
 } from '@/modules/announcements/presentation'
-import { canAccessAdminArea, getCurrentAccessContext } from '@/modules/auth/authz'
+import { getCurrentAccessContext } from '@/modules/auth/authz'
 import { reportServerError } from '@/shared/errors/error-reporting'
 import { notifyAnnouncementSubmitted } from '@/modules/notifications'
 import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
@@ -23,10 +23,11 @@ import { createClient } from '@/infrastructure/database/server'
 
 const ANNOUNCEMENT_LOAD_ERROR = 'Could not load announcement. Try again.'
 const ANNOUNCEMENT_SAVE_ERROR = 'Could not save announcement. Try again.'
-const ANNOUNCEMENT_PUBLISH_ERROR = 'Could not publish announcement. Try again.'
 const ANNOUNCEMENT_UNPUBLISH_ERROR = 'Could not unpublish announcement. Try again.'
 const ANNOUNCEMENT_SUBMIT_ERROR = 'Could not submit announcement. Try again.'
 const ANNOUNCEMENT_DELETE_ERROR = 'Could not delete announcement. Try again.'
+const ANNOUNCEMENT_FORBIDDEN_ERROR =
+  'You cannot change this announcement. It may be live or belong to another author.'
 
 type ErrorMetadata = Record<string, string | number | boolean | null | undefined>
 
@@ -38,6 +39,11 @@ function throwAnnouncementActionError(
 ): never {
   reportServerError(context, error, metadata)
   throw new Error(userMessage)
+}
+
+// RLS blocks a write without returning an error, so an empty result means nothing changed.
+function assertRowChanged(rows: unknown[] | null) {
+  if (!rows?.length) throw new Error(ANNOUNCEMENT_FORBIDDEN_ERROR)
 }
 
 async function verifyAnnouncementAccess(
@@ -137,7 +143,7 @@ export async function updateAnnouncement(id: string, formData: FormData) {
   const displayFont = normalizeAnnouncementDisplayFont(formData.get('display_font'))
   const displaySize = normalizeAnnouncementDisplaySize(formData.get('display_size'))
 
-  const { error } = await supabase
+  const { data: updatedRows, error } = await supabase
     .from('announcements')
     .update({
       title,
@@ -154,6 +160,7 @@ export async function updateAnnouncement(id: string, formData: FormData) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
+    .select('id')
 
   if (error) {
     throwAnnouncementActionError(
@@ -167,6 +174,7 @@ export async function updateAnnouncement(id: string, formData: FormData) {
       }
     )
   }
+  assertRowChanged(updatedRows)
 
   await removePreviousBannerIfChanged(announcement, bannerUrl || null, id)
 
@@ -193,69 +201,6 @@ export async function updateAnnouncement(id: string, formData: FormData) {
   return { success: true }
 }
 
-export async function publishAnnouncement(id: string) {
-  const supabase = await createClient()
-  const announcement = await verifyAnnouncementAccess(supabase, id)
-  const rateLimit = await checkActionRateLimit(
-    'announcement-publish',
-    `${announcement.actorId}:${id}`
-  )
-  if (rateLimit.limited) throw new Error('Too many attempts. Try again shortly.')
-  if (!canAccessAdminArea(announcement.actorRole)) {
-    throw new Error('Unauthorized')
-  }
-
-  const now = new Date().toISOString()
-  const scheduledPublishAt =
-    announcement.scheduledPublishAt &&
-    new Date(announcement.scheduledPublishAt).getTime() > Date.now()
-      ? announcement.scheduledPublishAt
-      : null
-
-  const { error } = await supabase
-    .from('announcements')
-    .update({
-      status: 'published',
-      published_at: scheduledPublishAt ?? now,
-      scheduled_publish_at: scheduledPublishAt,
-      rejection_comment: null,
-      updated_at: now,
-    })
-    .eq('id', id)
-
-  if (error) {
-    throwAnnouncementActionError(
-      'dashboard.announcement.publish_failed',
-      error,
-      ANNOUNCEMENT_PUBLISH_ERROR,
-      {
-        actor_id: announcement.actorId,
-        announcement_id: id,
-        organization_id: announcement.organizationId,
-      }
-    )
-  }
-
-  await logAuditEvent({
-    actorId: announcement.actorId,
-    action: scheduledPublishAt ? 'announcement.scheduled' : 'announcement.published',
-    targetType: 'announcement',
-    targetId: id,
-    metadata: {
-      title: announcement.title,
-      previous_status: announcement.status,
-      organization_id: announcement.organizationId,
-      published_at: scheduledPublishAt ?? now,
-      scheduled_publish_at: scheduledPublishAt,
-    },
-  })
-
-  revalidatePath('/dashboard/announcements')
-  revalidatePath(`/dashboard/announcements/${id}/edit`)
-
-  return { success: true }
-}
-
 export async function unpublishAnnouncement(id: string) {
   const supabase = await createClient()
   const announcement = await verifyAnnouncementAccess(supabase, id)
@@ -265,7 +210,7 @@ export async function unpublishAnnouncement(id: string) {
   )
   if (rateLimit.limited) throw new Error('Too many attempts. Try again shortly.')
 
-  const { error } = await supabase
+  const { data: updatedRows, error } = await supabase
     .from('announcements')
     .update({
       status: 'draft',
@@ -274,6 +219,7 @@ export async function unpublishAnnouncement(id: string) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
+    .select('id')
 
   if (error) {
     throwAnnouncementActionError(
@@ -287,6 +233,7 @@ export async function unpublishAnnouncement(id: string) {
       }
     )
   }
+  assertRowChanged(updatedRows)
 
   await logAuditEvent({
     actorId: announcement.actorId,
@@ -316,7 +263,7 @@ export async function submitForReview(id: string) {
   if (rateLimit.limited) throw new Error('Too many attempts. Try again shortly.')
   assertAnnouncementReadyForReview(announcement.title, announcement.body)
 
-  const { error } = await supabase
+  const { data: updatedRows, error } = await supabase
     .from('announcements')
     .update({
       status: 'submitted',
@@ -324,6 +271,7 @@ export async function submitForReview(id: string) {
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
+    .select('id')
 
   if (error) {
     throwAnnouncementActionError(
@@ -337,6 +285,7 @@ export async function submitForReview(id: string) {
       }
     )
   }
+  assertRowChanged(updatedRows)
 
   await logAuditEvent({
     actorId: announcement.actorId,
@@ -375,7 +324,11 @@ export async function deleteAnnouncement(id: string) {
   )
   if (rateLimit.limited) throw new Error('Too many attempts. Try again shortly.')
 
-  const { error } = await supabase.from('announcements').delete().eq('id', id)
+  const { data: deletedRows, error } = await supabase
+    .from('announcements')
+    .delete()
+    .eq('id', id)
+    .select('id')
 
   if (error) {
     throwAnnouncementActionError(
@@ -389,6 +342,7 @@ export async function deleteAnnouncement(id: string) {
       }
     )
   }
+  assertRowChanged(deletedRows)
 
   const storagePath = bannerStoragePath(announcement.bannerUrl)
   if (storagePath) {

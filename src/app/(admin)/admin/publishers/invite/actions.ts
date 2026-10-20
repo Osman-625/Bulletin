@@ -12,6 +12,7 @@ import {
   INVITATION_EXPIRY_DAYS,
   readPublisherInvitationFormData,
 } from '@/modules/invitations/validation'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
 import { createClient } from '@/infrastructure/database/server'
 
 const INVITE_PUBLISHER_PATH = '/admin/publishers/invite'
@@ -34,6 +35,10 @@ export async function invitePublisher(formData: FormData) {
     redirect(
       '/admin/publishers/invite?error=You+can+only+invite+publishers+into+your+own+organizations'
     )
+  }
+  const rateLimit = await checkActionRateLimit('publisher-invite', access.userId)
+  if (rateLimit.limited) {
+    redirect(inviteErrorHref('Too many invite attempts. Try again shortly.'))
   }
 
   const supabase = await createClient()

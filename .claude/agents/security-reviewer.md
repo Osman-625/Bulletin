@@ -97,6 +97,7 @@ End with a single sentence naming the highest-severity blocker, or "no issues fo
 **Verbose**:
 
 For each finding:
+
 - **Severity**: Critical / High / Medium / Low.
 - **File:Line**: exact location.
 - **Issue**: attack vector ("an attacker can send `../../../etc/passwd` as filename to read arbitrary files").

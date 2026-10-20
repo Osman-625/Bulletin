@@ -30,7 +30,7 @@ The public board groups announcements into meaningful sections such as:
 - Plan ahead
 - General notices
 
-Sorting and date labels are computed in Malaysia time (`Asia/Kuala_Lumpur`) through `src/lib/announcements/public-board.ts`.
+Sorting and date labels are computed in Malaysia time (`Asia/Kuala_Lumpur`) through `src/modules/announcements/public-board.ts`.
 
 ## Roles
 
@@ -92,7 +92,7 @@ The owner area reads operational data from Supabase and optional platform APIs:
 
 ### Notifications
 
-`src/lib/notifications.ts` handles in-app notifications for:
+`src/modules/notifications/` handles in-app notifications for:
 
 - New submissions to admins, super admins, and owners
 - Review approval, scheduled approval, and rejection messages to authors
@@ -128,30 +128,48 @@ src/
   proxy.ts                 Session refresh, CSP, role redirects
   components/
     announcements/         Public announcement cards, category filter, registration links
+    public/                Public board pieces: pagination, pinned notices, filters, empty state
     layout/                Header, footer, brand mark, theme toggle
     navigation/            Back navigation
     auth/                  Idle logout handler
     analytics/             Public feed analytics
-    dashboard/             Announcement form and dashboard shell
+    dashboard/             Announcement form, banner field, user management, dashboard shell
     account/               Account settings UI
-  lib/
-    announcements/         Public board grouping and sorting
-    auth/                  Authorization helpers
-    storage/               Banner Storage cleanup helpers
-    database.types.ts      Generated Supabase types
-    data.ts                Main data access functions
-    notifications.ts       In-app notification helpers
+  modules/                 Domain logic, one folder per feature
+    announcements/         Feed, form, mutations, access, presentation, public board grouping and dates
+    auth/                  Authorization helpers, roles, password policy, user sync
+    categories/            Category display, validation, management
+    invitations/           Invitation validation and created-invite handling
+    notifications/         In-app notifications
+    organizations/         Organization rules
+    owner/                 Owner resource cards
+    users/                 User actions, delete guard, display names, list links
+    audit/                 Audit log helpers
+  infrastructure/
+    database/              Supabase clients (browser, server, admin), data access, generated types
+    storage/               Banner Storage cleanup
+  shared/
+    middleware/            In-memory and persistent rate limiting
+    errors/                Client and server error reporting
+    constants/             Site URL and analytics events
+    types/                 Shared database row types
+    utils/                 Small helpers such as `cn`
 supabase/
   migrations/              Database schema, RLS, roles, workflow, hardening
+  seed-sample-announcements.sql   25 sample announcements covering every announcement type
 tests/
-  unit/                    Vitest unit tests
+  unit/                    Vitest unit tests, organised by domain
   e2e/                     Playwright E2E tests
+public/
+  sample-announcements/    Poster images used by the sample announcements
 scripts/
   seed-test-users.js       Local/E2E user and fixture seed script
   setup-owner.ps1          Helper for calling the setup route
+  audit_loop.sh / .ps1     Repeatable API security audit loop
 docs/
+  architecture/            Plans and specs
   brand/                   Future Commons design system notes
-  CODEBASE_STRUCTURE.md    Route and folder map
+  operations/              Backup/rollback, readiness, and pre-deployment verification
 ```
 
 ## Database
@@ -168,6 +186,11 @@ Current migration set:
 | `20260507000011` - `20260508000014` | Auth sync, presentation fields, review workflow, password reset requests |
 | `20260518000015` - `20260519000017` | Security and Storage policy hardening                                    |
 | `20260521000018` - `20260521000020` | Owner user policy, rate limit buckets, parameterized audit search        |
+| `20260603000021` - `20260606031448` | Profile sync ignores client-set roles; security advisor remediation      |
+| `20260615000000`                    | Publisher revisions of rejected posts; view counter only via server      |
+| `20260619000000` - `20260620000000` | Admin RLS scoped to the admin's assigned organizations                   |
+| `20260627101049`                    | Storage policies drop redundant auth-role helper checks                  |
+| `20261020000000`                    | Only the server may change `users.force_password_change`                 |
 
 Important tables include:
 
@@ -300,6 +323,9 @@ After the owner signs in, disable the setup route and rotate any temporary crede
 | `npm run test:watch`   | Run Vitest in watch mode                      |
 | `npm run test:e2e`     | Run Playwright E2E tests                      |
 | `npm run test:smoke`   | Run smoke tests against `PLAYWRIGHT_BASE_URL` |
+| `npm run test:e2e:ui`  | Open the Playwright UI runner                 |
+| `npm run doctor`       | Scan React code with React Doctor             |
+| `npm run fallow`       | Find dead code and duplication with Fallow    |
 
 ## Testing
 
@@ -320,6 +346,15 @@ The seed script creates or resets test users, writes `.env.test.local`, and adds
 
 Playwright defaults to `http://localhost:3000` and starts `npm run dev` automatically unless an existing server is reused. Set `PLAYWRIGHT_BASE_URL` to target another environment.
 
+### Sample announcements
+
+`supabase/seed-sample-announcements.sql` adds 25 sample announcements for demos and visual checks. Paste it into the Supabase SQL editor and run it; it creates no login and posts as an existing publisher (or the owner) in an approved organization.
+
+- Covers every urgency, display font, and display size combination, all announcement categories that exist, and every lifecycle state (live, scheduled, draft, submitted, rejected, expired, archived)
+- Ten of the live announcements carry illustrated posters from `public/sample-announcements/`
+- Safe to re-run: ids are fixed and every date is relative to `now()`, so a re-run moves the dates forward
+- Remove the samples with the `DELETE` statement at the bottom of the file
+
 Run deployed smoke tests:
 
 ```bash
@@ -334,6 +369,10 @@ GitHub Actions currently cover:
 - Optional Supabase generated type drift checks
 - Supabase migration dry-runs and manually approved applies
 - Weekly or manual OWASP ZAP baseline scans
+- React Doctor scans on pull requests (new issues only) and on pushes to `main` (score trend)
+- Daily database backup
+
+A Husky pre-commit hook runs `lint-staged` (ESLint with zero warnings plus Prettier on staged files).
 
 Vercel cron is configured in `vercel.json`:
 
@@ -378,8 +417,9 @@ Global tokens and animation primitives live in `src/app/globals.css`. Public-fac
 
 - Do not bypass server actions for protected writes; they contain authorization and audit behavior.
 - Do not expose `SUPABASE_SERVICE_ROLE_KEY` to client components.
-- Use the generated `src/lib/database.types.ts` types when adding database-facing code.
-- Keep announcement date logic centralized in `src/lib/announcements/public-board.ts`.
+- Use the generated `src/infrastructure/database/database.types.ts` types when adding database-facing code.
+- Keep announcement date logic centralized in `src/modules/announcements/public-board.ts`.
+- Run `npm run fallow` and `npm run doctor` before large cleanups; both are configured in `.fallowrc.json` and `doctor.config.json`.
 - Banner cleanup should be tested with `?dryRun=1` before deleting in a new environment.
 - Public announcement images depend on the `banner-images` bucket policies and Next remote image configuration.
 

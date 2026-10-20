@@ -2,8 +2,7 @@
   min-height: 100dvh;
   background:
     linear-gradient(90deg, rgba(200, 16, 46, 0.07) 1px, transparent 1px),
-    linear-gradient(180deg, rgba(0, 33, 71, 0.05) 1px, transparent 1px),
-    #f3eee4;
+    linear-gradient(180deg, rgba(0, 33, 71, 0.05) 1px, transparent 1px), #f3eee4;
   background-size: 44px 44px;
   color: #211713;
   font-family: var(--font-brand-body), var(--font-sans), sans-serif;
@@ -234,8 +233,16 @@
   border: 1px solid color-mix(in oklab, var(--lab-line) 82%, var(--lab-ink));
   border-radius: 12px;
   background:
-    linear-gradient(90deg, color-mix(in oklab, var(--lab-line) 48%, transparent) 1px, transparent 1px),
-    linear-gradient(180deg, color-mix(in oklab, var(--lab-line) 42%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--lab-line) 48%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--lab-line) 42%, transparent) 1px,
+      transparent 1px
+    ),
     var(--lab-canvas);
   background-size: 36px 36px;
   color: var(--lab-ink);
@@ -248,9 +255,22 @@
 
 .directionStage[data-direction='signal-atlas'] {
   background:
-    linear-gradient(135deg, transparent 0 48%, color-mix(in oklab, var(--lab-navy) 13%, transparent) 49% 50%, transparent 51%),
-    linear-gradient(90deg, color-mix(in oklab, var(--lab-line) 54%, transparent) 1px, transparent 1px),
-    linear-gradient(180deg, color-mix(in oklab, var(--lab-line) 46%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      135deg,
+      transparent 0 48%,
+      color-mix(in oklab, var(--lab-navy) 13%, transparent) 49% 50%,
+      transparent 51%
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--lab-line) 54%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--lab-line) 46%, transparent) 1px,
+      transparent 1px
+    ),
     var(--lab-canvas);
   background-size:
     260px 260px,
@@ -261,8 +281,16 @@
 
 .directionStage[data-direction='future-commons'] {
   background:
-    linear-gradient(90deg, color-mix(in oklab, var(--lab-line) 36%, transparent) 1px, transparent 1px),
-    linear-gradient(180deg, color-mix(in oklab, var(--lab-gold) 22%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--lab-line) 36%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--lab-gold) 22%, transparent) 1px,
+      transparent 1px
+    ),
     var(--lab-canvas);
   background-size: 64px 40px;
 }
@@ -401,7 +429,11 @@
   overflow: hidden;
   border-radius: 10px;
   background:
-    linear-gradient(90deg, color-mix(in oklab, var(--lab-line) 46%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--lab-line) 46%, transparent) 1px,
+      transparent 1px
+    ),
     var(--lab-canvas);
   background-size: 36px 36px;
   color: var(--lab-ink);
@@ -419,14 +451,27 @@
 
 .previewSurface[data-direction='campus-press'] {
   background:
-    linear-gradient(180deg, color-mix(in oklab, var(--lab-accent) 11%, transparent) 0 7px, transparent 7px),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--lab-accent) 11%, transparent) 0 7px,
+      transparent 7px
+    ),
     var(--lab-canvas);
 }
 
 .previewSurface[data-direction='signal-atlas'] {
   background:
-    linear-gradient(135deg, transparent 0 44%, color-mix(in oklab, var(--lab-navy) 18%, transparent) 45% 46%, transparent 47%),
-    linear-gradient(90deg, color-mix(in oklab, var(--lab-line) 54%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      135deg,
+      transparent 0 44%,
+      color-mix(in oklab, var(--lab-navy) 18%, transparent) 45% 46%,
+      transparent 47%
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--lab-line) 54%, transparent) 1px,
+      transparent 1px
+    ),
     var(--lab-canvas);
   background-size:
     230px 230px,
@@ -436,8 +481,16 @@
 
 .previewSurface[data-direction='future-commons'] {
   background:
-    linear-gradient(90deg, color-mix(in oklab, var(--lab-gold) 19%, transparent) 1px, transparent 1px),
-    linear-gradient(180deg, color-mix(in oklab, var(--lab-line) 40%, transparent) 1px, transparent 1px),
+    linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--lab-gold) 19%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--lab-line) 40%, transparent) 1px,
+      transparent 1px
+    ),
     var(--lab-canvas);
   background-size: 56px 38px;
 }
@@ -542,7 +595,11 @@
   overflow: hidden;
   min-height: 290px;
   background:
-    linear-gradient(135deg, color-mix(in oklab, var(--lab-accent-soft) 70%, transparent), transparent 42%),
+    linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--lab-accent-soft) 70%, transparent),
+      transparent 42%
+    ),
     color-mix(in oklab, var(--lab-elevated) 68%, var(--lab-surface));
 }
 

@@ -158,14 +158,14 @@ export default async function OwnerPage() {
     overview,
   ] = await Promise.all([
     supabase.from('users').select('role'),
-    supabase.from('announcements').select('*', { count: 'exact', head: true }),
+    supabase.from('announcements').select('id', { count: 'exact', head: true }),
     supabase
       .from('announcements')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('status', 'published'),
     supabase
       .from('announcements')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('status', 'submitted'),
     getOwnerResourceOverview(supabase),
   ])

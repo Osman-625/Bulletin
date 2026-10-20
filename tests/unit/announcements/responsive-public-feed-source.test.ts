@@ -143,7 +143,7 @@ describe('public feed responsive adaptation source guards', () => {
     expect(boardOrderControls).toContain('p-1.5')
     expect(boardOrderControls).toContain('sm:p-2')
     expect(boardOrderControls).not.toContain('gap-3 rounded-[1.05rem] p-3')
-    expect(card).toContain('export function CardImage')
+    expect(card).toContain('function CardImage')
     expect(card).toContain('data-slot="image"')
     expect(card).toContain("style={{ objectFit: 'contain' }}")
     expect(card).toContain('announcement-card-image-frame')

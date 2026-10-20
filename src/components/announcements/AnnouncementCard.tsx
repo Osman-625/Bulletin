@@ -23,7 +23,7 @@ export type AnnouncementCardVisual = 'poster' | 'letterbox' | 'stamp' | 'ribbon'
 
 type StatusTone = 'urgency' | 'published' | 'open' | 'closing'
 
-export type CardStatusItem = {
+type CardStatusItem = {
   key: string
   label: string
   tone: StatusTone
@@ -143,7 +143,7 @@ function EventMetaPill({
   )
 }
 
-export function CardImage({
+function CardImage({
   src,
   alt,
   categoryColor,
@@ -200,7 +200,7 @@ export function CardImage({
   )
 }
 
-export function StatusBadge({ items }: { items: CardStatusItem[] }) {
+function StatusBadge({ items }: { items: CardStatusItem[] }) {
   return (
     <div
       data-slot="status"
@@ -215,15 +215,7 @@ export function StatusBadge({ items }: { items: CardStatusItem[] }) {
   )
 }
 
-export function CardTitle({
-  id,
-  title,
-  fontClass,
-}: {
-  id: string
-  title: string
-  fontClass: string
-}) {
+function CardTitle({ id, title, fontClass }: { id: string; title: string; fontClass: string }) {
   return (
     <h3
       id={id}
@@ -238,7 +230,7 @@ export function CardTitle({
   )
 }
 
-export function CardDescription({ description }: { description: string }) {
+function CardDescription({ description }: { description: string }) {
   return (
     <p
       data-slot="description"
@@ -249,7 +241,7 @@ export function CardDescription({ description }: { description: string }) {
   )
 }
 
-export function CardMetaInfo({
+function CardMetaInfo({
   publishedAt,
   expiresAt,
   deadlineIsActive,
@@ -273,7 +265,7 @@ export function CardMetaInfo({
   )
 }
 
-export function CardFooter({ sourceName }: { sourceName: string }) {
+function CardFooter({ sourceName }: { sourceName: string }) {
   return (
     <div
       data-slot="footer"

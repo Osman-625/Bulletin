@@ -6,7 +6,7 @@ import {
 } from '@/modules/announcements/presentation'
 
 export const CAMPUS_TIME_ZONE = 'Asia/Kuala_Lumpur'
-export const BOARD_SORTS = ['priority', 'issued', 'closing'] as const
+const BOARD_SORTS = ['priority', 'issued', 'closing'] as const
 
 const CAMPUS_DAY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
   timeZone: CAMPUS_TIME_ZONE,
@@ -53,7 +53,7 @@ type CampusDateInput = Date | number | string | null | undefined
 type CampusDateFormat = keyof typeof CAMPUS_DATE_FORMATTERS
 
 export type BoardSort = (typeof BOARD_SORTS)[number]
-export type BoardSectionId = 'daily' | 'closing' | 'future' | 'campus'
+type BoardSectionId = 'daily' | 'closing' | 'future' | 'campus'
 type PublicBoardSortable = Pick<
   PublicAnnouncement,
   'expires_at' | 'pinned_until' | 'published_at' | 'urgency'
@@ -85,7 +85,7 @@ export const BOARD_SORT_OPTIONS: Array<{
   },
 ]
 
-export const BOARD_SECTION_META: Record<
+const BOARD_SECTION_META: Record<
   BoardSectionId,
   {
     label: string
@@ -125,7 +125,7 @@ function toValidCampusDate(date: CampusDateInput) {
   return Number.isNaN(value.getTime()) ? null : value
 }
 
-export function formatCampusDate(
+function formatCampusDate(
   date: CampusDateInput,
   format: CampusDateFormat = 'short',
   fallback = 'Pending'
@@ -292,7 +292,7 @@ export function selectPublicBoardHighlights(
   return { featured, featuredIsPinned, pinnedFeatures, rest }
 }
 
-export function boardSectionOrder(sort: BoardSort): BoardSectionId[] {
+function boardSectionOrder(sort: BoardSort): BoardSectionId[] {
   if (sort === 'closing') return ['closing', 'daily', 'future', 'campus']
   if (sort === 'issued') return ['daily', 'future', 'closing', 'campus']
   return ['daily', 'closing', 'future', 'campus']
@@ -305,12 +305,12 @@ export function isIssuedToday(iso?: string | null, now = Date.now()) {
   return campusDayValue(value) === campusDayValue(now)
 }
 
-export function isClosingSoonForBoard(iso?: string | null, now = Date.now()) {
+function isClosingSoonForBoard(iso?: string | null, now = Date.now()) {
   const days = daysUntilDeadline(iso, now)
   return days !== null && days <= 7
 }
 
-export function isFutureEventForBoard(iso?: string | null, now = Date.now()) {
+function isFutureEventForBoard(iso?: string | null, now = Date.now()) {
   const days = daysUntilDeadline(iso, now)
   return days !== null && days > 7
 }

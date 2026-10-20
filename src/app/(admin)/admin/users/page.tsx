@@ -1,4 +1,11 @@
 import Link from 'next/link'
+import { UserPagination } from '@/components/dashboard/UserPagination'
+import {
+  UserDeletePanel,
+  UserRoleFilterTabs,
+  UsersEmptyState,
+} from '@/components/dashboard/UserManagement'
+import { usersHref } from '@/modules/users/users-href'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { Users } from 'lucide-react'
@@ -19,7 +26,9 @@ import {
   validateTemporaryPassword,
 } from '@/modules/auth/password-policy'
 import { getVisibleUsersForAdminPage } from '@/infrastructure/database/data'
+import { getSharedOrganizationBlocker, getUserDeleteBlocker } from '@/modules/users/delete-guard'
 import { reportServerError } from '@/shared/errors/error-reporting'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
 import { createServiceClient } from '@/infrastructure/database/server'
 
 export const metadata = { title: 'Users - Bulletin Admin' }
@@ -28,7 +37,6 @@ const ROLE_LABELS: Record<string, string> = {
   admin: 'Admin',
   publisher: 'Publisher',
 }
-const ADMIN_ROLE_KEYS = Object.keys(ROLE_LABELS)
 
 const LEVEL_COLOR: Record<string, string> = {
   admin: 'var(--color-accent-inti)',
@@ -45,61 +53,8 @@ function userErrorHref(message: string) {
   return `${ADMIN_USERS_PATH}?error=${encodeURIComponent(message)}`
 }
 
-function adminUsersHref({ role, page }: { role?: string; page?: number }) {
-  const params = new URLSearchParams()
-  if (role) params.set('role', role)
-  if (page && page > 1) params.set('page', String(page))
-  const query = params.toString()
-  return query ? `${ADMIN_USERS_PATH}?${query}` : ADMIN_USERS_PATH
-}
-
-function UserPagination({
-  page,
-  totalPages,
-  role,
-}: {
-  page: number
-  totalPages: number
-  role?: string
-}) {
-  if (totalPages <= 1) return null
-  const previousPage = Math.max(1, page - 1)
-  const nextPage = Math.min(totalPages, page + 1)
-
-  return (
-    <nav
-      aria-label="User pagination"
-      className="flex flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-    >
-      <p className="text-sm text-[var(--color-text-secondary)]">
-        Page {page} of {totalPages}
-      </p>
-      <div className="flex items-center gap-2">
-        <Link
-          href={adminUsersHref({ role, page: previousPage })}
-          aria-disabled={page <= 1}
-          className={`inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
-            page <= 1
-              ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
-              : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-          }`}
-        >
-          Previous
-        </Link>
-        <Link
-          href={adminUsersHref({ role, page: nextPage })}
-          aria-disabled={page >= totalPages}
-          className={`inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
-            page >= totalPages
-              ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
-              : 'bg-[var(--color-accent)] text-[var(--color-on-accent)] hover:bg-[var(--color-accent-hover)]'
-          }`}
-        >
-          Next
-        </Link>
-      </div>
-    </nav>
-  )
+function adminUsersHref(query: { role?: string; page?: number }) {
+  return usersHref(ADMIN_USERS_PATH, query)
 }
 
 async function getTargetUser(
@@ -150,6 +105,8 @@ async function setRole(userId: string, newRole: string) {
   'use server'
 
   const { access, target } = await assertAdminCanManage(userId)
+  const rateLimit = await checkActionRateLimit('admin-user-role', `${access.userId}:${userId}`)
+  if (rateLimit.limited) redirect(userErrorHref('Too many user updates. Try again shortly.'))
   if (!EDITABLE_ROLES.includes(newRole as AppRole) || target.role !== 'publisher') {
     throw new Error('Insufficient privilege')
   }
@@ -185,6 +142,11 @@ async function resetPassword(userId: string, formData: FormData) {
   'use server'
 
   const { access, target } = await assertAdminCanManage(userId)
+  const rateLimit = await checkActionRateLimit(
+    'admin-user-password-reset',
+    `${access.userId}:${userId}`
+  )
+  if (rateLimit.limited) redirect(userErrorHref('Too many password resets. Try again shortly.'))
   if (target.role !== 'publisher') throw new Error('Insufficient privilege')
 
   const supabase = await createServiceClient()
@@ -233,9 +195,15 @@ async function deleteUser(userId: string) {
   'use server'
 
   const { access, target } = await assertAdminCanManage(userId)
+  const rateLimit = await checkActionRateLimit('admin-user-delete', `${access.userId}:${userId}`)
+  if (rateLimit.limited) redirect(userErrorHref('Too many delete attempts. Try again shortly.'))
   if (target.role !== 'publisher') throw new Error('Insufficient privilege')
 
   const supabase = await createServiceClient()
+  const deleteBlocker =
+    (await getSharedOrganizationBlocker(supabase, userId, access.orgIds)) ??
+    (await getUserDeleteBlocker(supabase, userId))
+  if (deleteBlocker) redirect(userErrorHref(deleteBlocker))
   const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId)
   if (authDeleteError) {
     reportServerError('admin.users.delete_auth', authDeleteError, {
@@ -321,50 +289,23 @@ export default async function AdminUsersPage({
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        {[
-          { key: '', label: `All (${visibleUsersPage.allTotal})` },
-          ...ADMIN_ROLE_KEYS.map((role) => ({
-            key: role,
-            label: `${ROLE_LABELS[role]} (${roleCounts[role] ?? 0})`,
-          })),
-        ].map(({ key, label }) => (
-          <Link
-            key={key}
-            href={adminUsersHref({ role: key || undefined })}
-            className={`inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-medium transition-colors ${
-              filterRole === key || (!filterRole && !key)
-                ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]'
-                : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-            }`}
-          >
-            {label}
-          </Link>
-        ))}
-      </div>
+      <UserRoleFilterTabs
+        basePath={ADMIN_USERS_PATH}
+        roleLabels={ROLE_LABELS}
+        filterRole={filterRole}
+        roleCounts={roleCounts}
+        allUsersTotal={visibleUsersPage.allTotal}
+      />
 
       <div className="space-y-2">
         {users.length === 0 && (
-          <GlassCard hover={false} className="p-8">
-            <output className="mx-auto block max-w-md text-center">
-              <span className="block text-sm font-semibold text-[var(--color-text-primary)]">
-                No users match this view
-              </span>
-              <span className="mt-1 block text-sm text-[var(--color-text-secondary)]">
-                {filterRole
-                  ? `There are no ${ROLE_LABELS[filterRole] ?? filterRole} users in your scope.`
-                  : 'No users are visible in your admin scope yet.'}
-              </span>
-              {filterRole && (
-                <Link
-                  href="/admin/users"
-                  className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[var(--color-surface-elevated)] px-4 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
-                >
-                  Clear the role filter
-                </Link>
-              )}
-            </output>
-          </GlassCard>
+          <UsersEmptyState
+            basePath={ADMIN_USERS_PATH}
+            roleLabels={ROLE_LABELS}
+            filterRole={filterRole}
+            scopeLabel="in your scope"
+            emptyMessage="No users are visible in your admin scope yet."
+          />
         )}
         {users.map((user) => {
           const role = user.role as AppRole
@@ -498,29 +439,14 @@ export default async function AdminUsersPage({
               )}
 
               {isConfirming && canManage && (
-                <div className="space-y-3 border-t border-[var(--color-border)] px-5 pt-3 pb-4">
-                  <p className="text-sm font-semibold text-[var(--color-status-rejected-text)]">
-                    Delete {user.display_name}?
-                  </p>
-                  <p className="text-xs text-[var(--color-text-secondary)]">
-                    This permanently removes their account and all associated data. This cannot be
-                    undone.
-                  </p>
-                  <form action={deleteUser.bind(null, user.id)}>
-                    <button
-                      type="submit"
-                      className="min-h-11 rounded-xl bg-[var(--color-status-rejected-text)] px-4 text-xs font-bold text-[var(--color-on-accent)] transition-opacity hover:opacity-80"
-                    >
-                      Yes, delete permanently
-                    </button>
-                  </form>
-                </div>
+                <UserDeletePanel user={user} deleteAction={deleteUser} />
               )}
             </GlassCard>
           )
         })}
       </div>
       <UserPagination
+        basePath={ADMIN_USERS_PATH}
         page={visibleUsersPage.page}
         totalPages={visibleUsersPage.totalPages}
         role={filterRole}

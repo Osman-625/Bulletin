@@ -1,5 +1,5 @@
 export const DEFAULT_CATEGORY_COLOR = '#C8102E'
-export const CATEGORY_NAME_MAX = 80
+const CATEGORY_NAME_MAX = 80
 
 export type CategoryFormData = {
   name: string

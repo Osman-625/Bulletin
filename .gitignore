@@ -52,6 +52,7 @@ CHECKLIST.md
 CHECKLIST_REPORT.md
 DOCUMENTATION.md
 HANDOFF.md
+AUDIT_REPORT.json
 
 # Local planning & scratch files
 planning/
@@ -118,3 +119,14 @@ docs/audits/
 .claude/skills/
 .agents/skills/
 skills-lock.json
+
+# Fallow analysis cache
+.fallow/
+
+# Any other env file (production/development secrets) — only the *.example templates are tracked
+.env.*
+!.env.example
+!.env.test.example
+
+# Browser-automation scratch (Playwright MCP snapshots and traces)
+.playwright-mcp/

@@ -1,4 +1,14 @@
 import Link from 'next/link'
+import { UserPagination } from '@/components/dashboard/UserPagination'
+import {
+  NewUserForm,
+  UserDeletePanel,
+  UserEditPanel,
+  UserRoleFilterTabs,
+  UsersEmptyState,
+} from '@/components/dashboard/UserManagement'
+import { usersHref } from '@/modules/users/users-href'
+import { USER_PROFILE_COLUMNS } from '@/infrastructure/database/columns'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { UserPlus } from 'lucide-react'
@@ -13,21 +23,18 @@ import {
   getAssignableRoles,
   getCurrentAccessContext,
   getDefaultAppPath,
+  ROLE_LEVEL,
   type AppRole,
 } from '@/modules/auth/authz'
-import {
-  TEMPORARY_PASSWORD_MIN_LENGTH,
-  validateTemporaryPassword,
-} from '@/modules/auth/password-policy'
-import { syncAuthUsersToProfiles } from '@/modules/auth/sync-users'
+import { validateTemporaryPassword } from '@/modules/auth/password-policy'
+import { validateDisplayName } from '@/modules/users/display-name'
+import { getUserDeleteBlocker } from '@/modules/users/delete-guard'
 import { reportServerError } from '@/shared/errors/error-reporting'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
 import type { DbUser } from '@/shared/types'
 
 export const dynamic = 'force-dynamic'
 export const metadata = { title: 'All Users — Bulletin Owner' }
-
-const PRIVILEGE = { owner: 0, super_admin: 1, admin: 2, publisher: 3 } as const
-type UserRole = keyof typeof PRIVILEGE
 
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Owner',
@@ -63,294 +70,8 @@ function parseUsersPage(pageInput?: string | number | null) {
   return Number.isFinite(parsedPage) && parsedPage > 0 ? Math.floor(parsedPage) : 1
 }
 
-function ownerUsersHref({ role, page }: { role?: string; page?: number }) {
-  const params = new URLSearchParams()
-  if (role) params.set('role', role)
-  if (page && page > 1) params.set('page', String(page))
-  const query = params.toString()
-  return query ? `${OWNER_USERS_PATH}?${query}` : OWNER_USERS_PATH
-}
-
-function UserPagination({
-  page,
-  totalPages,
-  role,
-}: {
-  page: number
-  totalPages: number
-  role?: string
-}) {
-  if (totalPages <= 1) return null
-  const previousPage = Math.max(1, page - 1)
-  const nextPage = Math.min(totalPages, page + 1)
-
-  return (
-    <nav
-      aria-label="User pagination"
-      className="flex flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-    >
-      <p className="text-sm text-[var(--color-text-secondary)]">
-        Page {page} of {totalPages}
-      </p>
-      <div className="flex items-center gap-2">
-        <Link
-          href={ownerUsersHref({ role, page: previousPage })}
-          aria-disabled={page <= 1}
-          className={`inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
-            page <= 1
-              ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
-              : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-          }`}
-        >
-          Previous
-        </Link>
-        <Link
-          href={ownerUsersHref({ role, page: nextPage })}
-          aria-disabled={page >= totalPages}
-          className={`inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
-            page >= totalPages
-              ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
-              : 'bg-[var(--color-accent)] text-[var(--color-on-accent)] hover:bg-[var(--color-accent-hover)]'
-          }`}
-        >
-          Next
-        </Link>
-      </div>
-    </nav>
-  )
-}
-
-function ownerUserFormError(error: string) {
-  if (error === 'missing_fields') return 'All fields are required.'
-  if (error === 'invalid_role') return 'That role is not allowed from this screen.'
-  return error
-}
-
-function OwnerNewUserForm({ err, assignableRoles }: { err?: string; assignableRoles: AppRole[] }) {
-  return (
-    <GlassCard hover={false} className="p-6">
-      <p className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">New User</p>
-      {err && (
-        <p className="mb-3 text-xs text-[var(--color-status-rejected-text)]">
-          {ownerUserFormError(err)}
-        </p>
-      )}
-      <form action={createUser} className="space-y-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <label
-              htmlFor="owner-user-display-name"
-              className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]"
-            >
-              Username *
-            </label>
-            <input
-              id="owner-user-display-name"
-              name="display_name"
-              required
-              placeholder="john_doe"
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="owner-user-email"
-              className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]"
-            >
-              Email <span className="opacity-50">(optional)</span>
-            </label>
-            <input
-              id="owner-user-email"
-              name="email"
-              type="email"
-              placeholder="user@inti.edu.my"
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="owner-user-password"
-              className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]"
-            >
-              Temporary password *
-            </label>
-            <input
-              id="owner-user-password"
-              name="password"
-              type="password"
-              required
-              minLength={TEMPORARY_PASSWORD_MIN_LENGTH}
-              placeholder={`At least ${TEMPORARY_PASSWORD_MIN_LENGTH} characters`}
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="owner-user-role"
-              className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]"
-            >
-              Role *
-            </label>
-            <select
-              id="owner-user-role"
-              name="role"
-              required
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-            >
-              {assignableRoles.map((role) => (
-                <option key={role} value={role}>
-                  {ROLE_LABELS[role]} (L{PRIVILEGE[role]})
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <button
-          type="submit"
-          className="min-h-11 rounded-xl bg-[var(--color-accent)] px-5 text-xs font-bold text-[var(--color-on-accent)] transition-opacity hover:opacity-90"
-        >
-          Create User
-        </button>
-        <p className="text-xs text-[var(--color-text-muted)]">
-          The user must replace this temporary password the first time they sign in.
-        </p>
-      </form>
-    </GlassCard>
-  )
-}
-
-function OwnerRoleFilterTabs({
-  filterRole,
-  roleCounts,
-  allUsersTotal,
-}: {
-  filterRole?: string
-  roleCounts: Record<string, number>
-  allUsersTotal: number
-}) {
-  const tabs = [
-    { key: '', label: `All (${allUsersTotal})` },
-    ...OWNER_ROLE_KEYS.map((role) => ({
-      key: role,
-      label: `${ROLE_LABELS[role]} (${roleCounts[role] ?? 0})`,
-    })),
-  ]
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {tabs.map(({ key, label }) => (
-        <Link
-          key={key}
-          href={ownerUsersHref({ role: key || undefined })}
-          className={`inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-medium transition-colors ${
-            filterRole === key || (!filterRole && !key)
-              ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]'
-              : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-          }`}
-        >
-          {label}
-        </Link>
-      ))}
-    </div>
-  )
-}
-
-function OwnerUsersEmptyState({ filterRole }: { filterRole?: string }) {
-  return (
-    <GlassCard hover={false} className="p-8">
-      <output className="mx-auto block max-w-md text-center">
-        <span className="block text-sm font-semibold text-[var(--color-text-primary)]">
-          No users match this view
-        </span>
-        <span className="mt-1 block text-sm text-[var(--color-text-secondary)]">
-          {filterRole
-            ? `There are no ${ROLE_LABELS[filterRole] ?? filterRole} users on the platform.`
-            : 'No synced users are available yet.'}
-        </span>
-        {filterRole && (
-          <Link
-            href="/owner/users"
-            className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[var(--color-surface-elevated)] px-4 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
-          >
-            Clear the role filter
-          </Link>
-        )}
-      </output>
-    </GlassCard>
-  )
-}
-
-function OwnerUserEditPanel({
-  user,
-  role,
-  assignableRoles,
-}: {
-  user: DbUser
-  role: UserRole
-  assignableRoles: AppRole[]
-}) {
-  return (
-    <div className="space-y-4 border-t border-[var(--color-border)] px-5 pt-3 pb-4">
-      <p className="text-xs font-medium tracking-wider text-[var(--color-text-secondary)] uppercase">
-        Assign Role
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {assignableRoles.map((assignableRole) => (
-          <form key={assignableRole} action={setRole.bind(null, user.id, assignableRole)}>
-            <button
-              type="submit"
-              className={`min-h-11 rounded-xl px-4 text-xs font-semibold transition-colors ${
-                role === assignableRole
-                  ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]'
-                  : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-surface)] hover:text-[var(--color-accent)]'
-              }`}
-            >
-              {ROLE_LABELS[assignableRole]}{' '}
-              <span className="font-mono opacity-50">L{PRIVILEGE[assignableRole]}</span>
-            </button>
-          </form>
-        ))}
-      </div>
-      <form action={resetPassword.bind(null, user.id)} className="flex items-center gap-2">
-        <input
-          name="temp_password"
-          type="password"
-          aria-label={`New temporary password for ${user.display_name}`}
-          required
-          minLength={TEMPORARY_PASSWORD_MIN_LENGTH}
-          placeholder={`At least ${TEMPORARY_PASSWORD_MIN_LENGTH} characters`}
-          className="min-h-11 w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-        />
-        <button
-          type="submit"
-          className="min-h-11 shrink-0 rounded-xl bg-[var(--color-status-submitted-bg)] px-4 text-xs font-semibold text-[var(--color-status-submitted-text)] transition-opacity hover:opacity-80"
-        >
-          Set Password
-        </button>
-      </form>
-    </div>
-  )
-}
-
-function OwnerUserDeletePanel({ user }: { user: DbUser }) {
-  return (
-    <div className="space-y-3 border-t border-[var(--color-border)] px-5 pt-3 pb-4">
-      <p className="text-sm font-semibold text-[var(--color-status-rejected-text)]">
-        Delete {user.display_name}?
-      </p>
-      <p className="text-xs text-[var(--color-text-secondary)]">
-        This permanently removes their account and all associated data. This cannot be undone.
-      </p>
-      <form action={deleteUser.bind(null, user.id)}>
-        <button
-          type="submit"
-          className="min-h-11 rounded-xl bg-[var(--color-status-rejected-text)] px-4 text-xs font-bold text-[var(--color-on-accent)] transition-opacity hover:opacity-80"
-        >
-          Yes, delete permanently
-        </button>
-      </form>
-    </div>
-  )
+function ownerUsersHref(query: { role?: string; page?: number }) {
+  return usersHref(OWNER_USERS_PATH, query)
 }
 
 function OwnerUserCard({
@@ -373,8 +94,8 @@ function OwnerUserCard({
   assignableRoles: AppRole[]
 }) {
   const isMe = user.id === myId
-  const role = user.role as UserRole
-  const level = PRIVILEGE[role] ?? 3
+  const role = user.role as AppRole
+  const level = ROLE_LEVEL[role] ?? 3
   const isEditing = edit === user.id
   const isConfirming = confirm === user.id
   const canManage = canManageUser(actor, { id: user.id, role: role as AppRole, orgIds: [] })
@@ -459,9 +180,16 @@ function OwnerUserCard({
       </div>
 
       {isEditing && canManage && (
-        <OwnerUserEditPanel user={user} role={role} assignableRoles={assignableRoles} />
+        <UserEditPanel
+          user={user}
+          role={role}
+          assignableRoles={assignableRoles}
+          roleLabels={ROLE_LABELS}
+          setRoleAction={setRole}
+          resetPasswordAction={resetPassword}
+        />
       )}
-      {isConfirming && canManage && <OwnerUserDeletePanel user={user} />}
+      {isConfirming && canManage && <UserDeletePanel user={user} deleteAction={deleteUser} />}
     </GlassCard>
   )
 }
@@ -479,11 +207,16 @@ async function createUser(formData: FormData) {
   const password = formData.get('password') as string
   const role = formData.get('role') as AppRole
   const assignableRoles = getAssignableRoles(access.role)
+  const rateLimit = await checkActionRateLimit('owner-user-create', access.userId)
+  if (rateLimit.limited)
+    redirect(userErrorHref('Too many user creation attempts. Try again shortly.', true))
   if (!displayName || !password || !role) redirect('/owner/users?add=true&err=missing_fields')
   if (!assignableRoles.includes(role)) redirect('/owner/users?add=true&err=invalid_role')
   const passwordValidation = validateTemporaryPassword(password)
   if (!passwordValidation.valid) redirect(userErrorHref(passwordValidation.message, true))
   const supabase = await createServiceClient()
+  const nameCheck = await validateDisplayName(supabase, displayName)
+  if (!nameCheck.ok) redirect(userErrorHref(nameCheck.message, true))
   const { data: authData, error: authCreateError } = await supabase.auth.admin.createUser({
     email,
     password,
@@ -536,6 +269,8 @@ async function setRole(userId: string, newRole: string) {
   if (!access) redirect('/login')
   if (!canAccessOwnerArea(access.role)) redirect(getDefaultAppPath(access.role))
   const role = newRole as AppRole
+  const rateLimit = await checkActionRateLimit('owner-user-role', `${access.userId}:${userId}`)
+  if (rateLimit.limited) redirect(userErrorHref('Too many user updates. Try again shortly.'))
   if (!getAssignableRoles(access.role).includes(role)) return
 
   const supabase = await createServiceClient()
@@ -589,6 +324,11 @@ async function resetPassword(userId: string, formData: FormData) {
   const access = await getCurrentAccessContext()
   if (!access) redirect('/login')
   if (!canAccessOwnerArea(access.role)) redirect(getDefaultAppPath(access.role))
+  const rateLimit = await checkActionRateLimit(
+    'owner-user-password-reset',
+    `${access.userId}:${userId}`
+  )
+  if (rateLimit.limited) redirect(userErrorHref('Too many password resets. Try again shortly.'))
 
   const supabase = await createServiceClient()
   const { data: target, error: targetReadError } = await supabase
@@ -657,6 +397,8 @@ async function deleteUser(userId: string) {
   const access = await getCurrentAccessContext()
   if (!access) redirect('/login')
   if (!canAccessOwnerArea(access.role)) redirect(getDefaultAppPath(access.role))
+  const rateLimit = await checkActionRateLimit('owner-user-delete', `${access.userId}:${userId}`)
+  if (rateLimit.limited) redirect(userErrorHref('Too many delete attempts. Try again shortly.'))
 
   const supabase = await createServiceClient()
   const { data: target, error: targetReadError } = await supabase
@@ -679,6 +421,8 @@ async function deleteUser(userId: string) {
     )
   )
     return
+  const deleteBlocker = await getUserDeleteBlocker(supabase, userId)
+  if (deleteBlocker) redirect(userErrorHref(deleteBlocker))
   const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId)
   if (authDeleteError) {
     reportServerError('owner.users.delete_auth', authDeleteError, {
@@ -721,8 +465,6 @@ export default async function OwnerUsersPage({
   if (!access) redirect('/login')
   if (!canAccessOwnerArea(access.role)) redirect(getDefaultAppPath(access.role))
 
-  await syncAuthUsersToProfiles()
-
   const assignableRoles = getAssignableRoles(access.role)
   const supabase = await createServiceClient()
   const myId = access.userId
@@ -733,7 +475,9 @@ export default async function OwnerUsersPage({
 
   let query = supabase
     .from('users')
-    .select('*', { count: 'exact' })
+    .select(USER_PROFILE_COLUMNS, {
+      count: 'exact',
+    })
     .order('created_at', { ascending: false })
   if (filterRole && ROLE_LABELS[filterRole]) query = query.eq('role', filterRole as AppRole)
   const [{ data: usersData, count: usersTotal, error: usersError }, roleCountEntries] =
@@ -787,7 +531,15 @@ export default async function OwnerUsersPage({
         }}
       />
 
-      {isAdding && <OwnerNewUserForm err={err} assignableRoles={assignableRoles} />}
+      {isAdding && (
+        <NewUserForm
+          idPrefix="owner-user"
+          err={err}
+          assignableRoles={assignableRoles}
+          roleLabels={ROLE_LABELS}
+          createAction={createUser}
+        />
+      )}
 
       {msg && (
         <div className="rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-3 font-mono text-sm text-[var(--color-status-submitted-text)]">
@@ -801,14 +553,24 @@ export default async function OwnerUsersPage({
         </div>
       )}
 
-      <OwnerRoleFilterTabs
+      <UserRoleFilterTabs
+        basePath={OWNER_USERS_PATH}
+        roleLabels={ROLE_LABELS}
         filterRole={filterRole}
         roleCounts={roleCounts}
         allUsersTotal={allUsersTotal}
       />
 
       <div className="space-y-2">
-        {users.length === 0 && <OwnerUsersEmptyState filterRole={filterRole} />}
+        {users.length === 0 && (
+          <UsersEmptyState
+            basePath={OWNER_USERS_PATH}
+            roleLabels={ROLE_LABELS}
+            filterRole={filterRole}
+            scopeLabel="on the platform"
+            emptyMessage="No users are available yet."
+          />
+        )}
         {users.map((user) => (
           <OwnerUserCard
             key={user.id}
@@ -823,7 +585,12 @@ export default async function OwnerUsersPage({
           />
         ))}
       </div>
-      <UserPagination page={usersPage} totalPages={totalPages} role={filterRole} />
+      <UserPagination
+        basePath={OWNER_USERS_PATH}
+        page={usersPage}
+        totalPages={totalPages}
+        role={filterRole}
+      />
     </DashboardBoardPage>
   )
 }

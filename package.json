@@ -15,7 +15,8 @@
     "test:smoke": "playwright test --config config/playwright.smoke.config.ts",
     "test:e2e:ui": "playwright test --ui --config config/playwright.config.ts",
     "prepare": "husky",
-    "doctor": "npx react-doctor@latest"
+    "doctor": "react-doctor --yes",
+    "fallow": "npx --yes fallow@3.34.1"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -34,7 +35,7 @@
     "lucide-react": "^1.8.0",
     "next": "16.2.6",
     "next-themes": "^0.4.6",
-    "posthog-js": "^1.374.3",
+    "posthog-js": "^1.395.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
@@ -56,15 +57,18 @@
     "lint-staged": "^15.2.11",
     "prettier": "^3.8.2",
     "prettier-plugin-tailwindcss": "^0.7.2",
-    "react-doctor": "^0.2.16",
+    "react-doctor": "^0.5.8",
     "shadcn": "^4.2.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.5"
   },
   "overrides": {
+    "hono": "4.12.27",
+    "js-yaml": "4.3.0",
     "postcss": "8.5.10",
-    "ws": "8.20.1",
+    "qs": "6.15.3",
+    "vite": "8.1.0",
     "yaml": "2.9.0"
   }
 }

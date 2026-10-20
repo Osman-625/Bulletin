@@ -8,6 +8,7 @@ import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
 import { createServiceClient } from '@/infrastructure/database/server'
 
 const FORGOT_PASSWORD_SENT_PATH = '/forgot-password?sent=1'
+const MAX_EMAIL_LENGTH = 254
 
 function redirectAsSent(): never {
   redirect(FORGOT_PASSWORD_SENT_PATH)
@@ -16,10 +17,11 @@ function redirectAsSent(): never {
 export async function requestPasswordReset(formData: FormData) {
   const email = ((formData.get('email') as string | null) ?? '').trim().toLowerCase()
 
-  const rateLimit = await checkActionRateLimit('forgot-password', email || 'missing-email')
+  // Anonymous form: key on the visitor only, or every new email text gets a fresh bucket.
+  const rateLimit = await checkActionRateLimit('forgot-password')
   if (rateLimit.limited) redirectAsSent()
 
-  if (!email || !email.includes('@')) redirectAsSent()
+  if (!email || !email.includes('@') || email.length > MAX_EMAIL_LENGTH) redirectAsSent()
 
   const supabase = await createServiceClient()
   const { data: profile, error: profileReadError } = await supabase
@@ -32,14 +34,7 @@ export async function requestPasswordReset(formData: FormData) {
     redirectAsSent()
   }
 
-  if (!profile) {
-    await logAuditEvent({
-      action: 'user.password_reset_requested',
-      targetType: 'user',
-      metadata: { email, matched_user: false },
-    })
-    redirectAsSent()
-  }
+  if (!profile) redirectAsSent()
 
   const { data: existingRequest, error: existingRequestReadError } = await supabase
     .from('password_reset_requests')

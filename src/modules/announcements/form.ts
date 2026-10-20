@@ -2,6 +2,7 @@ export const ANNOUNCEMENT_TITLE_MAX = 120
 export const ANNOUNCEMENT_BODY_MAX = 5000
 export const BANNER_MAX_FILE_SIZE_MB = 5
 export const BANNER_MAX_FILE_SIZE_BYTES = BANNER_MAX_FILE_SIZE_MB * 1024 * 1024
+export const UNTITLED_ANNOUNCEMENT_TITLE = 'Untitled Announcement'
 
 type AnnouncementTextOptions = {
   requireComplete?: boolean
@@ -42,7 +43,7 @@ export function readAnnouncementTextFields(
   }
 
   return {
-    title: title || 'Untitled Announcement',
+    title: title || UNTITLED_ANNOUNCEMENT_TITLE,
     body,
   }
 }
@@ -51,7 +52,9 @@ export function assertAnnouncementReadyForReview(
   title: string | null | undefined,
   body: string | null | undefined
 ) {
-  if (!(title ?? '').trim()) {
+  // A saved draft stores the placeholder, so it has to count as "no title".
+  const trimmedTitle = (title ?? '').trim()
+  if (!trimmedTitle || trimmedTitle === UNTITLED_ANNOUNCEMENT_TITLE) {
     throw new Error('Add a title before submitting for review.')
   }
 
@@ -60,7 +63,7 @@ export function assertAnnouncementReadyForReview(
   }
 }
 
-export function readOptionalIsoDate(formData: FormData, key: string): string | null {
+function readOptionalIsoDate(formData: FormData, key: string): string | null {
   const value = formData.get(key)
   if (typeof value !== 'string' || value.trim() === '') return null
 
@@ -84,7 +87,7 @@ export function readAnnouncementScheduleFields(
   return fields
 }
 
-export function validateAnnouncementScheduleFields(
+function validateAnnouncementScheduleFields(
   { expiresAt, scheduledPublishAt, pinnedUntil }: AnnouncementScheduleFields,
   options: AnnouncementScheduleOptions = {}
 ) {

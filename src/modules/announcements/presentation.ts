@@ -51,12 +51,6 @@ export const CARD_TITLE_SIZES: Record<AnnouncementDisplaySize, string> = {
   large: '2rem',
 }
 
-export const FEATURED_TITLE_SIZES: Record<AnnouncementDisplaySize, string> = {
-  compact: '2rem',
-  standard: '2.5rem',
-  large: '3rem',
-}
-
 export const DETAIL_TITLE_SIZES: Record<AnnouncementDisplaySize, string> = {
   compact: '2.5rem',
   standard: '3rem',

@@ -7,7 +7,12 @@ function source(path: string) {
 
 describe('client error reporting source guards', () => {
   it('reports publisher form client-side save, submit, delete, and upload failures', () => {
-    const form = source('src/components/dashboard/AnnouncementForm.tsx')
+    const form = [
+      'src/components/dashboard/AnnouncementForm.tsx',
+      'src/components/dashboard/BannerImageField.tsx',
+    ]
+      .map(source)
+      .join('\n')
 
     expect(form).toContain("from '@/shared/errors/client-error-reporting'")
     expect(form).toContain("reportClientError('announcement_form.save'")

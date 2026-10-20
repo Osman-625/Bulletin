@@ -3,10 +3,13 @@ const PUBLIC_BANNER_MARKER = `/storage/v1/object/public/${BANNER_BUCKET}/`
 const DEFAULT_BATCH_SIZE = 100
 const DEFAULT_MAX_DELETES = 100
 const MAX_FOLDER_DEPTH = 4
+// A banner is uploaded before its announcement is saved, so a young file may not be referenced yet.
+const MIN_ORPHAN_AGE_MS = 24 * 60 * 60 * 1000
 
 type StorageEntry = {
   name: string
   id?: string | null
+  created_at?: string | null
   metadata?: unknown
 }
 
@@ -18,9 +21,10 @@ type StorageBucket = {
   remove: (paths: string[]) => Promise<{ data: unknown; error: unknown }>
 }
 
-export type BannerStorageFile = {
+type BannerStorageFile = {
   path: string
   size: number
+  createdAt: number
 }
 
 type BannerCleanupClient = {
@@ -52,6 +56,7 @@ type BannerCleanupOptions = {
   dryRun?: boolean
   batchSize?: number
   maxDeletes?: number
+  now?: number
 }
 
 function errorMessage(error: unknown) {
@@ -71,6 +76,12 @@ function isStorageFile(entry: StorageEntry, depth: number) {
   if (entry.name === '.emptyFolderPlaceholder') return false
   if (entry.id || entry.metadata) return true
   return depth >= 2 && /\.[a-z0-9]+$/i.test(entry.name)
+}
+
+// A missing or unreadable timestamp counts as old, so such files are still cleaned up.
+function storageFileCreatedAt(entry: StorageEntry) {
+  const createdAt = entry.created_at ? Date.parse(entry.created_at) : Number.NaN
+  return Number.isFinite(createdAt) ? createdAt : 0
 }
 
 function storageFileSize(entry: StorageEntry) {
@@ -110,7 +121,7 @@ async function listBannerFiles(
 
     const path = joinStoragePath(prefix, entry.name)
     if (isStorageFile(entry, depth)) {
-      files.push({ path, size: storageFileSize(entry) })
+      files.push({ path, size: storageFileSize(entry), createdAt: storageFileCreatedAt(entry) })
     } else if (depth < MAX_FOLDER_DEPTH) {
       nestedPathPromises.push(listBannerFiles(bucket, path, depth + 1))
     }
@@ -131,6 +142,7 @@ export async function cleanupOrphanBannerImages(
   const batchSize = normalizePositiveInteger(options.batchSize, DEFAULT_BATCH_SIZE)
   const maxDeletes = normalizePositiveInteger(options.maxDeletes, DEFAULT_MAX_DELETES)
   const dryRun = Boolean(options.dryRun)
+  const now = options.now ?? Date.now()
   const bucket = client.storage.from(BANNER_BUCKET)
 
   const [{ data: announcementRows, error: announcementError }, scannedFiles] = await Promise.all([
@@ -148,7 +160,9 @@ export async function cleanupOrphanBannerImages(
       .filter((path): path is string => Boolean(path))
   )
   const scannedPaths = scannedFiles.map((file) => file.path)
-  const allOrphanedPaths = scannedPaths.filter((path) => !referencedPaths.has(path))
+  const allOrphanedPaths = scannedFiles.flatMap((file) =>
+    !referencedPaths.has(file.path) && now - file.createdAt >= MIN_ORPHAN_AGE_MS ? [file.path] : []
+  )
   const orphanedPaths = allOrphanedPaths.slice(0, maxDeletes)
   const errors: string[] = []
   let deleted = 0

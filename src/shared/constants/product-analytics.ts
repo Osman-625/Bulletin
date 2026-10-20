@@ -8,11 +8,11 @@ type ProductAnalyticsProperties = Record<string, ProductAnalyticsValue>
 const SENSITIVE_PROPERTY_KEY = /(authorization|body|cookie|email|key|password|secret|title|token)/i
 const REDACTED = '[redacted]'
 
-export function productAnalyticsEnabled() {
+function productAnalyticsEnabled() {
   return Boolean(process.env.NEXT_PUBLIC_POSTHOG_TOKEN)
 }
 
-export function sanitizeProductAnalyticsProperties(properties: ProductAnalyticsProperties = {}) {
+function sanitizeProductAnalyticsProperties(properties: ProductAnalyticsProperties = {}) {
   return Object.fromEntries(
     Object.entries(properties).map(([key, value]) => [
       key,

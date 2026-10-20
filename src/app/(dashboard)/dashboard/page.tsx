@@ -1,6 +1,5 @@
 import { Eye, FileEdit, Megaphone, Plus, Send } from 'lucide-react'
 import { createClient } from '@/infrastructure/database/server'
-import type { DashboardIndexAnnouncement } from '@/components/dashboard/DashboardContentsIndex'
 import {
   DashboardBoardBoard,
   DashboardBoardEmpty,
@@ -10,6 +9,7 @@ import {
   DashboardBoardPanel,
   DashboardBoardRow,
 } from '@/components/dashboard/DashboardBoard'
+import { sumAnnouncementViews } from '@/infrastructure/database/data'
 import { requireUsableAccessContext } from '@/modules/auth/authz'
 import { shouldScopeAnnouncementsToMembership } from '@/modules/announcements/access'
 import { formatCampusCompactDate } from '@/modules/announcements/public-board'
@@ -40,7 +40,13 @@ function statusTone(status: string) {
   return 'draft'
 }
 
-type DashboardAnnouncement = DashboardIndexAnnouncement & {
+type DashboardAnnouncement = {
+  id: string
+  title: string
+  status: string
+  view_count: number
+  updated_at: string
+  categories: { name: string; color: string | null } | null
   body: string | null
   banner_url: string | null
   published_at: string | null
@@ -64,17 +70,16 @@ export default async function DashboardPage() {
 
     let liveQ = supabase
       .from('announcements')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('status', 'published')
     let draftQ = supabase
       .from('announcements')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('status', 'draft')
     let reviewQ = supabase
       .from('announcements')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('status', 'submitted')
-    let viewsQ = supabase.from('announcements').select('view_count')
     let recentQ = supabase
       .from('announcements')
       .select(
@@ -87,22 +92,21 @@ export default async function DashboardPage() {
       liveQ = liveQ.in('organization_id', orgFilter)
       draftQ = draftQ.in('organization_id', orgFilter)
       reviewQ = reviewQ.in('organization_id', orgFilter)
-      viewsQ = viewsQ.in('organization_id', orgFilter)
       recentQ = recentQ.in('organization_id', orgFilter)
     }
 
-    const [liveResult, draftResult, reviewResult, viewsResult, recentResult] = await Promise.all([
+    const [liveResult, draftResult, reviewResult, viewsTotal, recentResult] = await Promise.all([
       liveQ,
       draftQ,
       reviewQ,
-      viewsQ,
+      sumAnnouncementViews(supabase, orgFilter),
       recentQ,
     ])
 
     live = liveResult.count ?? 0
     inDraft = draftResult.count ?? 0
     inReview = reviewResult.count ?? 0
-    totalViews = (viewsResult.data ?? []).reduce((sum, row) => sum + (row.view_count ?? 0), 0)
+    totalViews = viewsTotal
     recentAnnouncements = (recentResult.data ?? []) as unknown as DashboardAnnouncement[]
   }
 

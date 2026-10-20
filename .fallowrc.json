@@ -1,0 +1,9 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "entry": ["scripts/seed-test-users.js"],
+  "ignorePatterns": ["graphify-out/**", "test-results/**", "playwright-report/**"],
+  "ignoreDependencies": ["shadcn"],
+  "duplicates": {
+    "ignore": ["src/infrastructure/database/database.types.ts"]
+  }
+}

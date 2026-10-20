@@ -23,7 +23,7 @@ export function toSafeImageUrl(value: string | null | undefined): string | null 
   return toSafeHttpUrl(value)
 }
 
-export function slugifyAnnouncementTitle(title: string): string {
+function slugifyAnnouncementTitle(title: string): string {
   const slug = title
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')

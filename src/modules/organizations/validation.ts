@@ -28,7 +28,7 @@ function readString(formData: FormData, key: string): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-export function normalizeOrganizationSlug(value: string): string {
+function normalizeOrganizationSlug(value: string): string {
   return value
     .trim()
     .toLowerCase()

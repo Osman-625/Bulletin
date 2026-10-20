@@ -23,12 +23,14 @@ function createSupabaseStub({
         }
       }
 
+      const page = {
+        limit: () => Promise.resolve({ data: announcements, error: null }),
+        range: () => Promise.resolve({ data: announcements, error: null }),
+      }
       return {
         select: () => ({
-          order: () => ({
-            limit: () => Promise.resolve({ data: announcements, error: null }),
-            range: () => Promise.resolve({ data: announcements, error: null }),
-          }),
+          // The owner overview sorts by view_count, then by id as a tiebreak.
+          order: () => ({ ...page, order: () => page }),
         }),
       }
     },

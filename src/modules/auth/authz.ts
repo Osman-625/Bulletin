@@ -128,7 +128,12 @@ export const getCurrentAccessContext = cache(
         .select('display_name, role, force_password_change')
         .eq('id', user.id)
         .single(),
-      supabase.from('organization_members').select('organization_id').eq('user_id', user.id),
+      // Ordered so "first org" (used for new announcements) is the same on every request.
+      supabase
+        .from('organization_members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .order('organization_id'),
     ])
 
     if (!profile?.role) return null
