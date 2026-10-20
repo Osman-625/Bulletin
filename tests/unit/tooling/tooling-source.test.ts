@@ -224,7 +224,12 @@ describe('tooling source guards', () => {
     const viewTracker = source('src/app/(public)/announcements/[id]/ViewTracker.tsx')
     const detailPage = source('src/app/(public)/announcements/[id]/page.tsx')
     const registrationLink = source('src/components/announcements/RegistrationLink.tsx')
-    const form = source('src/components/dashboard/AnnouncementForm.tsx')
+    const form = [
+      'src/components/dashboard/AnnouncementForm.tsx',
+      'src/components/dashboard/BannerImageField.tsx',
+    ]
+      .map(source)
+      .join('\n')
 
     expect(pkg.dependencies?.['posthog-js']).toBeDefined()
     expect(clientInstrumentation).toContain("import posthog from 'posthog-js'")

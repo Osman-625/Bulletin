@@ -28,7 +28,12 @@ describe('accessibility source wiring', () => {
   })
 
   it('associates announcement registration and banner field errors with their controls', () => {
-    const form = source('src/components/dashboard/AnnouncementForm.tsx')
+    const form = [
+      'src/components/dashboard/AnnouncementForm.tsx',
+      'src/components/dashboard/BannerImageField.tsx',
+    ]
+      .map(source)
+      .join('\n')
 
     expect(form).toContain('id="banner-image-upload-error"')
     expect(form).toContain('aria-invalid={bannerSizeError || Boolean(bannerUploadError)}')

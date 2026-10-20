@@ -5,7 +5,7 @@ import { logAuditEvent } from '@/modules/audit'
 import { validatePassword } from '@/modules/auth/password-policy'
 import { reportServerError } from '@/shared/errors/error-reporting'
 import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
-import { createClient } from '@/infrastructure/database/server'
+import { createClient, createServiceClient } from '@/infrastructure/database/server'
 
 const CHANGE_PASSWORD_PATH = '/change-password'
 const PASSWORD_CHANGE_ERROR = 'Could not finish updating your password. Try again.'
@@ -50,12 +50,14 @@ export async function changePassword(formData: FormData) {
   // The auth password is already changed at this point. Failing to clear the
   // flag would bounce the user back here via the proxy redirect, so retry once
   // and, if it still fails, tell them the password itself did change.
-  let { error: profileUpdateError } = await supabase
+  // Server key on purpose: the database refuses this change from a signed-in user's own session.
+  const service = await createServiceClient()
+  let { error: profileUpdateError } = await service
     .from('users')
     .update({ force_password_change: false })
     .eq('id', user.id)
   if (profileUpdateError) {
-    ;({ error: profileUpdateError } = await supabase
+    ;({ error: profileUpdateError } = await service
       .from('users')
       .update({ force_password_change: false })
       .eq('id', user.id))

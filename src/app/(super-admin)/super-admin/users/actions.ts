@@ -15,6 +15,7 @@ import {
   validateTemporaryPassword,
 } from '@/modules/auth/password-policy'
 import { reportServerError } from '@/shared/errors/error-reporting'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
 import { createAdminClient } from '@/infrastructure/database/admin'
 
 export type PasswordResetRequestState = {
@@ -22,90 +23,7 @@ export type PasswordResetRequestState = {
   success?: string
 }
 
-const SUPER_ADMIN_USERS_PATH = '/super-admin/users'
-const PASSWORD_RESET_ERROR = 'Could not reset password. Try again.'
 const PASSWORD_RESET_REQUEST_ERROR = 'Could not fulfill password reset request. Try again.'
-
-function usersErrorHref(message: string) {
-  return `${SUPER_ADMIN_USERS_PATH}?error=${encodeURIComponent(message)}`
-}
-
-export async function resetUserPassword(formData: FormData) {
-  const access = await getCurrentAccessContext()
-  if (!access) redirect('/login')
-  if (!canAccessSuperAdminArea(access.role)) redirect(getDefaultAppPath(access.role))
-
-  const targetUserId = formData.get('user_id') as string
-  const tempPassword = formData.get('temp_password') as string
-
-  const passwordValidation = validateTemporaryPassword(tempPassword, TEMPORARY_PASSWORD_MIN_LENGTH)
-  if (!passwordValidation.valid) {
-    redirect(usersErrorHref(passwordValidation.message))
-  }
-
-  const adminClient = createAdminClient()
-  const { data: targetProfile, error: targetReadError } = await adminClient
-    .from('users')
-    .select('id, email, display_name, role')
-    .eq('id', targetUserId)
-    .single()
-
-  if (targetReadError) {
-    reportServerError('super_admin.users.actions.read_target', targetReadError, {
-      actorId: access.userId,
-      targetId: targetUserId,
-    })
-    redirect(usersErrorHref(PASSWORD_RESET_ERROR))
-  }
-  if (!targetProfile) redirect('/super-admin/users?error=User+not+found')
-
-  const canManage = canManageUser(
-    { id: access.userId, role: access.role, orgIds: access.orgIds },
-    { id: targetProfile.id, role: targetProfile.role as AppRole, orgIds: [] }
-  )
-
-  if (!canManage) redirect('/super-admin/users?error=Cannot+manage+this+user')
-
-  const { error: authUpdateError } = await adminClient.auth.admin.updateUserById(targetUserId, {
-    password: tempPassword,
-  })
-
-  if (authUpdateError) {
-    reportServerError('super_admin.users.actions.reset_auth', authUpdateError, {
-      actorId: access.userId,
-      targetId: targetUserId,
-    })
-    redirect(usersErrorHref(PASSWORD_RESET_ERROR))
-  }
-
-  const { error: profileUpdateError } = await adminClient
-    .from('users')
-    .update({ force_password_change: true })
-    .eq('id', targetUserId)
-  if (profileUpdateError) {
-    reportServerError('super_admin.users.actions.reset_profile', profileUpdateError, {
-      actorId: access.userId,
-      targetId: targetUserId,
-    })
-    redirect(usersErrorHref(PASSWORD_RESET_ERROR))
-  }
-
-  await logAuditEvent({
-    actorId: access.userId,
-    action: 'user.password_reset',
-    targetType: 'user',
-    targetId: targetUserId,
-    metadata: {
-      email: targetProfile?.email ?? null,
-      display_name: targetProfile?.display_name ?? null,
-      role: targetProfile?.role ?? null,
-      force_password_change: true,
-    },
-  })
-
-  revalidatePath('/super-admin/users')
-  redirect('/super-admin/users?success=Password+reset+successfully')
-}
 
 export async function fulfillPasswordResetRequest(
   _prevState: PasswordResetRequestState,
@@ -119,6 +37,11 @@ export async function fulfillPasswordResetRequest(
   const tempPassword = (formData.get('temp_password') as string | null) ?? ''
 
   if (!requestId) return { error: 'Missing reset request.' }
+  const rateLimit = await checkActionRateLimit(
+    'super-admin-password-reset-request',
+    `${access.userId}:${requestId}`
+  )
+  if (rateLimit.limited) return { error: 'Too many password resets. Try again shortly.' }
   const passwordValidation = validateTemporaryPassword(tempPassword, TEMPORARY_PASSWORD_MIN_LENGTH)
   if (!passwordValidation.valid) {
     return { error: passwordValidation.message }

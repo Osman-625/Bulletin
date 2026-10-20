@@ -12,6 +12,7 @@ import {
   INVITATION_EXPIRY_DAYS,
   readAdminInvitationFormData,
 } from '@/modules/invitations/validation'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
 import { createClient } from '@/infrastructure/database/server'
 
 const INVITE_ADMIN_PATH = '/super-admin/admins/invite'
@@ -32,6 +33,10 @@ export async function inviteAdmin(formData: FormData) {
   const { email, role } = parsed.data
   if (role === 'super_admin' && access.role !== 'owner') {
     redirect(inviteErrorHref('Only owners can invite super admins.'))
+  }
+  const rateLimit = await checkActionRateLimit('admin-invite', access.userId)
+  if (rateLimit.limited) {
+    redirect(inviteErrorHref('Too many invite attempts. Try again shortly.'))
   }
 
   const supabase = await createClient()

@@ -144,6 +144,8 @@ export async function proxy(request: NextRequest) {
     }
 
     if (!role) {
+      // Redirecting /login to itself would loop forever for a signed-in user with no profile.
+      if (pathname === '/login') return supabaseResponse
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       return redirectWithContentSecurityPolicy(url, contentSecurityPolicy)

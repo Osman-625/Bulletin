@@ -9,7 +9,10 @@ function storageClient({
   lists,
 }: {
   referencedUrls?: string[]
-  lists: Record<string, Array<{ name: string; id?: string | null; metadata?: unknown }>>
+  lists: Record<
+    string,
+    Array<{ name: string; id?: string | null; created_at?: string; metadata?: unknown }>
+  >
 }) {
   const removed: string[][] = []
   const list = vi.fn((path = '') =>
@@ -107,5 +110,22 @@ describe('banner storage cleanup', () => {
     expect(result.deleted).toBe(1)
     expect(result.orphanedPaths).toEqual(['user-a/org-a/orphan-1.webp'])
     expect(remove).toHaveBeenCalledWith(['user-a/org-a/orphan-1.webp'])
+  })
+
+  it('keeps unreferenced banners uploaded in the last 24 hours', async () => {
+    const now = Date.parse('2026-10-19T12:00:00.000Z')
+    const { client } = storageClient({
+      lists: {
+        '': [{ name: 'user-a', id: null, metadata: null }],
+        'user-a': [
+          { name: 'fresh.webp', id: 'file-1', created_at: '2026-10-19T06:00:00.000Z' },
+          { name: 'stale.webp', id: 'file-2', created_at: '2026-10-17T06:00:00.000Z' },
+        ],
+      },
+    })
+
+    const result = await cleanupOrphanBannerImages(client as never, { dryRun: true, now })
+
+    expect(result.orphanedPaths).toEqual(['user-a/stale.webp'])
   })
 })

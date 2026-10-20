@@ -7,7 +7,8 @@ import { getDefaultAppPath } from '@/modules/auth/authz'
 import { validatePassword } from '@/modules/auth/password-policy'
 import { reportServerError } from '@/shared/errors/error-reporting'
 import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
-import { createClient } from '@/infrastructure/database/server'
+import { validateDisplayName } from '@/modules/users/display-name'
+import { createClient, createServiceClient } from '@/infrastructure/database/server'
 
 const ACCOUNT_PROFILE_ERROR = 'Could not update profile. Try again.'
 const ACCOUNT_PASSWORD_ERROR = 'Could not update password. Try again.'
@@ -63,9 +64,8 @@ export async function updateDisplayName(formData: FormData) {
     redirectWithStatus(returnTo, 'error', 'Too many profile updates. Please try again shortly.')
   }
 
-  if (displayName.length < 2) {
-    redirectWithStatus(returnTo, 'error', 'Display name must be at least 2 characters.')
-  }
+  const nameCheck = await validateDisplayName(await createServiceClient(), displayName, user.id)
+  if (!nameCheck.ok) redirectWithStatus(returnTo, 'error', nameCheck.message)
 
   const { data: profile, error: profileReadError } = await supabase
     .from('users')
@@ -189,7 +189,8 @@ export async function updateAccountPassword(formData: FormData) {
     redirectWithStatus(returnTo, 'error', ACCOUNT_PASSWORD_ERROR)
   }
 
-  const { error: forcePasswordChangeError } = await supabase
+  // Server key on purpose: the database refuses this change from a signed-in user's own session.
+  const { error: forcePasswordChangeError } = await (await createServiceClient())
     .from('users')
     .update({ force_password_change: false })
     .eq('id', user.id)

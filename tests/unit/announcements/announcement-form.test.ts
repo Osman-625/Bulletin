@@ -116,6 +116,12 @@ describe('announcement form validation helpers', () => {
     })
   })
 
+  it('treats the saved placeholder title as missing when submitting for review', () => {
+    expect(() => assertAnnouncementReadyForReview('Untitled Announcement', 'Details')).toThrow(
+      'Add a title before submitting for review.'
+    )
+  })
+
   it('requires title and body before submitting for review', () => {
     expect(() =>
       readAnnouncementTextFields(announcementFormData({ title: '', body: 'Details' }), {
@@ -161,7 +167,7 @@ describe('announcement form validation helpers', () => {
   })
 
   it('uses unique storage filenames without requesting banner upload upserts', () => {
-    const formSource = source('src/components/dashboard/AnnouncementForm.tsx')
+    const formSource = source('src/components/dashboard/BannerImageField.tsx')
 
     expect(formSource).toContain('crypto.randomUUID()')
     expect(formSource).not.toContain('upsert: true')
@@ -169,7 +175,7 @@ describe('announcement form validation helpers', () => {
 
   it('keeps banner upload limits in shared announcement form config', () => {
     const helperSource = source('src/modules/announcements/form.ts')
-    const formSource = source('src/components/dashboard/AnnouncementForm.tsx')
+    const formSource = source('src/components/dashboard/BannerImageField.tsx')
 
     expect(helperSource).toContain('BANNER_MAX_FILE_SIZE_MB = 5')
     expect(helperSource).toContain(

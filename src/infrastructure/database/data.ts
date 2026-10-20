@@ -12,6 +12,11 @@
  *   - Super Admin — platform-wide statistics and admin roster
  */
 
+import {
+  ANNOUNCEMENT_REVIEW_COLUMNS,
+  ORGANIZATION_COLUMNS,
+  USER_PROFILE_COLUMNS,
+} from '@/infrastructure/database/columns'
 import { createClient, createServiceClient } from '@/infrastructure/database/server'
 import {
   canAccessAdminArea,
@@ -20,11 +25,10 @@ import {
 } from '@/modules/auth/authz'
 import type {
   PublicAnnouncement,
-  AnnouncementWithRelations,
+  PublicAnnouncementDetail,
   AnnouncementForReview,
   DbCategory,
   OrgWithOwner,
-  OrgWithMembers,
   PublisherWithOrgs,
 } from '@/shared/types'
 import {
@@ -39,7 +43,20 @@ import { reportServerError } from '@/shared/errors/error-reporting'
 
 /** Selects announcement fields with category and organization relations (left join). */
 const ANNOUNCEMENT_SELECT = `
-  *,
+  id,
+  title,
+  body,
+  banner_url,
+  urgency,
+  display_font,
+  display_size,
+  category_id,
+  organization_id,
+  registration_link,
+  scheduled_publish_at,
+  pinned_until,
+  published_at,
+  expires_at,
   categories ( id, name, slug, color ),
   organizations ( id, name, slug, logo_url )
 ` as const
@@ -215,7 +232,11 @@ export async function getPublicAnnouncements(
     query = query.or(`title.ilike.%${search}%,body.ilike.%${search}%`)
   }
 
-  const { data, error } = await query.order('published_at', { ascending: false })
+  // shortcut: only the newest 500 live notices are ordered in memory, move board ordering into a
+  // DB view/RPC before the board needs to show more.
+  const { data, error } = await query
+    .order('published_at', { ascending: false })
+    .limit(PUBLIC_FEED_SAFE_IN_MEMORY_LIMIT)
 
   if (error) {
     reportServerError('data.public_announcements.query_failed', error, {
@@ -238,13 +259,6 @@ export async function getPublicAnnouncements(
   const publicAnnouncements = normalizePublicAnnouncementRows(
     (data ?? []) as unknown as PublicAnnouncementQueryRow[]
   )
-
-  if (publicAnnouncements.length > PUBLIC_FEED_SAFE_IN_MEMORY_LIMIT) {
-    // TODO: Move public-board ordering into a DB view/RPC before allowing larger result sets.
-    throw new Error(
-      `public feed exceeds safe in-memory pagination limit - DB-level pagination required before exceeding ${PUBLIC_FEED_SAFE_IN_MEMORY_LIMIT} announcements`
-    )
-  }
 
   const pageResult = paginatePublicBoardItems(publicAnnouncements, {
     sort: activeSort,
@@ -280,7 +294,7 @@ export async function getPublicAnnouncements(
  * @param id - The announcement UUID (or slug-encoded lookup ID via `announcementLookupId`).
  * @returns The announcement with category and organization relations, or `null` if not found.
  */
-export async function getAnnouncementById(id: string): Promise<AnnouncementWithRelations | null> {
+export async function getAnnouncementById(id: string): Promise<PublicAnnouncementDetail | null> {
   const supabase = await createClient()
   const now = new Date().toISOString()
   const lookupId = announcementLookupId(id)
@@ -294,7 +308,7 @@ export async function getAnnouncementById(id: string): Promise<AnnouncementWithR
     .single()
 
   if (error) return null
-  return data as AnnouncementWithRelations
+  return data as unknown as PublicAnnouncementDetail
 }
 
 /**
@@ -318,25 +332,50 @@ export async function getActiveCategories(): Promise<DbCategory[]> {
   return (data ?? []) as DbCategory[]
 }
 
+const VIEW_COUNT_PAGE_SIZE = 1000
+
+/**
+ * Sums `view_count` across announcements, optionally limited to some organizations.
+ * Pages through the rows because a single select stops silently at the API row cap.
+ */
+export async function sumAnnouncementViews(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orgIds: string[] | null
+): Promise<number> {
+  let total = 0
+
+  for (let from = 0; ; from += VIEW_COUNT_PAGE_SIZE) {
+    let query = supabase
+      .from('announcements')
+      .select('view_count')
+      .order('id')
+      .range(from, from + VIEW_COUNT_PAGE_SIZE - 1)
+    if (orgIds) query = query.in('organization_id', orgIds)
+
+    const { data, error } = await query
+    if (error) {
+      reportServerError('data.announcement_views.query_failed', error, { from })
+      return 0
+    }
+
+    total += data.reduce((sum, row) => sum + (row.view_count ?? 0), 0)
+    if (data.length < VIEW_COUNT_PAGE_SIZE) return total
+  }
+}
+
 // ─── Admin ────────────────────────────────────────────────────
 
 const REVIEW_SELECT = `
-  *,
+  ${ANNOUNCEMENT_REVIEW_COLUMNS},
   categories ( name, slug, color ),
   organizations ( name, slug ),
   users ( display_name, email )
 ` as const
 
-/**
- * Returns all announcements in `submitted` status awaiting moderation.
- *
- * Access is role-scoped: `admin` sees only announcements belonging to their
- * assigned organizations; `super_admin` sees all. Returns an empty array if
- * the caller lacks admin access or has no assigned organizations.
- *
- * @returns Submitted announcements with user, category, and organization relations.
- */
-export async function getSubmittedAnnouncements(): Promise<AnnouncementForReview[]> {
+async function getAnnouncementsForReview(
+  status: 'submitted' | 'published',
+  { ascending, limit }: { ascending: boolean; limit?: number }
+): Promise<AnnouncementForReview[]> {
   const access = await getCurrentAccessContext()
   if (!access || !canAccessAdminArea(access.role)) return []
 
@@ -344,24 +383,46 @@ export async function getSubmittedAnnouncements(): Promise<AnnouncementForReview
   let query = supabase
     .from('announcements')
     .select(REVIEW_SELECT)
-    .eq('status', 'submitted')
-    .order('updated_at', { ascending: true })
+    .eq('status', status)
+    .order('updated_at', { ascending })
 
+  if (limit) query = query.limit(limit)
   if (access.role === 'admin') {
     if (access.orgIds.length === 0) return []
     query = query.in('organization_id', access.orgIds)
   }
 
-  const { data, error: submittedAnnouncementsError } = await query
-  if (submittedAnnouncementsError) {
-    reportServerError('data.submitted_announcements.query_failed', submittedAnnouncementsError, {
+  const { data, error: reviewListError } = await query
+  if (reviewListError) {
+    reportServerError(`data.${status}_announcements.query_failed`, reviewListError, {
       actorId: access.userId,
       role: access.role,
       orgCount: access.orgIds.length,
     })
     return []
   }
-  return (data ?? []) as AnnouncementForReview[]
+  return (data ?? []) as unknown as AnnouncementForReview[]
+}
+
+/**
+ * Returns all announcements in `submitted` status awaiting moderation, oldest first.
+ *
+ * Access is role-scoped: `admin` sees only announcements belonging to their
+ * assigned organizations; `super_admin` sees all. Returns an empty array if
+ * the caller lacks admin access or has no assigned organizations.
+ */
+export function getSubmittedAnnouncements() {
+  return getAnnouncementsForReview('submitted', { ascending: true })
+}
+
+const LIVE_ANNOUNCEMENTS_REVIEW_LIMIT = 50
+
+/** The most recently changed live announcements, so an admin can take one down. Same scoping. */
+export function getLiveAnnouncements() {
+  return getAnnouncementsForReview('published', {
+    ascending: false,
+    limit: LIVE_ANNOUNCEMENTS_REVIEW_LIMIT,
+  })
 }
 
 /**
@@ -402,7 +463,7 @@ export async function getAnnouncementForReview(id: string): Promise<Announcement
     return null
   }
 
-  return (data ?? null) as AnnouncementForReview | null
+  return (data ?? null) as unknown as AnnouncementForReview | null
 }
 
 /**
@@ -423,7 +484,9 @@ export async function getAllOrganizations(): Promise<OrgWithOwner[]> {
   const supabase = await createClient()
   let query = supabase
     .from('organizations')
-    .select('*, owner:users!organizations_owner_id_fkey ( display_name, email )')
+    .select(
+      `${ORGANIZATION_COLUMNS}, owner:users!organizations_owner_id_fkey ( display_name, email )` as const
+    )
     .order('created_at', { ascending: false })
 
   if (access.role === 'admin') {
@@ -439,40 +502,7 @@ export async function getAllOrganizations(): Promise<OrgWithOwner[]> {
     })
     return []
   }
-  return (data ?? []) as OrgWithOwner[]
-}
-
-/**
- * Fetches a single organization along with its full member roster.
- *
- * Access enforcement: `admin` callers can only access organizations they belong to;
- * `owner` callers can access any organization.
- *
- * @param orgId - The organization UUID.
- * @returns The organization with all members and their user profiles, or `null` if not found.
- */
-export async function getOrgWithMembers(orgId: string): Promise<OrgWithMembers | null> {
-  const access = await getCurrentAccessContext()
-  if (!access || !canAccessAdminArea(access.role)) return null
-  if (access.role === 'admin' && !access.orgIds.includes(orgId)) return null
-
-  const supabase = await createClient()
-  const { data, error: orgWithMembersError } = await supabase
-    .from('organizations')
-    .select('*, organization_members ( user_id, member_role, users ( display_name, email ) )')
-    .eq('id', orgId)
-    .single()
-
-  if (orgWithMembersError) {
-    if (!isNoRowsError(orgWithMembersError)) {
-      reportServerError('data.organization_with_members.query_failed', orgWithMembersError, {
-        organizationId: orgId,
-      })
-    }
-    return null
-  }
-
-  return data as OrgWithMembers | null
+  return (data ?? []) as unknown as OrgWithOwner[]
 }
 
 /**
@@ -516,7 +546,7 @@ export async function getAllPublishers(): Promise<PublisherWithOrgs[]> {
     const { data, error: publishersError } = await supabase
       .from('users')
       .select(
-        '*, organization_members ( organization_id, member_role, organizations ( name, slug ) )'
+        `${USER_PROFILE_COLUMNS}, organization_members ( organization_id, member_role, organizations ( name, slug ) )` as const
       )
       .eq('role', 'publisher')
       .in('id', publisherIds)
@@ -531,7 +561,7 @@ export async function getAllPublishers(): Promise<PublisherWithOrgs[]> {
       return []
     }
 
-    return ((data ?? []) as PublisherWithOrgs[]).map((publisher) => ({
+    return ((data ?? []) as unknown as PublisherWithOrgs[]).map((publisher) => ({
       ...publisher,
       organization_members: (publisher.organization_members ?? []).filter((m) =>
         access.orgIds.includes(m.organization_id)
@@ -542,7 +572,7 @@ export async function getAllPublishers(): Promise<PublisherWithOrgs[]> {
   const { data, error: publishersError } = await supabase
     .from('users')
     .select(
-      '*, organization_members ( organization_id, member_role, organizations ( name, slug ) )'
+      `${USER_PROFILE_COLUMNS}, organization_members ( organization_id, member_role, organizations ( name, slug ) )` as const
     )
     .eq('role', 'publisher')
     .order('created_at', { ascending: false })
@@ -556,7 +586,7 @@ export async function getAllPublishers(): Promise<PublisherWithOrgs[]> {
     return []
   }
 
-  return (data ?? []) as PublisherWithOrgs[]
+  return (data ?? []) as unknown as PublisherWithOrgs[]
 }
 
 /**
@@ -587,16 +617,16 @@ export async function getAdminStats() {
 
   let pendingReviewQuery = supabase
     .from('announcements')
-    .select('*', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .eq('status', 'submitted')
   let publishedThisMonthQuery = supabase
     .from('announcements')
-    .select('*', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .eq('status', 'published')
     .gte('published_at', monthStart)
   let totalOrgsQuery = supabase
     .from('organizations')
-    .select('*', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .eq('status', 'approved')
 
   if (access.role === 'admin') {
@@ -709,14 +739,18 @@ export async function getVisibleUsersForAdminPage({
 
   let query = supabase
     .from('users')
-    .select('*, organization_members ( organization_id )', { count: 'exact' })
+    .select(`${USER_PROFILE_COLUMNS}, organization_members ( organization_id )` as const, {
+      count: 'exact',
+    })
     .in('role', [...allowedRoles])
     .order('created_at', { ascending: false })
 
   if (access.role === 'admin') {
     query = supabase
       .from('users')
-      .select('*, organization_members!inner ( organization_id )', { count: 'exact' })
+      .select(`${USER_PROFILE_COLUMNS}, organization_members!inner ( organization_id )` as const, {
+        count: 'exact',
+      })
       .in('role', [...allowedRoles])
       .in('organization_members.organization_id', access.orgIds)
       .order('created_at', { ascending: false })
@@ -799,7 +833,7 @@ export async function getAllAdmins() {
   const supabase = await createClient()
   const { data, error: adminsError } = await supabase
     .from('users')
-    .select('*')
+    .select(USER_PROFILE_COLUMNS)
     .in('role', ['admin', 'super_admin'])
     .order('created_at', { ascending: false })
 
@@ -839,17 +873,17 @@ export async function getPlatformStats() {
     totalOrgsResult,
     totalUsersResult,
   ] = await Promise.all([
-    supabase.from('announcements').select('*', { count: 'exact', head: true }),
+    supabase.from('announcements').select('id', { count: 'exact', head: true }),
     supabase
       .from('announcements')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('status', 'published'),
     supabase
       .from('announcements')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('status', 'submitted'),
-    supabase.from('organizations').select('*', { count: 'exact', head: true }),
-    supabase.from('users').select('*', { count: 'exact', head: true }),
+    supabase.from('organizations').select('id', { count: 'exact', head: true }),
+    supabase.from('users').select('id', { count: 'exact', head: true }),
   ])
 
   const { count: totalAnnouncements, error: totalAnnouncementsError } = totalAnnouncementsResult

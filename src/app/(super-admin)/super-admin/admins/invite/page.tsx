@@ -2,29 +2,10 @@ import Link from 'next/link'
 import { ArrowLeft, Check, ShieldCheck } from 'lucide-react'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { getCurrentAccessContext } from '@/modules/auth/authz'
-import { createClient } from '@/infrastructure/database/server'
+import { getCreatedInvite } from '@/modules/invitations/created-invite'
 import { inviteAdmin } from './actions'
 
 export const metadata = { title: 'Invite Admin, Bulletin Super Admin' }
-
-async function getCreatedInvite(created?: string) {
-  if (!created) return null
-
-  const access = await getCurrentAccessContext()
-  if (!access) return null
-
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('invitations')
-    .select('email, token')
-    .eq('id', created)
-    .eq('invited_by', access.userId)
-    .maybeSingle()
-
-  if (error) return null
-  return data
-}
 
 export default async function InviteAdminPage({
   searchParams,

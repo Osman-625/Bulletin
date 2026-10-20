@@ -26,7 +26,7 @@ describe('standard announcement card structure', () => {
     ]
 
     for (const slotName of slotNames) {
-      expect(card).toContain(`export function ${slotName}`)
+      expect(card).toContain(`function ${slotName}`)
     }
 
     const slotPositions = slotNames.map((slotName) => card.indexOf(`<${slotName}`))

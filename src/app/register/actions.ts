@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { logAuditEvent } from '@/modules/audit'
 import { validatePassword } from '@/modules/auth/password-policy'
+import { validateDisplayName } from '@/modules/users/display-name'
 import { reportServerError } from '@/shared/errors/error-reporting'
 import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
 import { createAdminClient } from '@/infrastructure/database/admin'
@@ -50,7 +51,7 @@ export async function completeRegistration(formData: FormData) {
 
   const { data: invitation, error: invitationReadError } = await admin
     .from('invitations')
-    .select('*')
+    .select('id, email, role, member_role, org_ids, invited_by')
     .eq('token', token)
     .is('accepted_at', null)
     .gt('expires_at', new Date().toISOString())
@@ -61,6 +62,12 @@ export async function completeRegistration(formData: FormData) {
       reportServerError('register.invitation.read', invitationReadError)
     }
     redirect('/register?error=Invalid+or+expired+invite+link')
+  }
+
+  // Checked after the invite so only someone with a valid invite can learn which names are taken.
+  const nameCheck = await validateDisplayName(admin, displayName)
+  if (!nameCheck.ok) {
+    redirect(`/register?token=${encodedToken}&error=${encodeURIComponent(nameCheck.message)}`)
   }
 
   const { data: created, error: authCreateError } = await admin.auth.admin.createUser({

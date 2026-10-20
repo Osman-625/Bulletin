@@ -42,12 +42,22 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
     })
     redirectWithReviewError(announcementId)
   }
-  if (!announcement || announcement.status !== 'submitted') redirect('/admin/review')
+  // A submitted notice can be approved or returned; a live one can only be taken down (returned).
+  const reviewable = announcement?.status === 'submitted' || announcement?.status === 'published'
+  if (!announcement || !reviewable) redirect('/admin/review')
+  if (announcement.status === 'published' && action !== 'reject') redirect('/admin/review')
   if (access.role === 'admin' && !access.orgIds.includes(announcement.organization_id)) {
     redirect('/admin/review')
   }
   if (action === 'reject' && !comment) {
     redirect(`/admin/review/${announcementId}?error=rejection_comment_required`)
+  }
+
+  // The publisher can keep editing while a notice is in review. The decision only applies to the
+  // version the admin read, so the update below also matches on that version's updated_at.
+  const reviewedUpdatedAt = formData.get('reviewed_updated_at')
+  if (typeof reviewedUpdatedAt !== 'string' || !reviewedUpdatedAt) {
+    redirect(`/admin/review/${announcementId}?error=changed`)
   }
 
   if (action === 'approve') {
@@ -58,7 +68,7 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
         ? announcement.scheduled_publish_at
         : null
 
-    const { error } = await supabase
+    const { data: approvedRows, error } = await supabase
       .from('announcements')
       .update({
         status: 'published',
@@ -67,6 +77,9 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
         rejection_comment: null,
       })
       .eq('id', announcementId)
+      .eq('status', 'submitted')
+      .eq('updated_at', reviewedUpdatedAt)
+      .select('id')
     if (error) {
       reportServerError('admin.review.approve_failed', error, {
         actor_id: access.userId,
@@ -74,14 +87,18 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
       })
       redirectWithReviewError(announcementId)
     }
+    if (!approvedRows?.length) redirect(`/admin/review/${announcementId}?error=changed`)
   } else {
-    const { error } = await supabase
+    const { data: returnedRows, error } = await supabase
       .from('announcements')
       .update({
         status: 'rejected',
         rejection_comment: comment,
       })
       .eq('id', announcementId)
+      .eq('status', announcement.status)
+      .eq('updated_at', reviewedUpdatedAt)
+      .select('id')
     if (error) {
       reportServerError('admin.review.reject_failed', error, {
         actor_id: access.userId,
@@ -89,6 +106,7 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
       })
       redirectWithReviewError(announcementId)
     }
+    if (!returnedRows?.length) redirect(`/admin/review/${announcementId}?error=changed`)
   }
 
   const { error: reviewError } = await supabase.from('announcement_reviews').insert({
@@ -124,6 +142,7 @@ export async function reviewAnnouncement(announcementId: string, formData: FormD
       author_id: announcement.author_id,
       organization_id: announcement.organization_id,
       scheduled_publish_at: announcement.scheduled_publish_at,
+      previous_status: announcement.status,
       comment,
     },
   })

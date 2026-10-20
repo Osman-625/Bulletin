@@ -1,4 +1,14 @@
 import Link from 'next/link'
+import { UserPagination } from '@/components/dashboard/UserPagination'
+import {
+  NewUserForm,
+  UserDeletePanel,
+  UserEditPanel,
+  UserRoleFilterTabs,
+  UsersEmptyState,
+} from '@/components/dashboard/UserManagement'
+import { usersHref } from '@/modules/users/users-href'
+import { USER_PROFILE_COLUMNS } from '@/infrastructure/database/columns'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { UserPlus } from 'lucide-react'
@@ -12,15 +22,15 @@ import {
   getAssignableRoles,
   getCurrentAccessContext,
   getDefaultAppPath,
+  ROLE_LEVEL,
   type AppRole,
   type ScopedUser,
 } from '@/modules/auth/authz'
-import {
-  TEMPORARY_PASSWORD_MIN_LENGTH,
-  validateTemporaryPassword,
-} from '@/modules/auth/password-policy'
-import { syncAuthUsersToProfiles } from '@/modules/auth/sync-users'
+import { validateTemporaryPassword } from '@/modules/auth/password-policy'
+import { validateDisplayName } from '@/modules/users/display-name'
+import { getUserDeleteBlocker } from '@/modules/users/delete-guard'
 import { reportServerError } from '@/shared/errors/error-reporting'
+import { checkActionRateLimit } from '@/shared/middleware/action-rate-limit'
 import { createServiceClient } from '@/infrastructure/database/server'
 import type { DbUser } from '@/shared/types'
 import { PasswordResetRequestButton } from './PasswordResetRequestButton'
@@ -38,12 +48,6 @@ const LEVEL_COLOR: Record<string, string> = {
   super_admin: 'var(--color-navy)',
   admin: 'var(--color-accent-inti)',
   publisher: 'var(--color-text-muted)',
-}
-
-function superAdminRoleLevel(role: string) {
-  if (role === 'super_admin') return 1
-  if (role === 'admin') return 2
-  return 3
 }
 
 const SUPER_ADMIN_USERS_PATH = '/super-admin/users'
@@ -65,61 +69,8 @@ function parseUsersPage(pageInput?: string | number | null) {
   return Number.isFinite(parsedPage) && parsedPage > 0 ? Math.floor(parsedPage) : 1
 }
 
-function superAdminUsersHref({ role, page }: { role?: string; page?: number }) {
-  const params = new URLSearchParams()
-  if (role) params.set('role', role)
-  if (page && page > 1) params.set('page', String(page))
-  const query = params.toString()
-  return query ? `${SUPER_ADMIN_USERS_PATH}?${query}` : SUPER_ADMIN_USERS_PATH
-}
-
-function UserPagination({
-  page,
-  totalPages,
-  role,
-}: {
-  page: number
-  totalPages: number
-  role?: string
-}) {
-  if (totalPages <= 1) return null
-  const previousPage = Math.max(1, page - 1)
-  const nextPage = Math.min(totalPages, page + 1)
-
-  return (
-    <nav
-      aria-label="User pagination"
-      className="flex flex-col gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-    >
-      <p className="text-sm text-[var(--color-text-secondary)]">
-        Page {page} of {totalPages}
-      </p>
-      <div className="flex items-center gap-2">
-        <Link
-          href={superAdminUsersHref({ role, page: previousPage })}
-          aria-disabled={page <= 1}
-          className={`inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
-            page <= 1
-              ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
-              : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-          }`}
-        >
-          Previous
-        </Link>
-        <Link
-          href={superAdminUsersHref({ role, page: nextPage })}
-          aria-disabled={page >= totalPages}
-          className={`inline-flex min-h-11 items-center rounded-xl px-4 text-sm font-semibold transition-colors ${
-            page >= totalPages
-              ? 'pointer-events-none bg-[var(--color-surface-elevated)] text-[var(--color-text-muted)] opacity-50'
-              : 'bg-[var(--color-accent)] text-[var(--color-on-accent)] hover:bg-[var(--color-accent-hover)]'
-          }`}
-        >
-          Next
-        </Link>
-      </div>
-    </nav>
-  )
+function superAdminUsersHref(query: { role?: string; page?: number }) {
+  return usersHref(SUPER_ADMIN_USERS_PATH, query)
 }
 
 async function getUsers({ role, page: pageInput }: { role?: string; page?: string | null } = {}) {
@@ -130,7 +81,9 @@ async function getUsers({ role, page: pageInput }: { role?: string; page?: strin
 
   let query = supabase
     .from('users')
-    .select('*', { count: 'exact' })
+    .select(USER_PROFILE_COLUMNS, {
+      count: 'exact',
+    })
     .neq('role', 'owner')
     .order('created_at', { ascending: false })
 
@@ -234,6 +187,10 @@ async function createUser(formData: FormData) {
   const password = formData.get('password') as string
   const role = formData.get('role') as AppRole
   const assignableRoles = getAssignableRoles(access.role)
+  const rateLimit = await checkActionRateLimit('super-admin-user-create', access.userId)
+  if (rateLimit.limited) {
+    redirect(userErrorHref('Too many user creation attempts. Try again shortly.', true))
+  }
 
   if (!displayName || !password || !role) {
     redirect('/super-admin/users?add=true&err=missing_fields')
@@ -249,6 +206,8 @@ async function createUser(formData: FormData) {
   }
 
   const supabase = await createServiceClient()
+  const nameCheck = await validateDisplayName(supabase, displayName)
+  if (!nameCheck.ok) redirect(userErrorHref(nameCheck.message, true))
   const { data: authData, error: authCreateError } = await supabase.auth.admin.createUser({
     email,
     password,
@@ -301,6 +260,11 @@ async function setRole(userId: string, newRole: string) {
   'use server'
 
   const { access, target } = await assertSuperAdminCanManage(userId)
+  const rateLimit = await checkActionRateLimit(
+    'super-admin-user-role',
+    `${access.userId}:${userId}`
+  )
+  if (rateLimit.limited) redirect(userErrorHref('Too many user updates. Try again shortly.'))
   const assignableRoles = getAssignableRoles(access.role)
   const role = newRole as AppRole
   if (!assignableRoles.includes(role)) throw new Error('Cannot manage this user')
@@ -337,6 +301,11 @@ async function resetPassword(userId: string, formData: FormData) {
     assertSuperAdminCanManage(userId),
     createServiceClient(),
   ])
+  const rateLimit = await checkActionRateLimit(
+    'super-admin-user-password-reset',
+    `${access.userId}:${userId}`
+  )
+  if (rateLimit.limited) redirect(userErrorHref('Too many password resets. Try again shortly.'))
   const temp = formData.get('temp_password') as string
   const passwordValidation = validateTemporaryPassword(temp)
   if (!passwordValidation.valid) redirect(userErrorHref(passwordValidation.message))
@@ -386,6 +355,13 @@ async function deleteUser(userId: string) {
     assertSuperAdminCanManage(userId),
     createServiceClient(),
   ])
+  const rateLimit = await checkActionRateLimit(
+    'super-admin-user-delete',
+    `${access.userId}:${userId}`
+  )
+  if (rateLimit.limited) redirect(userErrorHref('Too many delete attempts. Try again shortly.'))
+  const deleteBlocker = await getUserDeleteBlocker(supabase, userId)
+  if (deleteBlocker) redirect(userErrorHref(deleteBlocker))
   const { error: authDeleteError } = await supabase.auth.admin.deleteUser(userId)
   if (authDeleteError) {
     reportServerError('super_admin.users.delete_auth', authDeleteError, {
@@ -406,111 +382,6 @@ async function deleteUser(userId: string) {
     },
   })
   revalidatePath('/super-admin/users')
-}
-
-function superAdminUserFormError(error: string) {
-  if (error === 'missing_fields') return 'All fields are required.'
-  if (error === 'invalid_role') return 'That role is not allowed from this screen.'
-  return error
-}
-
-function SuperAdminNewUserForm({
-  err,
-  assignableRoles,
-}: {
-  err?: string
-  assignableRoles: AppRole[]
-}) {
-  return (
-    <GlassCard hover={false} className="p-6">
-      <p className="mb-4 text-sm font-semibold text-[var(--color-text-primary)]">New User</p>
-      {err && (
-        <p className="mb-3 text-xs text-[var(--color-status-rejected-text)]">
-          {superAdminUserFormError(err)}
-        </p>
-      )}
-      <form action={createUser} className="space-y-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div>
-            <label
-              htmlFor="super-admin-user-display-name"
-              className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]"
-            >
-              Username *
-            </label>
-            <input
-              id="super-admin-user-display-name"
-              name="display_name"
-              required
-              placeholder="john_doe"
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="super-admin-user-email"
-              className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]"
-            >
-              Email <span className="opacity-50">(optional)</span>
-            </label>
-            <input
-              id="super-admin-user-email"
-              name="email"
-              type="email"
-              placeholder="user@inti.edu.my"
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="super-admin-user-password"
-              className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]"
-            >
-              Temporary password *
-            </label>
-            <input
-              id="super-admin-user-password"
-              name="password"
-              type="password"
-              required
-              minLength={TEMPORARY_PASSWORD_MIN_LENGTH}
-              placeholder={`At least ${TEMPORARY_PASSWORD_MIN_LENGTH} characters`}
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="super-admin-user-role"
-              className="mb-1 block text-xs font-medium text-[var(--color-text-secondary)]"
-            >
-              Role *
-            </label>
-            <select
-              id="super-admin-user-role"
-              name="role"
-              required
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 py-2 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-            >
-              {assignableRoles.map((role) => (
-                <option key={role} value={role}>
-                  {ROLE_LABELS[role]} (L{superAdminRoleLevel(role)})
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <button
-          type="submit"
-          className="min-h-11 rounded-xl bg-[var(--color-accent)] px-5 text-xs font-bold text-[var(--color-on-accent)] transition-opacity hover:opacity-90"
-        >
-          Create User
-        </button>
-        <p className="text-xs text-[var(--color-text-muted)]">
-          The user must replace this temporary password the first time they sign in.
-        </p>
-      </form>
-    </GlassCard>
-  )
 }
 
 function PasswordResetRequestsPanel({
@@ -575,140 +446,6 @@ function PasswordResetRequestsPanel({
   )
 }
 
-function SuperAdminRoleFilterTabs({
-  filterRole,
-  roleCounts,
-  allUsersTotal,
-}: {
-  filterRole?: string
-  roleCounts: Record<string, number>
-  allUsersTotal: number
-}) {
-  const tabs = [
-    { key: '', label: `All (${allUsersTotal})` },
-    ...SUPER_ADMIN_ROLE_KEYS.map((role) => ({
-      key: role,
-      label: `${ROLE_LABELS[role]} (${roleCounts[role] ?? 0})`,
-    })),
-  ]
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {tabs.map(({ key, label }) => (
-        <Link
-          key={key}
-          href={superAdminUsersHref({ role: key || undefined })}
-          className={`inline-flex min-h-11 items-center rounded-lg px-4 text-sm font-medium transition-colors ${
-            filterRole === key || (!filterRole && !key)
-              ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]'
-              : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-          }`}
-        >
-          {label}
-        </Link>
-      ))}
-    </div>
-  )
-}
-
-function SuperAdminUsersEmptyState({ filterRole }: { filterRole?: string }) {
-  return (
-    <GlassCard hover={false} className="p-8">
-      <output className="mx-auto block max-w-md text-center">
-        <span className="block text-sm font-semibold text-[var(--color-text-primary)]">
-          No users match this view
-        </span>
-        <span className="mt-1 block text-sm text-[var(--color-text-secondary)]">
-          {filterRole
-            ? `There are no ${ROLE_LABELS[filterRole] ?? filterRole} users on the platform.`
-            : 'No synced users are available yet.'}
-        </span>
-        {filterRole && (
-          <Link
-            href="/super-admin/users"
-            className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[var(--color-surface-elevated)] px-4 text-xs font-semibold text-[var(--color-text-secondary)] transition-colors hover:text-[var(--color-text-primary)]"
-          >
-            Clear the role filter
-          </Link>
-        )}
-      </output>
-    </GlassCard>
-  )
-}
-
-function SuperAdminUserEditPanel({
-  user,
-  role,
-  assignableRoles,
-}: {
-  user: DbUser
-  role: AppRole
-  assignableRoles: AppRole[]
-}) {
-  return (
-    <div className="space-y-4 border-t border-[var(--color-border)] px-5 pt-3 pb-4">
-      <p className="text-xs font-medium tracking-wider text-[var(--color-text-secondary)] uppercase">
-        Assign Role
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {assignableRoles.map((assignableRole) => (
-          <form key={assignableRole} action={setRole.bind(null, user.id, assignableRole)}>
-            <button
-              type="submit"
-              className={`min-h-11 rounded-xl px-4 text-xs font-semibold transition-colors ${
-                role === assignableRole
-                  ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]'
-                  : 'bg-[var(--color-surface-elevated)] text-[var(--color-text-secondary)] hover:bg-[var(--color-accent-surface)] hover:text-[var(--color-accent)]'
-              }`}
-            >
-              {ROLE_LABELS[assignableRole]}{' '}
-              <span className="font-mono opacity-50">L{superAdminRoleLevel(assignableRole)}</span>
-            </button>
-          </form>
-        ))}
-      </div>
-      <form action={resetPassword.bind(null, user.id)} className="flex items-center gap-2">
-        <input
-          name="temp_password"
-          type="password"
-          aria-label={`New temporary password for ${user.display_name}`}
-          required
-          minLength={TEMPORARY_PASSWORD_MIN_LENGTH}
-          placeholder={`At least ${TEMPORARY_PASSWORD_MIN_LENGTH} characters`}
-          className="min-h-11 w-48 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] px-3 text-sm text-[var(--color-text-primary)] focus:ring-1 focus:ring-[var(--color-accent)] focus:outline-none"
-        />
-        <button
-          type="submit"
-          className="min-h-11 shrink-0 rounded-xl bg-[var(--color-status-submitted-bg)] px-4 text-xs font-semibold text-[var(--color-status-submitted-text)] transition-opacity hover:opacity-80"
-        >
-          Set Password
-        </button>
-      </form>
-    </div>
-  )
-}
-
-function SuperAdminUserDeletePanel({ user }: { user: DbUser }) {
-  return (
-    <div className="space-y-3 border-t border-[var(--color-border)] px-5 pt-3 pb-4">
-      <p className="text-sm font-semibold text-[var(--color-status-rejected-text)]">
-        Delete {user.display_name}?
-      </p>
-      <p className="text-xs text-[var(--color-text-secondary)]">
-        This permanently removes their account and all associated data. This cannot be undone.
-      </p>
-      <form action={deleteUser.bind(null, user.id)}>
-        <button
-          type="submit"
-          className="min-h-11 rounded-xl bg-[var(--color-status-rejected-text)] px-4 text-xs font-bold text-[var(--color-on-accent)] transition-opacity hover:opacity-80"
-        >
-          Yes, delete permanently
-        </button>
-      </form>
-    </div>
-  )
-}
-
 function SuperAdminUserCard({
   user,
   actor,
@@ -767,7 +504,7 @@ function SuperAdminUserCard({
               className="rounded bg-[var(--color-surface-elevated)] px-1.5 py-0.5 font-mono text-[15px] font-bold"
               style={{ color: LEVEL_COLOR[role] ?? 'var(--color-text-muted)' }}
             >
-              L{superAdminRoleLevel(role)}
+              L{ROLE_LEVEL[role]}
             </span>
             {user.id === currentUserId && (
               <span className="rounded bg-[var(--color-accent-surface)] px-2 py-0.5 text-[15px] font-bold tracking-wider text-[var(--color-accent)] uppercase">
@@ -815,9 +552,16 @@ function SuperAdminUserCard({
       </div>
 
       {isEditing && canManage && (
-        <SuperAdminUserEditPanel user={user} role={role} assignableRoles={assignableRoles} />
+        <UserEditPanel
+          user={user}
+          role={role}
+          assignableRoles={assignableRoles}
+          roleLabels={ROLE_LABELS}
+          setRoleAction={setRole}
+          resetPasswordAction={resetPassword}
+        />
       )}
-      {isConfirming && canManage && <SuperAdminUserDeletePanel user={user} />}
+      {isConfirming && canManage && <UserDeletePanel user={user} deleteAction={deleteUser} />}
     </GlassCard>
   )
 }
@@ -862,8 +606,6 @@ export default async function SuperAdminUsersPage({
   }
   const assignableRoles = getAssignableRoles(access.role)
 
-  await syncAuthUsersToProfiles()
-
   const [usersPage, pendingResetRequests, roleCounts] = await Promise.all([
     getUsers({ role: filterRole, page }),
     getPendingPasswordResetRequests(),
@@ -891,7 +633,15 @@ export default async function SuperAdminUsersPage({
         }}
       />
 
-      {isAdding && <SuperAdminNewUserForm err={err} assignableRoles={assignableRoles} />}
+      {isAdding && (
+        <NewUserForm
+          idPrefix="super-admin-user"
+          err={err}
+          assignableRoles={assignableRoles}
+          roleLabels={ROLE_LABELS}
+          createAction={createUser}
+        />
+      )}
 
       {msg && (
         <div className="rounded-xl bg-[var(--color-status-submitted-bg)] px-4 py-3 font-mono text-sm text-[var(--color-status-submitted-text)]">
@@ -910,14 +660,24 @@ export default async function SuperAdminUsersPage({
         highlightedResetRequest={highlightedResetRequest}
       />
 
-      <SuperAdminRoleFilterTabs
+      <UserRoleFilterTabs
+        basePath={SUPER_ADMIN_USERS_PATH}
+        roleLabels={ROLE_LABELS}
         filterRole={filterRole}
         roleCounts={roleCounts}
         allUsersTotal={allUsersTotal}
       />
 
       <div className="space-y-2">
-        {users.length === 0 && <SuperAdminUsersEmptyState filterRole={filterRole} />}
+        {users.length === 0 && (
+          <UsersEmptyState
+            basePath={SUPER_ADMIN_USERS_PATH}
+            roleLabels={ROLE_LABELS}
+            filterRole={filterRole}
+            scopeLabel="on the platform"
+            emptyMessage="No users are available yet."
+          />
+        )}
         {users.map((user) => (
           <SuperAdminUserCard
             key={user.id}
@@ -932,7 +692,12 @@ export default async function SuperAdminUsersPage({
           />
         ))}
       </div>
-      <UserPagination page={usersPage.page} totalPages={usersPage.totalPages} role={filterRole} />
+      <UserPagination
+        basePath={SUPER_ADMIN_USERS_PATH}
+        page={usersPage.page}
+        totalPages={usersPage.totalPages}
+        role={filterRole}
+      />
     </DashboardBoardPage>
   )
 }

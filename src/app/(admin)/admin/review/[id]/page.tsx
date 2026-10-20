@@ -34,7 +34,14 @@ export default async function ReviewDetailPage({
     announcementPromise,
   ])
 
-  if (!announcement || announcement.status !== 'submitted') notFound()
+  if (
+    !announcement ||
+    (announcement.status !== 'submitted' && announcement.status !== 'published')
+  ) {
+    notFound()
+  }
+  // A live notice can only be taken down: it goes back to the publisher with a note.
+  const isLive = announcement.status === 'published'
 
   const review = reviewAnnouncement.bind(null, id)
   const registrationHref = toSafeHttpUrl(announcement.registration_link)
@@ -69,7 +76,7 @@ export default async function ReviewDetailPage({
           <div className="space-y-5 p-5 sm:p-6">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge status="submitted" />
+                <StatusBadge status={announcement.status} />
                 {announcement.categories && (
                   <span
                     className="inline-flex items-center rounded-[0.45rem] px-2 py-1 font-mono text-[0.68rem] font-bold tracking-[0.12em] text-white uppercase"
@@ -108,7 +115,7 @@ export default async function ReviewDetailPage({
               </div>
               <div>
                 <p className="mb-1 text-xs tracking-wider text-[var(--color-text-muted)] uppercase">
-                  Submitted
+                  {isLive ? 'Last changed' : 'Submitted'}
                 </p>
                 <p className="font-medium text-[var(--color-text-primary)]">
                   {formatReviewDate(announcement.updated_at)}
@@ -169,11 +176,12 @@ export default async function ReviewDetailPage({
           <div>
             <p className="future-kicker">Publishing decision</p>
             <h2 className="mt-3 text-2xl font-bold text-[var(--color-text-primary)]">
-              Approve or return changes
+              {isLive ? 'Take down this notice' : 'Approve or return changes'}
             </h2>
             <p className="mt-2 text-sm leading-6 text-[var(--color-text-muted)]">
-              Add a note when the publisher needs to adjust wording, category, dates, or poster
-              details.
+              {isLive
+                ? 'This removes the notice from the public board and sends it back to the publisher with your note.'
+                : 'Add a note when the publisher needs to adjust wording, category, dates, or poster details.'}
             </p>
           </div>
           {error === 'rejection_comment_required' && (
@@ -182,6 +190,15 @@ export default async function ReviewDetailPage({
               className="rounded-[1rem] border border-[var(--color-status-rejected-text)]/25 bg-[var(--color-status-rejected-bg)] px-4 py-3 text-sm text-[var(--color-status-rejected-text)]"
             >
               Add feedback before returning this to the publisher.
+            </div>
+          )}
+          {error === 'changed' && (
+            <div
+              role="alert"
+              className="rounded-[1rem] border border-[var(--color-status-rejected-text)]/25 bg-[var(--color-status-rejected-bg)] px-4 py-3 text-sm text-[var(--color-status-rejected-text)]"
+            >
+              The publisher changed this notice after you opened it. Read the updated version, then
+              decide again.
             </div>
           )}
           {error === 'review_failed' && (
@@ -193,6 +210,7 @@ export default async function ReviewDetailPage({
             </div>
           )}
           <form action={review} className="space-y-4">
+            <input type="hidden" name="reviewed_updated_at" value={announcement.updated_at} />
             <div>
               <label
                 htmlFor="comment"
@@ -212,21 +230,23 @@ export default async function ReviewDetailPage({
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-              <button
-                type="submit"
-                name="_action"
-                value="approve"
-                className="action-lift min-h-11 rounded-[0.95rem] bg-[var(--color-status-published-bg)] px-4 text-sm font-semibold text-[var(--color-status-published-text)]"
-              >
-                Approve and publish
-              </button>
+              {!isLive && (
+                <button
+                  type="submit"
+                  name="_action"
+                  value="approve"
+                  className="action-lift min-h-11 rounded-[0.95rem] bg-[var(--color-status-published-bg)] px-4 text-sm font-semibold text-[var(--color-status-published-text)]"
+                >
+                  Approve and publish
+                </button>
+              )}
               <button
                 type="submit"
                 name="_action"
                 value="reject"
                 className="action-lift min-h-11 rounded-[0.95rem] bg-[var(--color-status-rejected-bg)] px-4 text-sm font-semibold text-[var(--color-status-rejected-text)]"
               >
-                Return changes
+                {isLive ? 'Take down' : 'Return changes'}
               </button>
             </div>
           </form>

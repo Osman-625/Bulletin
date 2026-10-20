@@ -292,7 +292,7 @@ export default async function OwnerAnalyticsPage() {
       .limit(10),
     supabase
       .from('announcements')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('status', 'published')
       .gt('expires_at', now.toISOString())
       .lt('expires_at', sevenDaysFromNow.toISOString()),

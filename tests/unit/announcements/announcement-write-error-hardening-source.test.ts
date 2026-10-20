@@ -22,7 +22,6 @@ describe('announcement write action error hardening source guards', () => {
     expect(actions).toContain("from '@/shared/errors/error-reporting'")
     expect(actions).toContain('ANNOUNCEMENT_LOAD_ERROR')
     expect(actions).toContain('ANNOUNCEMENT_SAVE_ERROR')
-    expect(actions).toContain('ANNOUNCEMENT_PUBLISH_ERROR')
     expect(actions).toContain('ANNOUNCEMENT_UNPUBLISH_ERROR')
     expect(actions).toContain('ANNOUNCEMENT_SUBMIT_ERROR')
     expect(actions).toContain('ANNOUNCEMENT_DELETE_ERROR')

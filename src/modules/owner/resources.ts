@@ -94,7 +94,7 @@ export async function getOwnerResourceOverview(
       fetchOwnerAnnouncementRows(supabase),
       supabase
         .from('password_reset_requests')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('status', 'pending'),
       getBannerStorageSummary(supabase),
       getVercelResourceCard(),
@@ -163,6 +163,7 @@ async function fetchOwnerAnnouncementRows(supabase: SupabaseClient) {
         'id, title, status, view_count, published_at, registration_link, banner_url, categories(name, color), organizations(name)'
       )
       .order('view_count', { ascending: false })
+      .order('id') // view_count has many ties; without a tiebreak pages can repeat or skip rows
       .range(offset, offset + OWNER_RESOURCE_ANNOUNCEMENTS_PAGE_SIZE - 1)
 
     if (error) return { data: rows, error }

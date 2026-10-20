@@ -117,5 +117,3 @@ export function BrandMark({
     </Link>
   )
 }
-
-export default BrandMark

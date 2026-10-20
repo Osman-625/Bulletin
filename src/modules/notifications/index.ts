@@ -1,4 +1,5 @@
 import { cache } from 'react'
+import { NOTIFICATION_COLUMNS } from '@/infrastructure/database/columns'
 import { createClient, createServiceClient } from '@/infrastructure/database/server'
 import { getCurrentAccessContext } from '@/modules/auth/authz'
 import { dateValue, formatCampusDateTime } from '@/modules/announcements/public-board'
@@ -63,7 +64,7 @@ export async function getNotificationsForCurrentUser(): Promise<DbNotification[]
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('notifications')
-    .select('*')
+    .select(NOTIFICATION_COLUMNS)
     .eq('recipient_id', access.userId)
     .order('created_at', { ascending: false })
     .limit(50)

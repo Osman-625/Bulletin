@@ -2,31 +2,12 @@ import Link from 'next/link'
 import { ArrowLeft, Check, Send } from 'lucide-react'
 import { DashboardBoardHeader, DashboardBoardPage } from '@/components/dashboard/DashboardBoard'
 import { GlassCard } from '@/components/dashboard/GlassCard'
-import { getCurrentAccessContext } from '@/modules/auth/authz'
 import { getAllOrganizations } from '@/infrastructure/database/data'
-import { createClient } from '@/infrastructure/database/server'
+import { getCreatedInvite } from '@/modules/invitations/created-invite'
 import { invitePublisher } from './actions'
 import { CopyInviteLink } from './CopyInviteLink'
 
 export const metadata = { title: 'Invite Publisher, Bulletin Admin' }
-
-async function getCreatedInvite(created?: string) {
-  if (!created) return null
-
-  const access = await getCurrentAccessContext()
-  if (!access) return null
-
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('invitations')
-    .select('email, token')
-    .eq('id', created)
-    .eq('invited_by', access.userId)
-    .maybeSingle()
-
-  if (error) return null
-  return data
-}
 
 export default async function InvitePublisherPage({
   searchParams,
