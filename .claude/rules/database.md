@@ -1,7 +1,7 @@
 ---
 paths:
   - 'supabase/migrations/**'
-  - 'supabase/seed.sql'
+  - 'supabase/seed-sample-announcements.sql'
 ---
 
 # Database Migrations

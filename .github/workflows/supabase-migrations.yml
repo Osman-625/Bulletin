@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - 'supabase/migrations/**'
-      - 'supabase/seed.sql'
+      - 'supabase/seed-sample-announcements.sql'
   workflow_dispatch:
     inputs:
       target:
